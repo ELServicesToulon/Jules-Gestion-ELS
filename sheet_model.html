@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Modèle de Données - Google Sheet</title>
+    <style>
+        body { font-family: sans-serif; line-height: 1.6; margin: 20px; }
+        h1, h2 { color: #333; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
+        th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
+        th { background-color: #f4f4f4; }
+        code { background-color: #eee; padding: 2px 5px; border-radius: 4px; }
+    </style>
+</head>
+<body>
+    <h1>Modèle de Données pour Google Sheet</h1>
+    <p>Ce document décrit la structure requise pour le Google Sheet utilisé par l'application "GestionELS".</p>
+
+    <h2>Feuille 1: <code>Clients</code></h2>
+    <p><strong>Objectif:</strong> Stocke les informations des clients, leurs remises et les données de parrainage.</p>
+    <table>
+        <thead>
+            <tr>
+                <th>Nom de la Colonne</th>
+                <th>Description</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr><td>Email</td><td>Clé unique pour chaque client.</td></tr>
+            <tr><td>Raison Sociale</td><td>Nom de l'entreprise du client.</td></tr>
+            <tr><td>Adresse</td><td>Adresse postale du client.</td></tr>
+            <tr><td>SIRET</td><td>Numéro SIRET du client.</td></tr>
+            <tr><td>Type de Remise</td><td>Ex: "Pourcentage" ou "Montant Fixe".</td></tr>
+            <tr><td>Valeur Remise</td><td>La valeur numérique de la remise.</td></tr>
+            <tr><td>Nombre Tournées Offertes</td><td>Nombre de courses gratuites restantes.</td></tr>
+            <tr><td>Code de Parrainage</td><td>Le code unique que ce client peut partager.</td></tr>
+            <tr><td>Code Utilisé</td><td>Le code de parrainage que ce client a utilisé lors de son inscription.</td></tr>
+            <tr><td>Crédit Parrainage</td><td>Le montant en euros que ce client a gagné grâce au parrainage.</td></tr>
+        </tbody>
+    </table>
+
+    <h2>Feuille 2: <code>Facturation</code></h2>
+    <p><strong>Objectif:</strong> Journal principal pour toutes les réservations et factures générées.</p>
+    <table>
+        <thead>
+            <tr>
+                <th>Nom de la Colonne</th>
+                <th>Description</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr><td>Date</td><td>Date et heure de la réservation.</td></tr>
+            <tr><td>Client (Raison S. Client)</td><td>Nom du client.</td></tr>
+            <tr><td>Client (Email)</td><td>Email du client.</td></tr>
+            <tr><td>Type</td><td>Type de course (ex: "Normal", "Samedi").</td></tr>
+            <tr><td>Détails</td><td>Description de la course (nombre d'arrêts, etc.).</td></tr>
+            <tr><td>Montant</td><td>Prix final de la course.</td></tr>
+            <tr><td>Statut</td><td>Statut de la réservation (ex: "Confirmée").</td></tr>
+            <tr><td>Valider</td><td>Case à cocher pour inclure dans la prochaine facture.</td></tr>
+            <tr><td>N° Facture</td><td>Numéro de la facture une fois générée.</td></tr>
+            <tr><td>Event ID</td><td>ID de l'événement dans Google Calendar.</td></tr>
+            <tr><td>ID Réservation</td><td>ID interne unique de la réservation.</td></tr>
+            <tr><td>Note Interne</td><td>Notes pour l'administrateur.</td></tr>
+            <tr><td>Tournée Offerte Appliquée</td><td>Indique si une course gratuite a été utilisée.</td></tr>
+            <tr><td>Type Remise Appliquée</td><td>Le type de remise qui a été appliqué.</td></tr>
+            <tr><td>Valeur Remise Appliquée</td><td>La valeur de la remise appliquée.</td></tr>
+            <tr><td>Lien Note</td><td>Lien vers une note externe si nécessaire.</td></tr>
+            <tr><td>ID PDF</td><td>ID du fichier PDF de la facture dans Google Drive.</td></tr>
+        </tbody>
+    </table>
+
+    <h2>Feuille 3: <code>Plages_Bloquees</code></h2>
+    <p><strong>Objectif:</strong> Définir manuellement des créneaux horaires où le service est indisponible.</p>
+    <table>
+        <thead>
+            <tr>
+                <th>Nom de la Colonne</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr><td>Date</td></tr>
+            <tr><td>Heure_Debut</td></tr>
+            <tr><td>Heure_Fin</td></tr>
+        </tbody>
+    </table>
+
+    <h2>Feuille 4: <code>Paramètres</code></h2>
+    <p><strong>Objectif:</strong> Stocker les paramètres globaux de l'application.</p>
+    <table>
+        <thead>
+            <tr>
+                <th>Cellule</th>
+                <th>Contenu Exemple</th>
+                <th>Description</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr><td>A1</td><td>Prochain numéro de facture</td><td>Libellé.</td></tr>
+            <tr><td>B1</td><td>1</td><td>La valeur du prochain numéro de facture.</td></tr>
+        </tbody>
+    </table>
+
+    <h2>Feuille 5: <code>Admin_Logs</code></h2>
+    <p><strong>Objectif:</strong> Journaliser les actions administratives de haut niveau.</p>
+    <table>
+        <thead>
+            <tr>
+                <th>Nom de la Colonne</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr><td>Timestamp</td></tr>
+            <tr><td>Utilisateur</td></tr>
+            <tr><td>Action</td></tr>
+            <tr><td>Statut</td></tr>
+        </tbody>
+    </table>
+
+    <h2>Feuille 6: <code>Logs</code></h2>
+    <p><strong>Objectif:</strong> Journaliser les activités détaillées liées aux réservations.</p>
+    <table>
+        <thead>
+            <tr>
+                <th>Nom de la Colonne</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr><td>Timestamp</td></tr>
+            <tr><td>Reservation ID</td></tr>
+            <tr><td>Client Email</td></tr>
+            <tr><td>Résumé</td></tr>
+            <tr><td>Montant</td></tr>
+            <tr><td>Statut</td></tr>
+        </tbody>
+    </table>
+
+</body>
+</html>

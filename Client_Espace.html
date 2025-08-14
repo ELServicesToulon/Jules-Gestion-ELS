@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mon Espace Client - Vos Réservations</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <?!= include('Client_CSS'); ?>
+</head>
+<body>
+
+  <div id="indicateur-chargement" class="indicateur-chargement-overlay">
+    <div class="spinner"></div>
+  </div>
+
+  <div id="app-conteneur-principal">
+    <header class="app-en-tete">
+      <?!= include('Logo'); ?>
+      <p id="message-bienvenue-client"></p>
+    </header>
+
+    <main id="conteneur-app" class="hidden">
+      <div id="liste-reservations" class="carte">
+        <h3>Vos prochaines courses</h3>
+        <div id="contenu-reservations">
+          <!-- Les réservations seront injectées ici par le script JS -->
+        </div>
+      </div>
+      <div class="carte">
+        <p>Pour toute annulation ou pour une modification non disponible ici, veuillez nous contacter directement.</p>
+        <a href="<?= ScriptApp.getService().getUrl() ?>" class="btn btn-secondaire">Faire une nouvelle réservation</a>
+        <a href="mailto:<?= ADMIN_EMAIL ?>" class="btn btn-secondaire" style="margin-left: 10px;">Contacter le support</a>
+      </div>
+    </main>
+
+    <div id="non-connecte" class="carte hidden">
+        <h3>Accès à l'espace client</h3>
+        <p>Pour consulter vos réservations, veuillez utiliser le lien qui vous a été envoyé par e-mail ou saisissez votre adresse ci-dessous.</p>
+
+        <form id="formulaire-connexion-client" class="groupe-formulaire" style="margin-top: 20px;">
+            <label for="email-connexion">Votre adresse e-mail :</label>
+            <input type="email" id="email-connexion" class="champ-formulaire" required placeholder="exemple@domaine.com">
+            <div id="erreur-connexion" class="message-erreur-connexion hidden"></div>
+            <button type="submit" class="btn btn-primaire" style="margin-top: 15px; width: 100%;">Accéder à mes réservations</button>
+        </form>
+
+        <a href="<?= ScriptApp.getService().getUrl() ?>" class="btn btn-secondaire" style="margin-top: 20px;">Retour à la page de réservation</a>
+    </div>
+  </div>
+
+  <div id="modale-modification" class="modale-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="modale-modification-titre">
+    <div class="modale-contenu">
+      <button id="btn-fermer-modale" class="btn-fermer" aria-label="Fermer la fenêtre de modification">&times;</button>
+      <div id="contenu-modale-wrapper">
+        <!-- Le contenu de la modale sera injecté ici -->
+      </div>
+    </div>
+  </div>
+
+  <div id="conteneur-notifications"></div>
+
+  <?!= include('Client_JS'); ?>
+</body>
+</html>

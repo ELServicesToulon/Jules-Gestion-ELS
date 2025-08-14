@@ -1,0 +1,269 @@
+<style>
+/* =================================================================
+                      FEUILLE DE STYLE - INTERFACE DE RÉSERVATION
+   ================================================================= */
+
+/* --- VARIABLES DE COULEURS ET STYLES DE BASE --- */
+:root {
+  --couleur-primaire: #8e44ad; /* Violet */
+  --couleur-secondaire: #3498db; /* Bleu */
+  --couleur-succes: #27ae60; /* Vert */
+  --couleur-erreur: #c0392b; /* Rouge - UTILISÉ POUR L'URGENCE */
+  --couleur-avertissement: #f39c12; /* Jaune */
+  --gris-clair: #f9f9f9;
+  --gris-moyen: #6c757d;
+  --gris-fonce: #343a40;
+  --couleur-bordure: #e9ecef;
+  --police-principale: 'Montserrat', sans-serif;
+  --ombre-portee: 0 8px 25px rgba(0, 0, 0, 0.07);
+}
+
+body {
+  font-family: var(--police-principale);
+  background-color: var(--gris-clair);
+  margin: 0;
+  color: var(--gris-fonce);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* --- ACCESSIBILITÉ : Style pour le focus clavier --- */
+.btn:focus, .champ-formulaire:focus, .btn-fermer:focus, .btn-compteur:focus, .interrupteur input:focus + .glissiere, .slot-btn:focus {
+  outline: 3px solid var(--couleur-secondaire);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px rgba(52, 152, 219, 0.3);
+}
+
+/* --- MISE EN PAGE PRINCIPALE --- */
+#app-conteneur-principal {
+  max-width: 1400px;
+  margin: 30px auto;
+  padding: 0 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 30px;
+}
+#app-conteneur {
+  display: flex;
+  gap: 30px;
+  align-items: flex-start;
+}
+#vue-calendrier { flex: 3; min-width: 0; }
+#colonne-droite { flex: 2; position: sticky; top: 30px; display: flex; flex-direction: column; gap: 30px;}
+
+
+/* --- COMPOSANT CARTE --- */
+.carte {
+  background-color: white;
+  padding: 25px;
+  border-radius: 12px;
+  box-shadow: var(--ombre-portee);
+}
+.carte-en-tete { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+
+/* --- CALENDRIER --- */
+#titre-calendrier { margin: 0; font-size: 1.5em; color: var(--couleur-primaire); }
+.calendrier-jours-semaine, #grille-calendrier { display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; }
+.calendrier-jours-semaine { font-weight: 600; color: var(--gris-moyen); padding-bottom: 10px; }
+.jour-calendrier { padding: 10px; border-radius: 8px; cursor: pointer; transition: background-color 0.2s, border-color 0.2s; border: 1px solid transparent; }
+.jour-calendrier:not(.desactive):hover { background-color: #f1eaf5; border-color: var(--couleur-primaire); }
+.jour-calendrier.desactive { color: #ccc; cursor: not-allowed; background-color: #fdfdfd; }
+.barre-disponibilite { height: 4px; background-color: #e0e0e0; border-radius: 2px; margin: 5px auto 0; overflow: hidden; max-width: 80%; }
+.barre-disponibilite div { height: 100%; background-color: var(--couleur-succes); }
+
+/* --- PANIER --- */
+#liste-panier { list-style: none; padding: 0; margin: 0; }
+.panier-vide { text-align: center; color: var(--gris-moyen); padding: 20px 0; }
+.item-panier { display: flex; justify-content: space-between; align-items: center; padding: 15px 0; border-bottom: 1px solid var(--couleur-bordure); }
+.item-panier:last-child { border-bottom: none; }
+.item-panier-infos strong { display: block; }
+.item-panier-infos small { color: var(--gris-moyen); }
+.item-panier-prix { font-weight: 600; color: var(--couleur-primaire); }
+.item-panier-supprimer { background: none; border: none; font-size: 1.5em; color: var(--couleur-erreur); cursor: pointer; opacity: 0.7; transition: opacity 0.2s; }
+.item-panier-supprimer:hover { opacity: 1; }
+#panier-pied-de-page { padding-top: 20px; border-top: 2px solid var(--couleur-bordure); }
+.panier-total { display: flex; justify-content: space-between; align-items: center; font-size: 1.2em; font-weight: 600; margin-bottom: 20px; }
+#panier-pied-de-page .btn { width: 100%; }
+
+/* --- FORMULAIRES & BOUTONS --- */
+.groupe-formulaire { margin-bottom: 15px; }
+.groupe-formulaire label { display: block; margin-bottom: 5px; font-weight: 500; }
+.champ-formulaire { width: 100%; padding: 12px; border: 1px solid var(--couleur-bordure); border-radius: 8px; box-sizing: border-box; transition: border-color 0.2s; }
+.actions-formulaire { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+.btn { padding: 12px 20px; border-radius: 8px; border: none; cursor: pointer; font-weight: 600; transition: all 0.2s; font-family: var(--police-principale); text-decoration: none; }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn-primaire { background-color: var(--couleur-primaire); color: white; }
+.btn-primaire:not(:disabled):hover { background-color: #732d91; transform: translateY(-2px); }
+.btn-secondaire { background-color: var(--couleur-bordure); color: var(--gris-fonce); }
+.btn-secondaire:not(:disabled):hover { background-color: #dcdfe2; }
+.btn-succes { background-color: var(--couleur-succes); color: white; }
+.btn-succes:not(:disabled):hover { background-color: #218c4b; }
+.btn-icone { background: none; border: none; cursor: pointer; color: var(--couleur-primaire); font-size: 1.5em; }
+.btn-sm { padding: 8px 12px; font-size: 0.9em; }
+
+/* --- MODALES --- */
+.modale-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.6); display: flex; justify-content: center; align-items: center; z-index: 999; }
+.modale-contenu { background-color: white; padding: 30px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); width: 100%; max-width: 500px; position: relative; }
+.btn-fermer { position: absolute; top: 15px; right: 15px; background: none; border: none; font-size: 1.8em; cursor: pointer; color: var(--gris-moyen); }
+.modale-resume { background-color: var(--gris-clair); border-radius: 8px; padding: 15px; margin-top: 20px; display: flex; justify-content: space-around; text-align: center; }
+.modale-resume strong { color: var(--couleur-primaire); display: block; margin-top: 4px; }
+.modale-pied-de-page { margin-top: 25px; padding-top: 20px; border-top: 1px solid var(--couleur-bordure); display: flex; justify-content: flex-end; }
+
+/* --- STYLES DES CRÉNEAUX (NOUVELLE VERSION) --- */
+.grille-creneaux {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+  gap: 10px;
+}
+
+/* Style de base pour un créneau */
+.slot-btn {
+  padding: 10px 5px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+  border: 2px solid var(--couleur-bordure);
+  background-color: transparent;
+  text-align: center;
+  font-family: var(--police-principale);
+  color: var(--gris-fonce); /* Couleur de texte par défaut */
+}
+.slot-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  background-color: var(--gris-clair);
+}
+.slot-time {
+  font-weight: 700;
+  font-size: 1.1em;
+  display: block;
+}
+.slot-rate-label {
+  font-size: 0.75em;
+  font-weight: 500;
+  display: block;
+}
+
+/* Créneau standard */
+.slot-btn.standard {
+  color: var(--couleur-primaire);
+}
+.slot-btn.standard:not(:disabled):hover {
+  border-color: var(--couleur-primaire);
+  background-color: #f1eaf5;
+}
+.slot-btn.standard.selected {
+  background-color: var(--couleur-primaire);
+  border-color: var(--couleur-primaire);
+  color: white;
+}
+.slot-btn.standard.selected .slot-rate-label {
+    color: white;
+}
+
+
+/* Créneau urgent - Utilise la couleur d'erreur (rouge) */
+.slot-btn.urgent {
+  color: var(--couleur-erreur);
+}
+.slot-btn.urgent .slot-rate-label {
+  color: var(--couleur-erreur);
+}
+.slot-btn.urgent:not(:disabled):hover {
+  border-color: var(--couleur-erreur);
+  background-color: #f9e5e3;
+}
+.slot-btn.urgent.selected {
+  background-color: var(--couleur-erreur);
+  border-color: var(--couleur-erreur);
+  color: white;
+}
+.slot-btn.urgent.selected .slot-rate-label {
+    color: white;
+}
+
+/* --- STYLES POUR LE RÉCAPITULATIF DANS LA MODALE --- */
+.recap-selection-conteneur {
+  background-color: var(--gris-clair);
+  border-radius: 8px;
+  padding: 15px;
+  margin-bottom: 15px;
+}
+.recap-ligne {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 0;
+  border-bottom: 1px solid #e0e0e0;
+}
+.recap-ligne:last-child {
+  border-bottom: none;
+}
+.recap-ligne.total {
+  font-size: 1.2em;
+  font-weight: bold;
+  padding-top: 10px;
+}
+.recap-ligne.total strong {
+    color: var(--couleur-primaire);
+}
+
+
+/* --- COMPOSANTS D'INTERFACE (INTERRUPTEUR, COMPTEUR, ETC.) --- */
+.champ-compteur { display: flex; align-items: center; justify-content: center; gap: 15px; }
+.btn-compteur { background-color: var(--couleur-secondaire); color: white; border-radius: 50%; width: 35px; height: 35px; font-size: 1.5em; line-height: 35px; border: none; cursor: pointer; }
+.valeur-compteur { font-size: 1.2em; font-weight: 700; min-width: 25px; text-align: center; }
+.conteneur-interrupteur { display: flex; justify-content: space-between; align-items: center; }
+.interrupteur { position: relative; display: inline-block; width: 50px; height: 28px; }
+.interrupteur input { opacity: 0; width: 0; height: 0; }
+.glissiere { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; border-radius: 28px; }
+.glissiere:before { position: absolute; content: ""; height: 20px; width: 20px; left: 4px; bottom: 4px; background-color: white; transition: .4s; border-radius: 50%; }
+input:checked + .glissiere { background-color: var(--couleur-secondaire); }
+input:checked + .glissiere:before { transform: translateX(22px); }
+
+/* --- CHARGEMENT & NOTIFICATIONS --- */
+.indicateur-chargement-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(255,255,255,0.8); z-index: 1001; display: flex; justify-content: center; align-items: center; }
+.spinner { width: 50px; height: 50px; border: 5px solid var(--couleur-bordure); border-top-color: var(--couleur-primaire); border-radius: 50%; animation: spin 1s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.hidden { display: none !important; }
+
+#conteneur-notifications { position: fixed; bottom: 20px; right: 20px; z-index: 1000; display: flex; flex-direction: column; gap: 10px; }
+.notification { padding: 15px 20px; border-radius: 8px; color: white; font-weight: 500; box-shadow: 0 4px 15px rgba(0,0,0,0.1); animation: slideIn 0.5s ease-out forwards, slideOut 0.5s ease-in 4.5s forwards; opacity: 0; transform: translateX(100%); max-width: 320px; }
+.notification.succes { background-color: var(--couleur-succes); }
+.notification.erreur { background-color: var(--couleur-erreur); }
+.notification.info { background-color: var(--couleur-secondaire); }
+@keyframes slideIn { to { opacity: 1; transform: translateX(0); } }
+@keyframes slideOut { from { opacity: 1; transform: translateX(0); } to { opacity: 0; transform: translateX(100%); } }
+
+/* --- STYLES POUR LES LOGOS ET LE TEXTE DE REPLI --- */
+.app-logo-container { display: flex; justify-content: center; align-items: center; margin-bottom: 10px; }
+.app-logo { max-width: 200px; height: auto; }
+.app-en-tete { display: flex; flex-direction: column; align-items: center; text-align: center; margin-bottom: 30px; }
+
+/* --- RESPONSIVE DESIGN --- */
+@media (max-width: 900px) {
+  #app-conteneur { flex-direction: column; }
+  #colonne-droite { position: static; top: auto; width: 100%; box-sizing: border-box; }
+}
+@media (max-width: 600px) {
+  #app-conteneur-principal { padding: 0 10px; margin: 15px auto; }
+  .carte-en-tete { flex-direction: column; gap: 10px; }
+  #titre-calendrier { font-size: 1.2em; }
+  .jour-calendrier { padding: 5px; font-size: 0.9em; }
+  .grille-creneaux { grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); }
+  .modale-contenu { width: 95%; padding: 20px; }
+  .champ-formulaire, .btn { font-size: 16px; /* Pour éviter le zoom sur iOS */ }
+  .item-panier { flex-direction: column; align-items: flex-start; gap: 5px; }
+  .item-panier-prix { align-self: flex-end; font-weight: bold; }
+}
+
+/* --- STYLES D'IMPRESSION --- */
+@media print {
+  body { background-color: white; color: black; }
+  .app-en-tete, .carte-en-tete button, #btn-valider-panier, .modale-overlay, #conteneur-notifications, .actions-formulaire button, .item-panier-supprimer, .app-pied-de-page { display: none; }
+  #app-conteneur-principal, #app-conteneur, #vue-calendrier, #vue-panier, .carte { box-shadow: none; border: 1px solid #ccc; margin: 10px 0; padding: 15px; page-break-inside: avoid; }
+  #app-conteneur { flex-direction: column; }
+  .jour-calendrier.desactive { color: #aaa; }
+  .champ-formulaire { border-color: #aaa; }
+}
+</style>
