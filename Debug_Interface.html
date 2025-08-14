@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <base target="_top">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panneau de Débogage</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background-color: #f4f4f4; }
+        h1 { color: #333; }
+        .test-suite { background-color: white; border: 1px solid #ddd; border-radius: 5px; padding: 15px; margin-bottom: 15px; }
+        button { background-color: #007bff; color: white; border: none; padding: 10px 15px; border-radius: 4px; cursor: pointer; margin-right: 10px; }
+        button:hover { background-color: #0056b3; }
+        #results { margin-top: 20px; background-color: #222; color: #fff; padding: 15px; border-radius: 5px; white-space: pre-wrap; font-family: monospace; height: 400px; overflow-y: scroll; }
+    </style>
+</head>
+<body>
+    <h1>Panneau de Débogage</h1>
+
+    <div class="test-suite">
+        <h3>Tests Complets</h3>
+        <p>Lance l'ensemble des tests du back-office. Les résultats s'afficheront dans la console ci-dessous et dans les journaux Apps Script.</p>
+        <button id="btn-run-all">Lancer tous les tests</button>
+    </div>
+    
+    <div id="results">
+        Cliquez sur un bouton pour lancer les tests...
+    </div>
+
+    <script>
+        document.getElementById('btn-run-all').addEventListener('click', () => {
+            document.getElementById('results').textContent = 'Lancement des tests... Veuillez patienter.';
+            google.script.run
+                .withSuccessHandler(logs => {
+                    document.getElementById('results').textContent = "Tests terminés !\n\n" + logs;
+                })
+                .withFailureHandler(err => {
+                    document.getElementById('results').textContent = "Une erreur est survenue : " + err.message;
+                })
+                .lancerTousLesTestsEtRetournerLogs();
+        });
+    </script>
+</body>
+</html>

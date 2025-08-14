@@ -1,0 +1,30 @@
+<!--
+=================================================================
+                      COMPOSANT LOGO
+=================================================================
+Description: Ce fichier contient le code SVG du logo de l'entreprise.
+             Il est destiné à être inclus dans les autres pages HTML
+             pour garantir la cohérence de la marque.
+=================================================================
+-->
+<div class="app-logo-container">
+  <!-- 
+    Logo Complet (pour les en-têtes de page)
+    - Le SVG est directement intégré dans le HTML pour la performance.
+    - Il utilise un dégradé de couleurs défini dans la balise <defs>.
+    - Le chemin <path> dessine la forme graphique du logo.
+    - Le texte <text> affiche les initiales "ELS".
+  -->
+  <svg width="200" height="100" viewBox="0 0 230 100" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+        <linearGradient id="airyGradient" x1="0%" y1="50%" x2="100%" y2="50%">
+            <stop offset="0%" stop-color="#8e44ad" />
+            <stop offset="100%" stop-color="#3498db" />
+        </linearGradient>
+    </defs>
+    <path d="M 60 40 C 40 40, 40 70, 60 70 M 60 55 L 30 55 M 60 70 C 80 70, 90 60, 85 45 Q 95 55 105 50" stroke="url(#airyGradient)" stroke-width="4" stroke-linecap="round" fill="none"/>
+    <g text-anchor="start">
+        <text x="120" y="62" font-family="Lato, sans-serif" font-size="28" font-weight="700" fill="#212529">ELS</text>
+    </g>
+  </svg>
+</div>

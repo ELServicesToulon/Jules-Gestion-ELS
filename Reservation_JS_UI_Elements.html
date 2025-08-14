@@ -1,0 +1,69 @@
+<script>
+/**
+ * =================================================================
+ * MODULE JAVASCRIPT - RÉFÉRENCES UI
+ * =================================================================
+ * Description: Centralise toutes les références aux éléments du DOM
+ * dans un objet global `window.ui` pour un accès facile et propre.
+ * Ce script doit être chargé avant tous les autres scripts de logique.
+ */
+
+document.addEventListener('DOMContentLoaded', () => {
+  window.ui = {
+    // Indicateur de chargement
+    indicateurChargement: document.getElementById('indicateur-chargement'),
+
+    // Calendrier
+    grilleCalendrier: document.getElementById('grille-calendrier'),
+    titreCalendrier: document.getElementById('titre-calendrier'),
+    btnMoisPrecedent: document.getElementById('btn-mois-precedent'),
+    btnMoisSuivant: document.getElementById('btn-mois-suivant'),
+
+    // Panier
+    listePanier: document.getElementById('liste-panier'),
+    panierPiedDePage: document.getElementById('panier-pied-de-page'),
+    panierTotalValeur: document.getElementById('panier-total-valeur'),
+    btnValiderPanier: document.getElementById('btn-valider-panier'),
+
+    // Modale 1: Configuration de la tournée
+    modaleConfigTournee: document.getElementById('modale-config-tournee'),
+    titreModaleConfig: document.getElementById('modale-config-titre'),
+    formulaireConfigTournee: document.getElementById('formulaire-config-tournee'),
+    btnFermerConfigTournee: document.getElementById('btn-fermer-config-tournee'),
+    btnAjouterArret: document.getElementById('btn-ajouter-arret'),
+    btnRetirerArret: document.getElementById('btn-retirer-arret'),
+    valeurArretsSup: document.getElementById('valeur-arrets-sup'),
+    interrupteurRetour: document.getElementById('interrupteur-retour'),
+    resumeConfigTournee: document.getElementById('resume-config-tournee'),
+
+    // Modale 2: Sélection du créneau
+    modaleSelectionCreneau: document.getElementById('modale-selection-creneau'),
+    titreModaleSelection: document.getElementById('modale-selection-titre'),
+    btnFermerSelectionCreneau: document.getElementById('btn-fermer-selection-creneau'),
+    grilleSelectionCreneau: document.getElementById('grille-selection-creneau'),
+    btnAjouterAuPanier: document.getElementById('btn-ajouter-au-panier'),
+    btnModifierTournee: document.getElementById('btn-modifier-tournee'),
+    
+    // Récapitulatif dans la modale de sélection
+    recapCreneauHeure: document.getElementById('recap-creneau-heure'),
+    recapCreneauTarif: document.getElementById('recap-creneau-tarif'),
+    recapCreneauPrix: document.getElementById('recap-creneau-prix'),
+
+    // Conteneur de finalisation
+    conteneurFinalisation: document.getElementById('conteneur-finalisation'),
+    formulaireReservation: document.getElementById('formulaire-reservation'),
+    btnAnnulerReservation: document.getElementById('btn-annuler-reservation'),
+
+    // Champs Client
+    champEmailClient: document.getElementById('client-email'),
+    champNomClient: document.getElementById('client-nom'),
+    champAdresseClient: document.getElementById('client-adresse'),
+    champSiretClient: document.getElementById('client-siret'),
+    champNoteReservation: document.getElementById('note-reservation'),
+    banniereClientReconnu: document.getElementById('banniere-client-reconnu'),
+    nomClientReconnu: document.getElementById('nom-client-reconnu'),
+    btnChangerClient: document.getElementById('btn-changer-client')
+  };
+});
+</script>
+

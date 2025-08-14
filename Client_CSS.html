@@ -1,0 +1,116 @@
+<style>
+/* =================================================================
+                      FEUILLE DE STYLE - ESPACE CLIENT
+   ================================================================= */
+
+/* --- VARIABLES DE COULEURS ET STYLES DE BASE --- */
+:root {
+  --couleur-primaire: #8e44ad; /* Violet */
+  --couleur-secondaire: #3498db; /* Bleu */
+  --couleur-succes: #27ae60; /* Vert */
+  --couleur-erreur: #c0392b; /* Rouge */
+  --couleur-avertissement: #f39c12; /* Jaune */
+  --gris-clair: #f9f9f9;
+  --gris-moyen: #6c757d;
+  --gris-fonce: #343a40;
+  --couleur-bordure: #e9ecef;
+  --police-principale: 'Montserrat', sans-serif;
+  --ombre-portee: 0 8px 25px rgba(0, 0, 0, 0.07);
+}
+
+body {
+  font-family: var(--police-principale);
+  background-color: var(--gris-clair);
+  margin: 0;
+  color: var(--gris-fonce);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* --- ACCESSIBILITÉ : Style pour le focus clavier --- */
+.btn:focus, .champ-formulaire:focus, .btn-fermer:focus {
+  outline: 3px solid var(--couleur-secondaire);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px rgba(52, 152, 219, 0.3);
+}
+
+/* --- MISE EN PAGE PRINCIPALE --- */
+#app-conteneur-principal {
+  max-width: 900px;
+  margin: 30px auto;
+  padding: 0 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 30px;
+}
+.app-en-tete { text-align: center; }
+
+/* --- COMPOSANT CARTE --- */
+.carte {
+  background-color: white;
+  padding: 25px;
+  border-radius: 12px;
+  box-shadow: var(--ombre-portee);
+}
+
+/* --- LISTE DES RÉSERVATIONS --- */
+.reservation-item {
+  padding: 20px;
+  border: 1px solid var(--couleur-bordure);
+  border-radius: 8px;
+  margin-bottom: 15px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 15px;
+  align-items: center;
+}
+.reservation-details h4 { margin: 0 0 10px 0; color: var(--couleur-primaire); }
+.reservation-details p { margin: 5px 0; }
+.reservation-actions { display: flex; flex-direction: column; gap: 10px; }
+.message-aucune-reservation { text-align: center; padding: 30px; color: var(--gris-moyen); }
+
+/* --- FORMULAIRES & BOUTONS --- */
+.groupe-formulaire { margin-bottom: 15px; }
+.groupe-formulaire label { display: block; margin-bottom: 5px; font-weight: 500; }
+.champ-formulaire { width: 100%; padding: 12px; border: 1px solid var(--couleur-bordure); border-radius: 8px; box-sizing: border-box; }
+.btn { padding: 12px 20px; border-radius: 8px; border: none; cursor: pointer; font-weight: 600; transition: all 0.2s; font-family: var(--police-principale); text-decoration: none; display: inline-block; text-align: center; }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn-primaire { background-color: var(--couleur-primaire); color: white; }
+.btn-primaire:not(:disabled):hover { background-color: #732d91; }
+.btn-secondaire { background-color: var(--couleur-bordure); color: var(--gris-fonce); }
+.btn-secondaire:not(:disabled):hover { background-color: #dcdfe2; }
+.message-erreur-connexion { color: var(--couleur-erreur); margin-top: 10px; font-size: 0.9em; }
+
+/* --- MODALE --- */
+.modale-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.6); display: flex; justify-content: center; align-items: center; z-index: 999; }
+.modale-contenu { background-color: white; padding: 30px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); width: 100%; max-width: 500px; position: relative; }
+.btn-fermer { position: absolute; top: 15px; right: 15px; background: none; border: none; font-size: 1.8em; cursor: pointer; color: var(--gris-moyen); }
+.modale-actions { margin-top: 25px; padding-top: 20px; border-top: 1px solid var(--couleur-bordure); display: flex; justify-content: flex-end; gap: 10px; }
+.grille-creneaux { display: grid; grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 10px; margin-top: 15px; }
+.slot-btn { padding: 10px; border-radius: 8px; cursor: pointer; border: 2px solid var(--couleur-bordure); background-color: transparent; }
+.slot-btn:hover { border-color: var(--couleur-primaire); }
+.slot-btn.selected { background-color: var(--couleur-primaire); color: white; border-color: var(--couleur-primaire); }
+
+/* --- CHARGEMENT & NOTIFICATIONS --- */
+.indicateur-chargement-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(255,255,255,0.8); z-index: 1001; display: flex; justify-content: center; align-items: center; }
+.spinner { width: 50px; height: 50px; border: 5px solid var(--couleur-bordure); border-top-color: var(--couleur-primaire); border-radius: 50%; animation: spin 1s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.hidden { display: none !important; }
+
+#conteneur-notifications { position: fixed; bottom: 20px; right: 20px; z-index: 1000; }
+.notification { padding: 15px 20px; border-radius: 8px; color: white; font-weight: 500; box-shadow: 0 4px 15px rgba(0,0,0,0.1); animation: slideIn 0.5s ease-out forwards, slideOut 0.5s ease-in 4.5s forwards; opacity: 0; transform: translateX(100%); }
+.notification.succes { background-color: var(--couleur-succes); }
+.notification.erreur { background-color: var(--couleur-erreur); }
+@keyframes slideIn { to { opacity: 1; transform: translateX(0); } }
+@keyframes slideOut { from { opacity: 1; transform: translateX(0); } to { opacity: 0; transform: translateX(100%); } }
+
+/* --- RESPONSIVE DESIGN --- */
+@media (max-width: 600px) {
+  #app-conteneur-principal { padding: 0 10px; margin: 15px auto; }
+  .reservation-item { grid-template-columns: 1fr; }
+  .reservation-actions { flex-direction: row; }
+}
+</style>
+
+
+

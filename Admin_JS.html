@@ -1,0 +1,458 @@
+<script>
+/**
+ * =================================================================
+ * MODULE JAVASCRIPT - TABLEAU DE BORD ADMIN
+ * =================================================================
+ */
+
+document.addEventListener('DOMContentLoaded', () => {
+    // --- Références aux éléments du DOM ---
+    const indicateurChargement = document.getElementById('indicateur-chargement');
+    const champDate = document.getElementById('date-livraison');
+    const contenuReservations = document.getElementById('contenu-reservations');
+    const titreReservations = document.getElementById('titre-reservations');
+    const btnAjouterReservation = document.getElementById('btn-ajouter-reservation');
+    const btnToutVoir = document.getElementById('btn-tout-voir');
+    const modale = document.getElementById('modale-action');
+    const contenuModale = document.getElementById('contenu-modale-wrapper');
+    const btnFermerModale = document.getElementById('btn-fermer-modale');
+
+    // --- Variables d'état ---
+    let toutesLesReservationsAffichees = [];
+    let tousLesClients = [];
+    let vueActuelle = 'date'; // NOUVEAU: pour savoir quelle vue rafraîchir ('date' ou 'toutes')
+
+    /**
+     * Initialise le tableau de bord.
+     */
+    function initialiser() {
+        const aujourdhui = new Date().toISOString().split('T')[0];
+        
+        if (champDate) {
+            champDate.value = aujourdhui;
+            champDate.addEventListener('change', () => chargerReservationsParDate(champDate.value));
+        }
+        
+        btnToutVoir?.addEventListener('click', chargerToutesReservationsAdmin);
+        btnAjouterReservation?.addEventListener('click', ouvrirModaleAjout);
+        btnFermerModale?.addEventListener('click', () => modale?.classList.add('hidden'));
+
+        chargerClients(() => {
+            chargerReservationsParDate(aujourdhui);
+        });
+    }
+
+    /**
+     * Charge les réservations pour une date donnée.
+     */
+    function chargerReservationsParDate(dateString) {
+        if (!dateString) return;
+        vueActuelle = 'date'; // Mémorise la vue
+        basculerIndicateurChargement(true);
+        
+        if (contenuReservations) contenuReservations.innerHTML = '<p>Chargement des courses...</p>';
+        const date = new Date(dateString + "T00:00:00");
+        if (titreReservations) {
+            titreReservations.textContent = `Courses du ${date.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}`;
+        }
+
+        google.script.run
+            .withSuccessHandler(reponse => {
+                basculerIndicateurChargement(false);
+                if (reponse.success) {
+                    toutesLesReservationsAffichees = reponse.reservations;
+                    afficherReservations(toutesLesReservationsAffichees, false);
+                } else {
+                    afficherErreur(reponse.error);
+                }
+            })
+            .withFailureHandler(afficherErreur)
+            .obtenirToutesReservationsPourDate(dateString);
+    }
+
+    /**
+     * Charge TOUTES les réservations.
+     */
+    function chargerToutesReservationsAdmin() {
+        vueActuelle = 'toutes'; // Mémorise la vue
+        basculerIndicateurChargement(true);
+        if (contenuReservations) contenuReservations.innerHTML = '<p>Chargement de toutes les courses...</p>';
+        if (titreReservations) titreReservations.textContent = 'Toutes les courses (passées, présentes et futures)';
+
+        google.script.run
+            .withSuccessHandler(reponse => {
+                basculerIndicateurChargement(false);
+                if (reponse.success) {
+                    toutesLesReservationsAffichees = reponse.reservations;
+                    afficherReservations(toutesLesReservationsAffichees, true);
+                } else {
+                    afficherErreur(reponse.error);
+                }
+            })
+            .withFailureHandler(afficherErreur)
+            .obtenirToutesReservationsAdmin();
+    }
+
+    /**
+     * NOUVEAU: Rafraîchit la vue actuellement affichée.
+     */
+    function rafraichirVueActuelle() {
+        chargerClients(() => { // On recharge les clients au cas où une info a changé (ex: tournées offertes)
+            if (vueActuelle === 'toutes') {
+                chargerToutesReservationsAdmin();
+            } else {
+                chargerReservationsParDate(champDate?.value || new Date().toISOString().split('T')[0]);
+            }
+        });
+    }
+
+    /**
+     * Charge la liste complète des clients.
+     */
+    function chargerClients(callback) {
+        google.script.run
+            .withSuccessHandler(clients => {
+                tousLesClients = clients || [];
+                if (callback) callback();
+            })
+            .withFailureHandler(afficherErreur)
+            .obtenirTousLesClients();
+    }
+
+    /**
+     * Affiche les réservations.
+     */
+    function afficherReservations(reservations, montrerDate = false) {
+        if (!contenuReservations) return;
+        if (reservations.length === 0) {
+            contenuReservations.innerHTML = '<p>Aucune course à afficher.</p>';
+            return;
+        }
+
+        const groupeParClient = reservations.reduce((acc, resa) => {
+            const clientKey = `${resa.clientName} (${resa.clientEmail})`;
+            if (!acc[clientKey]) acc[clientKey] = [];
+            acc[clientKey].push(resa);
+            return acc;
+        }, {});
+
+        let html = '';
+        for (const nomClient in groupeParClient) {
+            html += `<div class="groupe-client"><div class="groupe-client-en-tete">${nomClient}</div>`;
+            groupeParClient[nomClient].forEach(resa => {
+                const dateDebut = new Date(resa.start);
+                const heureDebut = dateDebut.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+                const dateAffichee = dateDebut.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+                const prix = typeof resa.amount === 'number' ? resa.amount.toFixed(2) : 'N/A';
+                const infoRemiseHtml = resa.infoRemise ? `<span class="info-remise">${resa.infoRemise}</span>` : '';
+                const dateHtml = montrerDate ? `<strong>${dateAffichee}</strong> &agrave; ` : '';
+                const statutHtml = resa.statut ? `<span class="statut-badge" style="background-color: #7f8c8d; color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.8em; margin-left: 8px;">${resa.statut}</span>` : '';
+
+                html += `
+                    <div class="carte-reservation">
+                        <div class="carte-heure">${dateHtml}${heureDebut}</div>
+                        <div class="carte-details">
+                            <strong>${resa.details}</strong>
+                            <small>${prix} € ${infoRemiseHtml} (~${resa.km} km) ${statutHtml}</small>
+                        </div>
+                        <div class="carte-actions">
+                            <button class="btn btn-sm btn-secondaire btn-modifier" data-id-reservation="${resa.id}">Modifier</button>
+                            <button class="btn btn-sm btn-secondaire btn-replanifier" data-id-reservation="${resa.id}">Déplacer</button>
+                            <button class="btn btn-sm btn-appliquer-remise" data-id-reservation="${resa.id}">Remise</button>
+                            <button class="btn btn-sm btn-erreur btn-supprimer" data-id-reservation="${resa.id}">Supprimer</button>
+                        </div>
+                    </div>`;
+            });
+            html += `</div>`;
+        }
+        contenuReservations.innerHTML = html;
+        attacherEcouteursActions();
+    }
+
+    /**
+     * Attache les écouteurs d'événements aux boutons d'action.
+     */
+    function attacherEcouteursActions() {
+        document.querySelectorAll('.btn-modifier').forEach(b => b.addEventListener('click', e => ouvrirModaleAjoutArret(e.target.dataset.idReservation)));
+        document.querySelectorAll('.btn-replanifier').forEach(b => b.addEventListener('click', e => ouvrirModaleReplanifier(e.target.dataset.idReservation)));
+        document.querySelectorAll('.btn-appliquer-remise').forEach(b => b.addEventListener('click', e => ouvrirModaleAppliquerRemise(e.target.dataset.idReservation)));
+        document.querySelectorAll('.btn-supprimer').forEach(b => b.addEventListener('click', e => ouvrirModaleSuppression(e.target.dataset.idReservation)));
+    }
+
+    // --- GESTION DES MODALES (Code complet, inchangé) ---
+    function ouvrirModaleAjout() {
+        const optionsClient = tousLesClients.map(c => `<option value="${c.email}">${c.nom} (${c.email})</option>`).join('');
+        if (!contenuModale) return;
+        contenuModale.innerHTML = `
+            <h3 id="modale-titre">Ajouter une nouvelle course</h3>
+            <div class="groupe-formulaire"><label for="select-client">Client</label><select id="select-client" class="champ-formulaire"><option value="new">-- Nouveau Client --</option>${optionsClient}</select></div>
+            <div id="champs-client-details">
+                <div class="groupe-formulaire"><label>Email du client</label><input type="email" id="champ-email-client" class="champ-formulaire"></div>
+                <div class="groupe-formulaire"><label>Nom / Raison Sociale</label><input type="text" id="champ-nom-client" class="champ-formulaire"></div>
+                <div class="groupe-formulaire"><label>Adresse</label><input type="text" id="champ-adresse-client" class="champ-formulaire"></div>
+                <div class="groupe-formulaire"><label>SIRET</label><input type="text" id="champ-siret-client" class="champ-formulaire" pattern="\\d{14}"></div>
+                <h4>Gestion des remises (Admin seulement)</h4>
+                <div class="groupe-formulaire"><label for="type-remise">Type de Remise</label><select id="type-remise" class="champ-formulaire"><option value="">Aucune</option><option value="Pourcentage">Pourcentage</option><option value="Montant Fixe">Montant Fixe</option><option value="Tournées Offertes">Tournées Offertes</option></select></div>
+                <div class="groupe-formulaire hidden" id="conteneur-valeur-remise"><label for="valeur-remise">Valeur Remise</label><input type="number" id="valeur-remise" class="champ-formulaire" step="0.01" min="0"></div>
+                <div class="groupe-formulaire hidden" id="conteneur-nb-tournees-offertes"><label for="nb-tournees-offertes">Nombre Tournées Offertes</label><input type="number" id="nb-tournees-offertes" class="champ-formulaire" min="0" step="1"></div>
+            </div>
+            <div class="groupe-formulaire"><label for="champ-date-ajout">Date de la course</label><input type="date" id="champ-date-ajout" class="champ-formulaire" value="${champDate ? champDate.value : ''}"></div>
+            <div class="groupe-formulaire"><label>Arrêts supplémentaires :</label><div style="display: flex; align-items: center; gap: 20px;"><div class="champ-compteur"><button type="button" class="btn-compteur btn-retirer">-</button><span class="valeur-compteur">0</span><button type="button" class="btn-compteur btn-ajouter">+</button></div><label><input type="checkbox" id="check-retour"> Retour pharmacie</label></div></div>
+            <div id="conteneur-creneaux-ajout" class="hidden"><label>Créneau disponible</label><div id="grille-creneaux-ajout"></div></div>
+            <div class="modale-pied-de-page"><label><input type="checkbox" id="check-notifier"> Avertir le client</label><button type="button" id="btn-confirmer-ajout" class="btn btn-primaire" disabled>Ajouter la course</button></div>`;
+        if (modale) modale.classList.remove('hidden');
+        attacherEcouteursModaleAjout();
+    }
+    function ouvrirModaleAjoutArret(idReservation) {
+        const reservation = toutesLesReservationsAffichees.find(r => r.id === idReservation);
+        if (!reservation) return afficherErreur("Réservation introuvable.");
+        const match = reservation.details.match(/(\d+)\s*arrêt\(s\)\s*sup/);
+        const arretsActuels = match ? parseInt(match[1], 10) : 0;
+        if (!contenuModale) return;
+        contenuModale.innerHTML = `
+            <h3 id="modale-titre">Modifier les arrêts</h3><p><strong>Client :</strong> ${reservation.clientName}</p>
+            <div class="groupe-formulaire"><label>Nombre d'arrêts supplémentaires :</label><div class="champ-compteur"><button type="button" class="btn-compteur btn-retirer">-</button><span class="valeur-compteur">${arretsActuels}</span><button type="button" class="btn-compteur btn-ajouter">+</button></div></div>
+            <div class="modale-pied-de-page"><button type="button" id="btn-confirmer-maj" class="btn btn-primaire">Valider la modification</button></div>`;
+        if (modale) modale.classList.remove('hidden');
+        const valeurCompteur = contenuModale.querySelector('.valeur-compteur');
+        if (valeurCompteur) {
+            contenuModale.querySelector('.btn-ajouter')?.addEventListener('click', () => { valeurCompteur.textContent = parseInt(valeurCompteur.textContent, 10) + 1; });
+            contenuModale.querySelector('.btn-retirer')?.addEventListener('click', () => { let val = parseInt(valeurCompteur.textContent, 10); if (val > 0) valeurCompteur.textContent = val - 1; });
+        }
+        contenuModale.querySelector('#btn-confirmer-maj')?.addEventListener('click', () => { gererSoumissionMiseAJour(idReservation, parseInt(valeurCompteur?.textContent || '0', 10)); });
+    }
+    function ouvrirModaleReplanifier(idReservation) {
+        const reservation = toutesLesReservationsAffichees.find(r => r.id === idReservation);
+        if (!reservation || !reservation.end) return afficherErreur("Réservation introuvable ou invalide.");
+        const duree = (new Date(reservation.end) - new Date(reservation.start)) / 60000;
+        if (!contenuModale) return;
+        contenuModale.innerHTML = `
+            <h3 id="modale-titre">Déplacer la course</h3><p><strong>Client :</strong> ${reservation.clientName}</p>
+            <div class="groupe-formulaire"><label for="champ-nouvelle-date">Nouvelle date :</label><input type="date" id="champ-nouvelle-date" class="champ-formulaire" value="${new Date(reservation.start).toISOString().split('T')[0]}"></div>
+            <div id="conteneur-creneaux-replanif" class="hidden"><label>Nouveau créneau :</label><div id="grille-creneaux-replanif"></div></div>
+            <div class="modale-pied-de-page"><button type="button" id="btn-confirmer-replanif" class="btn btn-primaire" disabled>Confirmer le déplacement</button></div>`;
+        if (modale) modale.classList.remove('hidden');
+        const champDateModale = document.getElementById('champ-nouvelle-date');
+        const grilleCreneaux = document.getElementById('grille-creneaux-replanif');
+        const btnConfirmer = document.getElementById('btn-confirmer-replanif');
+        let creneauSelectionne = null;
+        function chargerCreneaux() {
+            const nouvelleDate = champDateModale?.value;
+            if (!nouvelleDate) return;
+            document.getElementById('conteneur-creneaux-replanif')?.classList.remove('hidden');
+            if(grilleCreneaux) grilleCreneaux.innerHTML = '<i>Chargement...</i>';
+            if(btnConfirmer) btnConfirmer.disabled = true;
+            google.script.run.withSuccessHandler(creneaux => {
+                if (grilleCreneaux) grilleCreneaux.innerHTML = (creneaux && creneaux.length > 0) ? creneaux.map(c => `<button class="btn-creneau-replanif" data-creneau="${c}">${c}</button>`).join('') : 'Aucun créneau disponible.';
+            }).withFailureHandler(afficherErreur).obtenirCreneauxDisponiblesPourDate(nouvelleDate, duree, reservation.eventId);
+        }
+        champDateModale?.addEventListener('change', chargerCreneaux);
+        grilleCreneaux?.addEventListener('click', e => {
+            if (e.target.classList.contains('btn-creneau-replanif')) {
+                modale.querySelectorAll('.btn-creneau-replanif').forEach(btn => btn.classList.remove('selected'));
+                e.target.classList.add('selected');
+                creneauSelectionne = e.target.dataset.creneau;
+                if (btnConfirmer) btnConfirmer.disabled = false;
+            }
+        });
+        btnConfirmer?.addEventListener('click', () => { if (creneauSelectionne && champDateModale) gererSoumissionReplanifier(reservation.id, champDateModale.value, creneauSelectionne); });
+        chargerCreneaux();
+    }
+    function ouvrirModaleAppliquerRemise(idReservation) {
+        const reservation = toutesLesReservationsAffichees.find(r => r.id === idReservation);
+        if (!reservation) return afficherErreur("Réservation introuvable.");
+        const client = tousLesClients.find(c => c.email === reservation.clientEmail);
+        const nbTourneesOffertesActuelClient = client ? client.nbTourneesOffertes : 0; 
+        if (!contenuModale) return;
+        contenuModale.innerHTML = `
+            <h3 id="modale-titre">Appliquer une remise</h3><p><strong>Course :</strong> ${reservation.details}</p><p><strong>Client :</strong> ${reservation.clientName} (${reservation.clientEmail})</p><p><strong>Prix actuel :</strong> ${reservation.amount.toFixed(2)} €</p>
+            <div class="groupe-formulaire"><label for="type-remise-tournee">Type de Remise</label><select id="type-remise-tournee" class="champ-formulaire"><option value="">Aucune</option><option value="Pourcentage">Pourcentage</option><option value="Montant Fixe">Montant Fixe</option><option value="Tournées Offertes">Tournées Offertes</option></select></div>
+            <div class="groupe-formulaire hidden" id="conteneur-valeur-remise-tournee"><label for="valeur-remise-tournee">Valeur Remise</label><input type="number" id="valeur-remise-tournee" class="champ-formulaire" step="0.01" min="0" value="0"></div>
+            <div class="groupe-formulaire hidden" id="conteneur-nb-tournees-offertes-tournee"><label>Tournées Offertes restantes pour le client</label><input type="number" class="champ-formulaire" value="${nbTourneesOffertesActuelClient}" readonly></div>
+            <div class="modale-pied-de-page"><button type="button" id="btn-confirmer-remise" class="btn btn-primaire">Appliquer la remise</button></div>`;
+        if (modale) modale.classList.remove('hidden');
+        const typeRemiseSelect = document.getElementById('type-remise-tournee');
+        const conteneurValeurRemise = document.getElementById('conteneur-valeur-remise-tournee');
+        const conteneurNbTourneesOffertes = document.getElementById('conteneur-nb-tournees-offertes-tournee');
+        const majAffichageRemiseTournee = () => {
+            const typeSelectionne = typeRemiseSelect?.value;
+            conteneurValeurRemise?.classList.toggle('hidden', typeSelectionne !== 'Pourcentage' && typeSelectionne !== 'Montant Fixe');
+            conteneurNbTourneesOffertes?.classList.toggle('hidden', typeSelectionne !== 'Tournées Offertes');
+        };
+        typeRemiseSelect?.addEventListener('change', majAffichageRemiseTournee);
+        document.getElementById('btn-confirmer-remise')?.addEventListener('click', () => {
+            const typeRemise = typeRemiseSelect?.value || '';
+            const valeurRemise = parseFloat(document.getElementById('valeur-remise-tournee')?.value) || 0;
+            gererSoumissionAppliquerRemise(idReservation, typeRemise, valeurRemise, nbTourneesOffertesActuelClient);
+        });
+        majAffichageRemiseTournee();
+    }
+    function ouvrirModaleSuppression(idReservation) {
+        const reservation = toutesLesReservationsAffichees.find(r => r.id === idReservation);
+        if (!reservation) return afficherErreur("Réservation introuvable.");
+        if (!contenuModale) return;
+        contenuModale.innerHTML = `
+            <h3 id="modale-titre">Confirmer la suppression</h3><p>Êtes-vous sûr de vouloir supprimer la course suivante ? Cette action est irréversible.</p>
+            <p><strong>Client :</strong> ${reservation.clientName}</p><p><strong>Détails :</strong> ${reservation.details}</p><p><strong>Date :</strong> ${new Date(reservation.start).toLocaleString('fr-FR', {dateStyle: 'full', timeStyle: 'short'})}</p>
+            <div class="modale-pied-de-page"><button type="button" id="btn-annuler-suppression" class="btn btn-secondaire">Annuler</button><button type="button" id="btn-confirmer-suppression" class="btn btn-erreur">Supprimer définitivement</button></div>`;
+        if (modale) modale.classList.remove('hidden');
+        document.getElementById('btn-annuler-suppression')?.addEventListener('click', () => modale?.classList.add('hidden'));
+        document.getElementById('btn-confirmer-suppression')?.addEventListener('click', () => gererSoumissionSuppression(idReservation));
+    }
+
+    // --- SOUMISSIONS (utilisent maintenant rafraichirVueActuelle) ---
+    function gererSoumissionMiseAJour(idReservation, nouveauxArrets) {
+        basculerIndicateurChargement(true);
+        modale?.classList.add('hidden');
+        google.script.run.withSuccessHandler(reponse => {
+            basculerIndicateurChargement(false);
+            if (reponse.success) {
+                afficherNotification("Réservation mise à jour !", "succes");
+                rafraichirVueActuelle();
+            } else { afficherErreur(reponse.error); }
+        }).withFailureHandler(afficherErreur).mettreAJourDetailsReservation(idReservation, nouveauxArrets);
+    }
+    function gererSoumissionReplanifier(idReservation, nouvelleDate, nouvelleHeure) {
+        basculerIndicateurChargement(true);
+        modale?.classList.add('hidden');
+        google.script.run.withSuccessHandler(reponse => {
+            basculerIndicateurChargement(false);
+            if (reponse.success) {
+                afficherNotification("Réservation déplacée !", "succes");
+                rafraichirVueActuelle();
+            } else { afficherErreur(reponse.error); }
+        }).withFailureHandler(afficherErreur).replanifierReservation(idReservation, nouvelleDate, nouvelleHeure);
+    }
+    function gererSoumissionAppliquerRemise(idReservation, typeRemise, valeurRemise, nbTourneesOffertes) {
+        basculerIndicateurChargement(true);
+        modale?.classList.add('hidden');
+        google.script.run.withSuccessHandler(reponse => {
+            basculerIndicateurChargement(false);
+            if (reponse.success) {
+                afficherNotification("Remise appliquée avec succès !", "succes");
+                rafraichirVueActuelle();
+            } else { afficherErreur(reponse.error); }
+        }).withFailureHandler(afficherErreur).appliquerRemiseSurTournee(idReservation, typeRemise, valeurRemise, nbTourneesOffertes);
+    }
+    function gererSoumissionSuppression(idReservation) {
+        basculerIndicateurChargement(true);
+        modale?.classList.add('hidden');
+        google.script.run.withSuccessHandler(reponse => {
+            basculerIndicateurChargement(false);
+            if (reponse.success) {
+                afficherNotification("Course supprimée avec succès !", "succes");
+                rafraichirVueActuelle();
+            } else { afficherErreur(reponse.error); }
+        }).withFailureHandler(afficherErreur).supprimerReservation(idReservation);
+    }
+    function gererSoumissionCreation(data) {
+        basculerIndicateurChargement(true);
+        modale?.classList.add('hidden');
+        google.script.run.withSuccessHandler(reponse => {
+            basculerIndicateurChargement(false);
+            if (reponse.success) {
+                afficherNotification("Course ajoutée avec succès !", "succes");
+                rafraichirVueActuelle();
+            } else { afficherErreur(reponse.error); }
+        }).withFailureHandler(afficherErreur).creerReservationAdmin(data);
+    }
+    function attacherEcouteursModaleAjout() {
+        const selectClient = document.getElementById('select-client');
+        const champsClient = {
+            email: document.getElementById('champ-email-client'), nom: document.getElementById('champ-nom-client'),
+            adresse: document.getElementById('champ-adresse-client'), siret: document.getElementById('champ-siret-client'),
+            typeRemise: document.getElementById('type-remise'), valeurRemise: document.getElementById('valeur-remise'),
+            nbTourneesOffertes: document.getElementById('nb-tournees-offertes')
+        };
+        const conteneurValeurRemise = document.getElementById('conteneur-valeur-remise');
+        const conteneurNbTourneesOffertes = document.getElementById('conteneur-nb-tournees-offertes');
+        const champDateAjout = document.getElementById('champ-date-ajout');
+        const valeurCompteur = modale.querySelector('.valeur-compteur');
+        const checkRetour = document.getElementById('check-retour');
+        const conteneurCreneaux = document.getElementById('conteneur-creneaux-ajout');
+        const grilleCreneaux = document.getElementById('grille-creneaux-ajout');
+        const btnConfirmer = document.getElementById('btn-confirmer-ajout');
+        let creneauSelectionne = null;
+        const majAffichageRemise = () => {
+            if (!champsClient.typeRemise || !conteneurValeurRemise || !conteneurNbTourneesOffertes) return;
+            const typeSelectionne = champsClient.typeRemise.value;
+            conteneurValeurRemise.classList.toggle('hidden', typeSelectionne !== 'Pourcentage' && typeSelectionne !== 'Montant Fixe');
+            conteneurNbTourneesOffertes.classList.toggle('hidden', typeSelectionne !== 'Tournées Offertes');
+        };
+        const remplirChampsClient = (client) => {
+            champsClient.email.value = client ? client.email : ''; champsClient.nom.value = client ? client.nom : '';
+            champsClient.adresse.value = client ? client.adresse : ''; champsClient.siret.value = client ? client.siret : '';
+            champsClient.typeRemise.value = client ? (client.typeRemise || '') : ''; champsClient.valeurRemise.value = client ? (client.valeurRemise || 0) : 0;
+            champsClient.nbTourneesOffertes.value = client ? (client.nbTourneesOffertes || 0) : 0;
+            const isNewClient = !client;
+            Object.values(champsClient).forEach(champ => { if (champ.id !== 'type-remise' && champ.id !== 'valeur-remise' && champ.id !== 'nb-tournees-offertes') { champ.readOnly = !isNewClient; } });
+            majAffichageRemise();
+        };
+        selectClient?.addEventListener('change', () => { const selectedEmail = selectClient.value; remplirChampsClient(selectedEmail === 'new' ? null : tousLesClients.find(c => c.email === selectedEmail)); });
+        champsClient.typeRemise?.addEventListener('change', majAffichageRemise);
+        modale.querySelector('.btn-ajouter')?.addEventListener('click', () => { if(valeurCompteur) valeurCompteur.textContent = parseInt(valeurCompteur.textContent, 10) + 1; mettreAJourCreneauxDisponibles(); });
+        modale.querySelector('.btn-retirer')?.addEventListener('click', () => { if(valeurCompteur) { let arrets = parseInt(valeurCompteur.textContent, 10); if(arrets > 0) valeurCompteur.textContent = arrets - 1; mettreAJourCreneauxDisponibles(); } });
+        champDateAjout?.addEventListener('change', mettreAJourCreneauxDisponibles);
+        checkRetour?.addEventListener('change', mettreAJourCreneauxDisponibles);
+        function mettreAJourCreneauxDisponibles() {
+            const arretsSupplementaires = parseInt(valeurCompteur?.textContent || '0', 10);
+            const retour = checkRetour?.checked || false;
+            const date = champDateAjout?.value;
+            const DUREE_BASE = 30; const DUREE_ARRET_SUP = 15;
+            const duree = DUREE_BASE + (arretsSupplementaires + (retour ? 1 : 0)) * DUREE_ARRET_SUP;
+            if (!date) return;
+            conteneurCreneaux?.classList.remove('hidden');
+            if (grilleCreneaux) grilleCreneaux.innerHTML = '<i>Chargement...</i>';
+            if (btnConfirmer) btnConfirmer.disabled = true;
+            creneauSelectionne = null;
+            google.script.run.withSuccessHandler(creneaux => {
+                if (grilleCreneaux) grilleCreneaux.innerHTML = (creneaux && creneaux.length > 0) ? creneaux.map(c => `<button class="btn-creneau-replanif" data-creneau="${c}">${c}</button>`).join('') : 'Aucun créneau disponible.';
+            }).withFailureHandler(afficherErreur).obtenirCreneauxDisponiblesPourDate(date, duree);
+        }
+        grilleCreneaux?.addEventListener('click', e => {
+            if (e.target.classList.contains('btn-creneau-replanif')) {
+                modale.querySelectorAll('.btn-creneau-replanif').forEach(btn => btn.classList.remove('selected'));
+                e.target.classList.add('selected');
+                creneauSelectionne = e.target.dataset.creneau;
+                if (btnConfirmer) btnConfirmer.disabled = false;
+            }
+        });
+        btnConfirmer?.addEventListener('click', () => {
+            const clientData = {
+                email: champsClient.email.value.trim(), nom: champsClient.nom.value.trim(), adresse: champsClient.adresse.value.trim(),
+                siret: champsClient.siret.value.trim(), typeRemise: champsClient.typeRemise.value,
+                valeurRemise: parseFloat(champsClient.valeurRemise.value) || 0, nbTourneesOffertes: parseInt(champsClient.nbTourneesOffertes.value) || 0
+            };
+            const data = {
+                client: clientData, date: champDateAjout?.value, startTime: creneauSelectionne,
+                additionalStops: parseInt(valeurCompteur?.textContent || '0', 10), returnToPharmacy: checkRetour?.checked || false,
+                notifyClient: document.getElementById('check-notifier')?.checked || false
+            };
+            gererSoumissionCreation(data);
+        });
+        remplirChampsClient(null);
+        mettreAJourCreneauxDisponibles();
+    }
+
+    // --- FONCTIONS UTILITAIRES ---
+    function basculerIndicateurChargement(afficher) { if(indicateurChargement) indicateurChargement.classList.toggle('hidden', !afficher); }
+    function afficherNotification(message, type = "succes") {
+        const conteneur = document.getElementById('conteneur-notifications'); if(!conteneur) return;
+        const notif = document.createElement('div');
+        notif.className = `notification ${type}`;
+        notif.textContent = message;
+        conteneur.appendChild(notif);
+        setTimeout(() => notif.remove(), 5000);
+    }
+    function afficherErreur(erreur) {
+        basculerIndicateurChargement(false);
+        const message = typeof erreur === 'object' && erreur.message ? erreur.message : String(erreur);
+        afficherNotification(`Erreur : ${message}`, "erreur");
+        console.error(erreur);
+    }
+
+    // --- Point de départ ---
+    initialiser();
+});
+</script>
+
