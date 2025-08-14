@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Documents Administratifs</title>
+    <!-- Utilisation de la librairie d'icônes Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* Styles pour la section des documents */
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;700&display=swap');
+
+        .documents-section {
+            font-family: 'Montserrat', sans-serif;
+            background-color: #f8f9fa;
+            padding: 40px 20px;
+            max-width: 800px;
+            margin: 40px auto;
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+        }
+
+        .documents-section h2 {
+            text-align: center;
+            color: #2c3e50;
+            margin-bottom: 30px;
+        }
+
+        .document-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background-color: #ffffff;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .document-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .document-info .icon {
+            font-size: 1.8em;
+            color: #3498db;
+        }
+
+        .document-info span {
+            font-size: 1.1em;
+            font-weight: 500;
+            color: #34495e;
+        }
+
+        .document-actions a {
+            text-decoration: none;
+            color: #ffffff;
+            background-color: #3498db;
+            padding: 10px 15px;
+            border-radius: 6px;
+            font-size: 0.9em;
+            font-weight: 500;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: background-color 0.2s ease;
+        }
+
+        .document-actions a:hover {
+            background-color: #2980b9;
+        }
+
+        .document-actions a.btn-secondary {
+            background-color: #95a5a6;
+        }
+        .document-actions a.btn-secondary:hover {
+            background-color: #7f8c8d;
+        }
+
+        @media (max-width: 600px) {
+            .document-item {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            .document-actions {
+                width: 100%;
+                display: flex;
+                justify-content: flex-start;
+                gap: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <section class="documents-section">
+        <h2>Documents Administratifs</h2>
+
+        <!-- Document KBIS -->
+        <div class="document-item">
+            <div class="document-info">
+                <i class="fas fa-file-alt icon"></i>
+                <span>Extrait KBIS</span>
+            </div>
+            <div class="document-actions">
+                <!-- Lien mis à jour avec votre ID de fichier -->
+                <a href="https://drive.google.com/file/d/1-SvPtJi2WSYCrySWnNIHWN96wdVXhPZV/view?usp=sharing" target="_blank" class="btn-secondary">
+                    <i class="fas fa-eye"></i> Voir
+                </a>
+                <a href="https://drive.google.com/uc?export=download&id=1-SvPtJi2WSYCrySWnNIHWN96wdVXhPZV" target="_blank">
+                    <i class="fas fa-download"></i> Télécharger
+                </a>
+            </div>
+        </div>
+
+        <!-- Document RIB -->
+        <div class="document-item">
+            <div class="document-info">
+                <i class="fas fa-file-invoice-dollar icon"></i>
+                <span>Relevé d'Identité Bancaire (RIB)</span>
+            </div>
+            <div class="document-actions">
+                <!-- Lien mis à jour avec votre ID de fichier -->
+                <a href="https://drive.google.com/file/d/15RbYCnBt0SG7kQ2pU48vbcJtREWDv1Rz/view?usp=sharing" target="_blank" class="btn-secondary">
+                    <i class="fas fa-eye"></i> Voir
+                </a>
+                <a href="https://drive.google.com/uc?export=download&id=15RbYCnBt0SG7kQ2pU48vbcJtREWDv1Rz" target="_blank">
+                    <i class="fas fa-download"></i> Télécharger
+                </a>
+            </div>
+        </div>
+
+    </section>
+
+</body>
+</html>
