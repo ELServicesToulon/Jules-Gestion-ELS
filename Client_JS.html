@@ -1,0 +1,311 @@
+<script>
+/**
+ * =================================================================
+ * MODULE JAVASCRIPT - ESPACE CLIENT
+ * =================================================================
+ * Description: Gère l'interactivité de l'espace client, y compris
+ * la logique de connexion, le chargement des réservations et leur
+ * modification.
+ */
+
+document.addEventListener('DOMContentLoaded', () => {
+    // --- Références aux éléments du DOM ---
+    const indicateurChargement = document.getElementById('indicateur-chargement');
+    const contenuReservations = document.getElementById('contenu-reservations');
+    const modale = document.getElementById('modale-modification');
+    const contenuModale = document.getElementById('contenu-modale-wrapper');
+    const btnFermerModale = document.getElementById('btn-fermer-modale');
+    const formulaireConnexionClient = document.getElementById('formulaire-connexion-client');
+    const emailConnexionInput = document.getElementById('email-connexion');
+    const erreurConnexionDiv = document.getElementById('erreur-connexion');
+
+    // --- Variable d'état pour stocker les réservations chargées ---
+    let toutesLesReservationsClient = [];
+
+    /**
+     * Initialise l'espace client.
+     */
+    function initialiser() {
+        gererAffichageInitial();
+
+        if (btnFermerModale) {
+            btnFermerModale.addEventListener('click', () => modale?.classList.add('hidden'));
+        }
+
+        if (formulaireConnexionClient) {
+            formulaireConnexionClient.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const email = emailConnexionInput.value.trim();
+                if (email) {
+                    validerEtChargerClient(email);
+                }
+            });
+        }
+    }
+
+    /**
+     * Gère l'affichage initial en fonction des paramètres de l'URL.
+     */
+    function gererAffichageInitial() {
+        const params = new URLSearchParams(window.location.search);
+        const email = params.get('email');
+
+        if (email) {
+            validerEtChargerClient(email);
+        } else {
+            document.getElementById('conteneur-app')?.classList.add('hidden');
+            document.getElementById('non-connecte')?.classList.remove('hidden');
+            basculerIndicateurChargement(false);
+        }
+    }
+
+    /**
+     * Valide l'email du client auprès du serveur, puis charge ses réservations.
+     * @param {string} email L'email à valider.
+     */
+    function validerEtChargerClient(email) {
+        basculerIndicateurChargement(true);
+        google.script.run
+            .withSuccessHandler(reponse => {
+                if (reponse.success) {
+                    document.getElementById('message-bienvenue-client').textContent = `Bienvenue, ${reponse.client.nom}`;
+                    document.getElementById('conteneur-app').classList.remove('hidden');
+                    document.getElementById('non-connecte').classList.add('hidden');
+                    chargerReservationsClient(email);
+                } else {
+                    afficherErreurConnexion(reponse.error);
+                    basculerIndicateurChargement(false);
+                }
+            })
+            .withFailureHandler(err => {
+                afficherErreurConnexion("Une erreur de communication est survenue.");
+                basculerIndicateurChargement(false);
+            })
+            .validerClientParEmail(email);
+    }
+
+    /**
+     * Charge les réservations pour un client donné.
+     * @param {string} email L'email du client.
+     */
+    function chargerReservationsClient(email) {
+        google.script.run
+            .withSuccessHandler(reponse => {
+                if (reponse.success) {
+                    toutesLesReservationsClient = reponse.reservations;
+                    afficherReservations(toutesLesReservationsClient);
+                } else {
+                    afficherErreur(reponse.error);
+                }
+                basculerIndicateurChargement(false);
+            })
+            .withFailureHandler(err => {
+                afficherErreur(err);
+                basculerIndicateurChargement(false);
+            })
+            .obtenirReservationsClient(email);
+    }
+
+    /**
+     * Affiche les réservations dans le DOM.
+     * @param {Array<Object>} reservations La liste des réservations à afficher.
+     */
+    function afficherReservations(reservations) {
+        if (!contenuReservations) return;
+        contenuReservations.innerHTML = '';
+
+        if (reservations.length === 0) {
+            contenuReservations.innerHTML = '<p class="message-aucune-reservation">Vous n\'avez aucune course à venir.</p>';
+            return;
+        }
+
+        reservations.sort((a, b) => new Date(a.start) - new Date(b.start));
+
+        reservations.forEach(resa => {
+            const dateDebut = new Date(resa.start);
+            const dateFormatee = dateDebut.toLocaleDateString('fr-FR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+            const heureFormatee = dateDebut.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+
+            const resaHtml = `
+                <div class="reservation-item" data-id="${resa.id}">
+                    <div class="reservation-details">
+                        <h4>${dateFormatee} à ${heureFormatee}</h4>
+                        <p><strong>Détails :</strong> ${resa.details}</p>
+                        <p><strong>Montant :</strong> ${resa.amount.toFixed(2)} €</p>
+                    </div>
+                    <div class="reservation-actions">
+                        <button class="btn btn-primaire btn-modifier-arrets">Modifier les arrêts</button>
+                        <button class="btn btn-secondaire btn-deplacer">Déplacer</button>
+                    </div>
+                </div>
+            `;
+            contenuReservations.insertAdjacentHTML('beforeend', resaHtml);
+        });
+
+        document.querySelectorAll('.btn-modifier-arrets').forEach(btn => btn.addEventListener('click', (e) => gererModificationArrets(e.target.closest('.reservation-item').dataset.id)));
+        document.querySelectorAll('.btn-deplacer').forEach(btn => btn.addEventListener('click', (e) => gererDeplacement(e.target.closest('.reservation-item').dataset.id)));
+    }
+
+    /**
+     * Gère l'ouverture de la modale pour modifier les arrêts.
+     * @param {string} idReservation L'ID de la réservation.
+     */
+    function gererModificationArrets(idReservation) {
+        const resa = toutesLesReservationsClient.find(r => r.id === idReservation);
+        if (!resa || !contenuModale) return;
+
+        const matchArrets = resa.details.match(/(\d+)\s*arrêt\(s\)\s*sup/);
+        const arretsActuels = matchArrets ? parseInt(matchArrets[1], 10) : 0;
+
+        contenuModale.innerHTML = `
+            <h3 id="modale-modification-titre">Modifier les arrêts</h3>
+            <p><strong>Course :</strong> ${new Date(resa.start).toLocaleString('fr-FR')}</p>
+            <div class="groupe-formulaire">
+                <label for="nouveaux-arrets">Nombre d'arrêts supplémentaires :</label>
+                <input type="number" id="nouveaux-arrets" class="champ-formulaire" value="${arretsActuels}" min="0">
+            </div>
+            <div class="modale-actions">
+                <button id="btn-valider-modif-arrets" class="btn btn-primaire">Valider</button>
+            </div>
+        `;
+        modale?.classList.remove('hidden');
+
+        document.getElementById('btn-valider-modif-arrets').addEventListener('click', () => {
+            const nouveauxArrets = document.getElementById('nouveaux-arrets').value;
+            validerModificationArrets(idReservation, parseInt(nouveauxArrets, 10));
+        });
+    }
+
+    /**
+     * Gère l'ouverture de la modale pour déplacer une réservation.
+     * @param {string} idReservation L'ID de la réservation.
+     */
+    function gererDeplacement(idReservation) {
+        const resa = toutesLesReservationsClient.find(r => r.id === idReservation);
+        if (!resa || !contenuModale) return;
+
+        contenuModale.innerHTML = `
+            <h3 id="modale-modification-titre">Déplacer la course</h3>
+            <p><strong>Course actuelle :</strong> ${new Date(resa.start).toLocaleString('fr-FR')}</p>
+            <div class="groupe-formulaire">
+                <label for="nouvelle-date">Nouvelle date :</label>
+                <input type="date" id="nouvelle-date" class="champ-formulaire">
+            </div>
+            <div class="groupe-formulaire">
+                <label>Nouveau créneau :</label>
+                <div id="grille-creneaux-deplacement" class="grille-creneaux"></div>
+            </div>
+        `;
+        modale?.classList.remove('hidden');
+
+        const inputDate = document.getElementById('nouvelle-date');
+        inputDate.addEventListener('change', () => chargerCreneauxDeplacement(idReservation, inputDate.value));
+    }
+
+    /**
+     * Charge les créneaux disponibles pour un déplacement.
+     * @param {string} idReservation L'ID de la réservation.
+     * @param {string} dateString La nouvelle date choisie.
+     */
+    function chargerCreneauxDeplacement(idReservation, dateString) {
+        const resa = toutesLesReservationsClient.find(r => r.id === idReservation);
+        const grille = document.getElementById('grille-creneaux-deplacement');
+        if (!resa || !grille) return;
+
+        const duree = (new Date(resa.end) - new Date(resa.start)) / 60000;
+        grille.innerHTML = '<div class="spinner"></div>';
+
+        google.script.run
+            .withSuccessHandler(creneaux => {
+                grille.innerHTML = '';
+                if (creneaux && creneaux.length > 0) {
+                    creneaux.forEach(heure => {
+                        const btn = document.createElement('button');
+                        btn.className = 'slot-btn';
+                        btn.textContent = heure;
+                        btn.onclick = () => validerDeplacement(idReservation, dateString, heure);
+                        grille.appendChild(btn);
+                    });
+                } else {
+                    grille.innerHTML = '<p>Aucun créneau disponible.</p>';
+                }
+            })
+            .withFailureHandler(afficherErreur)
+            .obtenirCreneauxDisponiblesPourDate(dateString, duree, resa.eventId);
+    }
+
+    /**
+     * Valide et envoie la modification du nombre d'arrêts.
+     * @param {string} idReservation L'ID de la réservation.
+     * @param {number} nouveauxArrets Le nouveau nombre d'arrêts.
+     */
+    function validerModificationArrets(idReservation, nouveauxArrets) {
+        basculerIndicateurChargement(true);
+        modale?.classList.add('hidden');
+        google.script.run
+            .withSuccessHandler(reponse => {
+                if (reponse.success) {
+                    afficherNotification("Réservation mise à jour avec succès !");
+                    chargerReservationsClient(new URLSearchParams(window.location.search).get('email'));
+                } else {
+                    afficherErreur(reponse.error);
+                }
+            })
+            .withFailureHandler(afficherErreur)
+            .mettreAJourDetailsReservation(idReservation, nouveauxArrets);
+    }
+
+    /**
+     * Valide et envoie le déplacement de la réservation.
+     * @param {string} idReservation L'ID de la réservation.
+     * @param {string} nouvelleDate La nouvelle date.
+     * @param {string} nouvelleHeure Le nouveau créneau.
+     */
+    function validerDeplacement(idReservation, nouvelleDate, nouvelleHeure) {
+        basculerIndicateurChargement(true);
+        modale?.classList.add('hidden');
+        google.script.run
+            .withSuccessHandler(reponse => {
+                if (reponse.success) {
+                    afficherNotification("Réservation déplacée avec succès !");
+                    chargerReservationsClient(new URLSearchParams(window.location.search).get('email'));
+                } else {
+                    afficherErreur(reponse.error);
+                }
+            })
+            .withFailureHandler(afficherErreur)
+            .replanifierReservation(idReservation, nouvelleDate, nouvelleHeure);
+    }
+
+    function afficherErreurConnexion(message) {
+        if (erreurConnexionDiv) {
+            erreurConnexionDiv.textContent = message;
+            erreurConnexionDiv.classList.remove('hidden');
+        }
+    }
+
+    function basculerIndicateurChargement(afficher) {
+        const indicateur = document.getElementById('indicateur-chargement');
+        if(indicateur) indicateur.classList.toggle('hidden', !afficher);
+    }
+
+    function afficherNotification(message, type = "succes") {
+        const conteneur = document.getElementById('conteneur-notifications');
+        if(!conteneur) return;
+        const notif = document.createElement('div');
+        notif.className = `notification ${type}`;
+        notif.textContent = message;
+        conteneur.appendChild(notif);
+        setTimeout(() => notif.remove(), 5000);
+    }
+
+    function afficherErreur(erreur) {
+        basculerIndicateurChargement(false);
+        const message = typeof erreur === 'object' && erreur.message ? erreur.message : String(erreur);
+        afficherNotification(`Erreur : ${message}`, "erreur");
+        console.error(erreur);
+    }
+
+    initialiser();
+});
+</script>

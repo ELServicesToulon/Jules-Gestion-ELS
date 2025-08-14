@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tableau de Bord Administrateur</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <?!= include('Admin_CSS'); ?>
+</head>
+<body>
+
+  <div id="indicateur-chargement" class="indicateur-chargement-overlay hidden">
+    <div class="spinner"></div>
+  </div>
+
+  <div id="app-conteneur-principal">
+    <header class="app-en-tete">
+      <?!= include('Logo'); ?>
+      <p>Gestion et supervision des courses</p>
+    </header>
+
+    <div class="carte barre-outils">
+      <div class="selecteur-date">
+        <label for="date-livraison">Afficher les courses pour le :</label>
+        <input type="date" id="date-livraison" class="champ-formulaire">
+      </div>
+      <button id="btn-tout-voir" class="btn btn-secondaire">Toutes les courses</button>
+      <button id="btn-ajouter-reservation" class="btn btn-primaire">Ajouter une course</button>
+    </div>
+
+    <main id="conteneur-app">
+      <div id="liste-reservations" class="carte">
+        <h3 id="titre-reservations">Courses du jour</h3>
+        <div id="contenu-reservations">
+          <p>Veuillez sélectionner une date pour afficher les livraisons.</p>
+        </div>
+      </div>
+    </main>
+
+  </div>
+
+  <div id="modale-action" class="modale-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="modale-titre">
+    <div class="modale-contenu">
+      <button id="btn-fermer-modale" class="btn-fermer" aria-label="Fermer">&times;</button>
+      <div id="contenu-modale-wrapper">
+        <!-- Le contenu de la modale sera injecté ici par JavaScript -->
+      </div>
+    </div>
+  </div>
+
+  <div id="conteneur-notifications" role="alert" aria-live="assertive"></div>
+
+  <?!= include('Admin_JS'); ?>
+</body>
+</html>
