@@ -36,13 +36,13 @@ function lancerVerificationManuelle() {
  */
 const CONFIG_VERIFICATION_EN_TETES = {
   'Clients': [
-    "Email", "Raison sociale", "Adresse", "Nom Contact", "SIRET", "TVA", "Date Inscription", "Type de Remise", "Valeur Remise", "Nombre Tournées Offertes", "Remise (%)", "CodeParrainage", "CodeUtilise", "CreditParrainage"
+    "Email", "Raison Sociale", "Adresse", "SIRET", "TVA", "Type de Remise", "Valeur Remise", "Nombre Tournées Offertes", "CodeParrainage", "CodeUtilise", "CreditParrainage"
   ],
   'Destinataires': [
-    "Nom Complet", "Adresse de Livraison", "Email", "Téléphone", "Client Associé (Email)"
+    "Nom Complet", "Adresse", "Email", "Telephone", "Client Associé (Email)"
   ],
   'Facturation': [
-    "Date", "Client (Raison S. Client)", "Client (Email)", "Type", "Nom Destinataire", "Adresse Destinataire", "Facture à", "Détails", "Montant", "T° Statut", "Valider", "N° Facture", "Event ID", "ID Réservation", "Payée le", "ID PDF", "ID GDoc", "Note Interne", "Tournée Offerte Appliquée", "Type Remise Appliquée", "Valeur Remise Appliquée", "Lien Note", "Email à envoyer"
+    "Date", "Client (Raison S. Client)", "Client (Email)", "Type", "Détails", "Montant", "Statut", "Valider", "N° Facture", "Event ID", "ID Réservation", "ID PDF", "Note Interne", "Lien Note", "Type Remise Appliquée", "Tournée Offerte Appliquée", "Valeur Remise Appliquée", "Note Livreur", "Livreur Frigo", "Livreur Tampon", "Livreur Reprise", "Livreur Extras"
   ]
 };
 
