@@ -212,3 +212,48 @@ function obtenirPlagesBloqueesPourDate(date) {
 function rechercherClientParEmail(email) {
   return obtenirInfosClientParEmail(email);
 }
+
+/**
+ * Récupère les détails de plusieurs réservations à partir de leurs IDs.
+ * @param {Array<string>} ids La liste des ID de réservation.
+ * @returns {Array<Object>} Une liste d'objets contenant les détails de chaque événement.
+ */
+function obtenirDetailsReservationsParIds(ids) {
+  if (!ids || ids.length === 0) return [];
+
+  const feuille = SpreadsheetApp.openById(ID_FEUILLE_CALCUL).getSheetByName("Facturation");
+  const enTetesRequis = ["ID Réservation", "Date", "Détails", "Client (Raison S. Client)"];
+  const indices = obtenirIndicesEnTetes(feuille, enTetesRequis);
+  const donnees = feuille.getDataRange().getValues();
+
+  const reservationsTrouvees = donnees.slice(1)
+    .filter(ligne => ids.includes(String(ligne[indices["ID Réservation"]])))
+    .map(ligne => {
+      try {
+        const dateDebut = new Date(ligne[indices["Date"]]);
+        const details = String(ligne[indices["Détails"]]);
+        const nomClient = String(ligne[indices["Client (Raison S. Client)"]]);
+
+        const matchDuree = details.match(/(\d+)\s*min/);
+        const duree = matchDuree ? parseInt(matchDuree[1], 10) : DUREE_BASE;
+
+        const dateFin = new Date(dateDebut.getTime() + duree * 60000);
+        const titre = `Réservation ${NOM_ENTREPRISE} - ${nomClient}`;
+        const description = `Détails: ${details}`;
+
+        return {
+          uid: String(ligne[indices["ID Réservation"]]) + '@' + NOM_ENTREPRISE.replace(/\s/g, ''),
+          titre: titre,
+          description: description,
+          dateDebut: dateDebut,
+          dateFin: dateFin
+        };
+      } catch (e) {
+        Logger.log(`Erreur de parsing pour la ligne de réservation ID ${ligne[indices["ID Réservation"]]}: ${e}`);
+        return null;
+      }
+    })
+    .filter(Boolean); // Filtrer les résultats nuls en cas d'erreur
+
+  return reservationsTrouvees;
+}

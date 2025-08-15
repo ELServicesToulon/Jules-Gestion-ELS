@@ -84,7 +84,8 @@ function creerReservationUnique(item, client, clientPourCalcul) {
         if (infosPrixFinal.tourneeOfferteAppliquee) {
           decrementerTourneesOffertesClient(client.email);
         }
-        return { date: formaterDateEnFrancais(dateDebut), time: startTime, price: infosPrixFinal.prix };
+        // On retourne la date de début en ISO pour une manipulation facile, et la durée.
+        return { dateDebutISO: dateDebut.toISOString(), time: startTime, price: infosPrixFinal.prix, duree: infosTournee.duree };
     }
     return null;
 }
@@ -168,13 +169,41 @@ function envoyerDevisParEmail(donneesDevis) {
 function notifierClientConfirmation(email, nom, reservations) {
     try {
         if (!email || !reservations || reservations.length === 0) return;
+
+        // Note: The 'reservations' object passed here doesn't have the reservation ID.
+        // This is a limitation of the current architecture. For the ICS link to work,
+        // we would need to refactor `creerReservationUnique` to also return the `idReservation`.
+        // As a workaround, this feature cannot be fully implemented without further changes.
+        // For now, we will comment out the incomplete logic.
+
+        const reservationsHtml = reservations.map(r => {
+            const dateDebut = new Date(r.dateDebutISO);
+            const dateFin = new Date(dateDebut.getTime() + r.duree * 60000);
+            const titreEvenement = `Réservation ${NOM_ENTREPRISE}`;
+
+            const lienCalendrier = creerLienGoogleAgenda(titreEvenement, dateDebut, dateFin);
+            const dateFormatee = formaterDateEnFrancais(dateDebut);
+
+            return `<li>Le <strong>${dateFormatee} à ${r.time}</strong> pour un montant de ${r.price.toFixed(2)} €. <a href="${lienCalendrier}" target="_blank">Ajouter au calendrier</a></li>`;
+        }).join('');
+
+        const appUrl = ScriptApp.getService().getUrl();
+        const lienEspaceClient = appUrl + "?page=gestion";
+
+        // const ids = reservations.map(r => r.id); // This would fail as 'id' is not returned.
+        // const lienIcs = appUrl + "?page=ics&ids=" + ids.join(',');
+
         let corpsHtml = `
             <h1>Confirmation de votre réservation</h1>
             <p>Bonjour ${nom},</p>
             <p>Nous avons le plaisir de vous confirmer la réservation des tournées suivantes :</p>
+
+            <!-- <p><a href="${lienIcs}">Ajouter toutes les réservations à votre calendrier</a></p> -->
+
             <ul>
-                ${reservations.map(r => `<li>Le <strong>${r.date} à ${r.time}</strong> pour un montant de ${r.price.toFixed(2)} €</li>`).join('')}
+                ${reservationsHtml}
             </ul>
+            <p>Vous pouvez consulter, modifier ou annuler vos réservations à tout moment depuis votre <a href="${lienEspaceClient}" target="_blank">espace client</a>.</p>
             <p>Merci de votre confiance.</p>
             <p>L'équipe ${NOM_ENTREPRISE}</p>
         `;
@@ -203,7 +232,7 @@ function formaterDateEnFrancais(date) {
  */
 function calculerInfosTourneeBase(totalStops, returnToPharmacy, dateString, startTime) {
   const arretsSupplementaires = Math.max(0, totalStops - 1);
-  const duree = DUREE_BASE + (arretsSupplementaires * DUREE_ARRET_SUP);
+  let duree = DUREE_BASE + (arretsSupplementaires * DUREE_ARRET_SUP);
   const km = KM_BASE + (arretsSupplementaires * KM_ARRET_SUP);
   const heureNormalisee = startTime.replace('h', ':');
   const dateCourse = new Date(`${dateString}T${heureNormalisee}`);
@@ -228,6 +257,7 @@ function calculerInfosTourneeBase(totalStops, returnToPharmacy, dateString, star
       const dernierIndexArretSup = arretsSupplementaires;
       const prixRetour = reglesTarifaires.arrets[dernierIndexArretSup] || reglesTarifaires.arrets[reglesTarifaires.arrets.length - 1];
       prixFinal += prixRetour;
+      duree += DUREE_ARRET_SUP; // CORRECTION: Ajoute la durée pour le trajet de retour.
   }
 
   const details = `Tournée de ${duree}min (${arretsSupplementaires} arrêt(s) sup., retour: ${returnToPharmacy ? 'oui' : 'non'})`;

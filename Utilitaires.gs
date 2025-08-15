@@ -117,3 +117,63 @@ function trouverTableBordereau(corps) {
     }
     return null;
 }
+
+/**
+ * Crée un lien "Ajouter à Google Agenda".
+ * @param {string} titre Le titre de l'événement.
+ * @param {Date} dateDebut L'objet Date de début (heure locale du script).
+ * @param {Date} dateFin L'objet Date de fin (heure locale du script).
+ * @returns {string} L'URL complète pour ajouter l'événement à Google Agenda.
+ */
+function creerLienGoogleAgenda(titre, dateDebut, dateFin) {
+  const formatDateForGoogle = (date) => {
+    return date.toISOString().replace(/-|:|\.\d{3}/g, '');
+  };
+
+  const dates = formatDateForGoogle(dateDebut) + '/' + formatDateForGoogle(dateFin);
+
+  const details = `Événement de ${NOM_ENTREPRISE}.`;
+
+  const url = "https://www.google.com/calendar/render?action=TEMPLATE" +
+              "&text=" + encodeURIComponent(titre) +
+              "&dates=" + encodeURIComponent(dates) +
+              "&details=" + encodeURIComponent(details) +
+              "&location=" + encodeURIComponent(ADRESSE_ENTREPRISE);
+
+  return url;
+}
+
+/**
+ * Génère le contenu d'un fichier iCalendar (.ics) à partir d'une liste d'événements.
+ * @param {Array<Object>} evenements Une liste d'objets événement.
+ * @returns {string} Le contenu complet du fichier .ics.
+ */
+function genererContenuICS(evenements) {
+  const formatDateForICS = (date) => {
+    return date.toISOString().replace(/-|:|\.\d{3}/g, '');
+  };
+
+  let icsString = [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    `PRODID:-//${NOM_ENTREPRISE}//NONSGML v1.0//EN`,
+  ];
+
+  const dtStamp = formatDateForICS(new Date());
+
+  evenements.forEach(event => {
+    icsString.push('BEGIN:VEVENT');
+    icsString.push(`UID:${event.uid}`);
+    icsString.push(`DTSTAMP:${dtStamp}`);
+    icsString.push(`DTSTART:${formatDateForICS(event.dateDebut)}`);
+    icsString.push(`DTEND:${formatDateForICS(event.dateFin)}`);
+    icsString.push(`SUMMARY:${event.titre}`);
+    icsString.push(`DESCRIPTION:${event.description}`);
+    icsString.push(`LOCATION:${ADRESSE_ENTREPRISE}`);
+    icsString.push('END:VEVENT');
+  });
+
+  icsString.push('END:VCALENDAR');
+
+  return icsString.join('\r\n');
+}
