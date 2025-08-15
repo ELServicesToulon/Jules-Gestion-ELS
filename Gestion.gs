@@ -155,9 +155,17 @@ function mettreAJourDetailsReservation(idReservation, nouveauxArrets) {
     const { prix: nouveauPrix, duree: nouvelleDuree } = calculerPrixEtDureeServeur(nouveauxArrets + 1, retourPharmacie, dateEvenement, heureEvenement, clientPourCalcul);
     const nouveauxDetails = `Tournée de ${nouvelleDuree}min (${nouveauxArrets} arrêt(s) sup., retour: ${retourPharmacie ? 'oui' : 'non'})`;
 
+    const nouvelleDateFin = new Date(dateDebutOriginale.getTime() + nouvelleDuree * 60000);
+
+    // Ajout de la vérification de conflit
+    if (idEvenement) {
+        if (verifierConflitModification(dateDebutOriginale, nouvelleDateFin, idEvenement)) {
+            return { success: false, error: "La durée modifiée entre en conflit avec une autre réservation." };
+        }
+    }
+
     // Si l'événement existe, on le met à jour
     if (ressourceEvenement) {
-      const nouvelleDateFin = new Date(dateDebutOriginale.getTime() + nouvelleDuree * 60000);
       const ressourceMaj = {
         end: { dateTime: nouvelleDateFin.toISOString() },
         description: ressourceEvenement.description.replace(/Total:.*€/, `Total: ${nouveauPrix.toFixed(2)} €`).replace(/Arrêts suppl:.*\n/, `Arrêts suppl: ${nouveauxArrets}, Retour: ${retourPharmacie ? 'Oui' : 'Non'}\n`)
