@@ -186,3 +186,37 @@ function obtenirDonneesCalendrierPublic(mois, annee) {
     return { disponibilite: {} };
   }
 }
+
+/**
+ * Vérifie si une période donnée entre en conflit avec des événements existants.
+ * @param {Date} dateDebut La date de début de la période à vérifier.
+ * @param {Date} dateFin La date de fin de la période à vérifier.
+ * @param {string} idEvenementAIgnorer L'ID de l'événement à ignorer lors de la vérification.
+ * @returns {boolean} Vrai s'il y a un conflit, sinon faux.
+ */
+function verifierConflitModification(dateDebut, dateFin, idEvenementAIgnorer) {
+    const evenementsCalendrier = obtenirEvenementsCalendrierPourPeriode(dateDebut, dateFin);
+    const plagesManuellementBloquees = obtenirPlagesBloqueesPourDate(dateDebut);
+
+    const indisponibilites = [
+      ...evenementsCalendrier.map(e => ({ id: e.id, start: new Date(e.start.dateTime || e.start.date), end: new Date(e.end.dateTime || e.end.date) })),
+      ...plagesManuellementBloquees.map((e, i) => ({ id: `manuel-${i}`, start: e.start, end: e.end }))
+    ];
+
+    for (const indispo of indisponibilites) {
+        // Ignore l'événement que nous sommes en train de modifier
+        if (indispo.id === idEvenementAIgnorer) {
+            continue;
+        }
+
+        // Logique de vérification de chevauchement
+        const debutIndispo = indispo.start;
+        const finIndispo = indispo.end;
+        if (dateDebut < finIndispo && dateFin > debutIndispo) {
+            Logger.log(`Conflit détecté: La modification de ${idEvenementAIgnorer} (${dateDebut} - ${dateFin}) entre en conflit avec ${indispo.id} (${debutIndispo} - ${finIndispo})`);
+            return true; // Conflit trouvé
+        }
+    }
+
+    return false; // Aucun conflit
+}
