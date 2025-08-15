@@ -62,6 +62,18 @@ function doGet(e) {
                 } else {
                     return HtmlService.createHtmlOutput('<h1>Accès Refusé</h1><p>Vous n\'avez pas les permissions nécessaires.</p>');
                 }
+            case 'ics':
+                if (e.parameter.ids) {
+                    const ids = e.parameter.ids.split(',');
+                    const evenements = obtenirDetailsReservationsParIds(ids);
+                    if (evenements && evenements.length > 0) {
+                        const contenuIcs = genererContenuICS(evenements);
+                        return ContentService.createTextOutput(contenuIcs)
+                            .setMimeType(ContentService.MimeType.ICAL)
+                            .downloadAsFile('reservations.ics');
+                    }
+                }
+                return ContentService.createTextOutput("Aucune réservation trouvée.");
         }
     }
 
