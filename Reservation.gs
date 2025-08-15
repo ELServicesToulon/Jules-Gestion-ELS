@@ -198,8 +198,6 @@ function notifierClientConfirmation(email, nom, reservations) {
             <p>Bonjour ${nom},</p>
             <p>Nous avons le plaisir de vous confirmer la réservation des tournées suivantes :</p>
 
-            <!-- <p><a href="${lienIcs}">Ajouter toutes les réservations à votre calendrier</a></p> -->
-
             <ul>
                 ${reservationsHtml}
             </ul>
