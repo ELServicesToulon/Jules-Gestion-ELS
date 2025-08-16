@@ -104,6 +104,57 @@ function obtenirReservationsClient(emailClient) {
   }
 }
 
+/**
+ * Récupère toutes les réservations passées pour un client donné.
+ * @param {string} emailClient L'e-mail du client.
+ * @returns {Object} Un objet contenant les réservations passées et les informations de facturation.
+ */
+function obtenirReservationsPasseesClient(emailClient) {
+  try {
+    const feuille = SpreadsheetApp.openById(ID_FEUILLE_CALCUL).getSheetByName("Facturation");
+    const indices = obtenirIndicesEnTetes(feuille, ["Date", "Client (Email)", "Détails", "Montant", "N° Facture", "ID PDF"]);
+    if (!indices) {
+        throw new Error("Impossible de trouver les en-têtes requis dans la feuille Facturation.");
+    }
+
+    const donnees = feuille.getDataRange().getValues();
+    const maintenant = new Date();
+
+    const reservationsPassees = donnees.slice(1).map(ligne => {
+      try {
+        if (String(ligne[indices["Client (Email)"]]).trim().toLowerCase() !== emailClient.trim().toLowerCase()) {
+          return null;
+        }
+
+        const dateSheet = new Date(ligne[indices["Date"]]);
+        if (isNaN(dateSheet.getTime()) || dateSheet >= maintenant) {
+          return null;
+        }
+
+        return {
+          date: dateSheet.toISOString(),
+          details: ligne[indices["Détails"]],
+          montant: parseFloat(ligne[indices["Montant"]]) || 0,
+          numeroFacture: ligne[indices["N° Facture"]] || null,
+          idPdf: ligne[indices["ID PDF"]] || null
+        };
+
+      } catch (e) {
+        Logger.log(`Erreur de traitement d'une ligne de réservation passée pour ${emailClient}: ${e.toString()}`);
+        return null;
+      }
+    }).filter(Boolean);
+
+    // Trier par date, du plus récent au plus ancien
+    reservationsPassees.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+    return { success: true, reservations: reservationsPassees };
+  } catch (e) {
+    Logger.log(`Erreur critique dans obtenirReservationsPasseesClient pour ${emailClient}: ${e.stack}`);
+    return { success: false, error: e.message };
+  }
+}
+
 
 /**
  * Met à jour les détails (nombre d'arrêts, prix, durée) d'une réservation existante.
