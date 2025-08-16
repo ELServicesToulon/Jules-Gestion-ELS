@@ -200,6 +200,16 @@ function replanifierReservation(idReservation, nouvelleDate, nouvelleHeure) {
   if (!lock.tryLock(30000)) return { success: false, error: "Le système est occupé." };
 
   try {
+    // --- Validation de la date ---
+    const aujourdhui = new Date();
+    aujourdhui.setHours(0, 0, 0, 0); // On ne compare que la date, pas l'heure
+    const dateVoulue = new Date(nouvelleDate);
+
+    if (dateVoulue < aujourdhui) {
+      return { success: false, error: "Vous ne pouvez pas déplacer une réservation à une date passée." };
+    }
+    // --- Fin de la validation ---
+
     const feuille = SpreadsheetApp.openById(ID_FEUILLE_CALCUL).getSheetByName("Facturation");
     const enTete = feuille.getRange(1, 1, 1, feuille.getLastColumn()).getValues()[0];
     const indices = {
