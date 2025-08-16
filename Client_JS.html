@@ -184,12 +184,14 @@ document.addEventListener('DOMContentLoaded', () => {
         const resa = toutesLesReservationsClient.find(r => r.id === idReservation);
         if (!resa || !contenuModale) return;
 
+        const aujourdhui = new Date().toISOString().split('T')[0];
+
         contenuModale.innerHTML = `
             <h3 id="modale-modification-titre">Déplacer la course</h3>
             <p><strong>Course actuelle :</strong> ${new Date(resa.start).toLocaleString('fr-FR')}</p>
             <div class="groupe-formulaire">
                 <label for="nouvelle-date">Nouvelle date :</label>
-                <input type="date" id="nouvelle-date" class="champ-formulaire">
+                <input type="date" id="nouvelle-date" class="champ-formulaire" min="${aujourdhui}">
             </div>
             <div class="groupe-formulaire">
                 <label>Nouveau créneau :</label>
