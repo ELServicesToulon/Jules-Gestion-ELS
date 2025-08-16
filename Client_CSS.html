@@ -69,6 +69,31 @@ body {
 .reservation-actions { display: flex; flex-direction: column; gap: 10px; }
 .message-aucune-reservation { text-align: center; padding: 30px; color: var(--gris-moyen); }
 
+.reservation-item.passe {
+  background-color: #fdfdfd;
+  border-left: 4px solid var(--gris-moyen);
+}
+
+.reservation-item.passe .reservation-details h4 {
+  color: var(--gris-fonce);
+}
+
+.btn-facture {
+  display: inline-block;
+  padding: 10px 15px;
+  background-color: var(--couleur-succes);
+  color: white;
+  border-radius: 5px;
+  text-decoration: none;
+  font-size: 0.9em;
+  text-align: center;
+  transition: background-color 0.2s;
+}
+
+.btn-facture:hover {
+  background-color: #218c54;
+}
+
 /* --- FORMULAIRES & BOUTONS --- */
 .groupe-formulaire { margin-bottom: 15px; }
 .groupe-formulaire label { display: block; margin-bottom: 5px; font-weight: 500; }

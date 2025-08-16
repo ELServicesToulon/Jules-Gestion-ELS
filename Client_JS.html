@@ -89,21 +89,79 @@ document.addEventListener('DOMContentLoaded', () => {
      * @param {string} email L'email du client.
      */
     function chargerReservationsClient(email) {
+        // Charger les réservations futures
         google.script.run
             .withSuccessHandler(reponse => {
+                basculerIndicateurChargement(false); // Premier indicateur masqué ici
                 if (reponse.success) {
                     toutesLesReservationsClient = reponse.reservations;
                     afficherReservations(toutesLesReservationsClient);
                 } else {
                     afficherErreur(reponse.error);
                 }
-                basculerIndicateurChargement(false);
             })
             .withFailureHandler(err => {
-                afficherErreur(err);
                 basculerIndicateurChargement(false);
+                afficherErreur(err);
             })
             .obtenirReservationsClient(email);
+
+        // Charger les réservations passées
+        google.script.run
+            .withSuccessHandler(reponse => {
+                if (reponse.success) {
+                    afficherReservationsPassees(reponse.reservations);
+                } else {
+                    // Ne pas afficher d'erreur si les réservations passées ne se chargent pas
+                    console.error("Erreur lors du chargement des réservations passées:", reponse.error);
+                }
+            })
+            .withFailureHandler(err => {
+                console.error("Erreur lors du chargement des réservations passées:", err);
+            })
+            .obtenirReservationsPasseesClient(email);
+    }
+
+
+    /**
+     * Affiche les réservations passées et les liens de factures.
+     * @param {Array<Object>} reservationsPassees
+     */
+    function afficherReservationsPassees(reservationsPassees) {
+        const conteneur = document.getElementById('contenu-reservations-passees');
+        if (!conteneur) return;
+
+        conteneur.innerHTML = '';
+        if (reservationsPassees.length === 0) {
+            conteneur.innerHTML = '<p class="message-aucune-reservation">Vous n\'avez aucune course passée.</p>';
+            return;
+        }
+
+        reservationsPassees.forEach(function(resa) {
+            const date = new Date(resa.date);
+            const dateFormatee = date.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+
+            let actionHtml = 'Pas de facture disponible';
+            if (resa.idPdf) {
+                const urlFacture = 'https://docs.google.com/uc?export=download&id=' + resa.idPdf;
+                actionHtml = '<a href="' + urlFacture + '" target="_blank" class="btn-facture">Télécharger la facture (N° ' + (resa.numeroFacture || 'N/A') + ')</a>';
+            } else if (resa.numeroFacture) {
+                actionHtml = 'Facture N° ' + resa.numeroFacture + ' (En attente de PDF)';
+            }
+
+            const resaHtml =
+                '<div class="reservation-item passe">' +
+                    '<div class="reservation-details">' +
+                        '<p><strong>Date :</strong> ' + dateFormatee + '</p>' +
+                        '<p><strong>Détails :</strong> ' + resa.details + '</p>' +
+                        '<p><strong>Montant :</strong> ' + resa.montant.toFixed(2) + ' €</p>' +
+                    '</div>' +
+                    '<div class="reservation-actions">' +
+                        actionHtml +
+                    '</div>' +
+                '</div>';
+            conteneur.insertAdjacentHTML('beforeend', resaHtml);
+        });
     }
 
     /**
