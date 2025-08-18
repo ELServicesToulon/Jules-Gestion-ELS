@@ -38,6 +38,7 @@ function onOpen() {
  */
 function doGet(e) {
   try {
+    DBG_traceDoGet(e); // Ajout du traçage des requêtes
     // validerConfiguration(); // Assurez-vous que cette fonction existe ou commentez-la si non utilisée
 
     // Routeur de page

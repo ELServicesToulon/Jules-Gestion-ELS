@@ -329,21 +329,23 @@ function replanifierReservation(idReservation, nouvelleDate, nouvelleHeure) {
 /**
  * Gère la demande d'un nouveau lien de connexion par un utilisateur.
  * Vérifie si le client existe et, si oui, lui envoie un nouveau lien par e-mail.
+ * Utilise les fonctions de Debug.gs pour une réponse et un logging robustes.
  * @param {string} emailClient L'e-mail du client demandant le lien.
- * @returns {Object} Toujours un objet de succès pour des raisons de sécurité.
+ * @returns {Object} Un objet de réponse standardisé {ok: boolean, ...}.
  */
 function envoyerLienDeConnexion(emailClient) {
   try {
-    if (!emailClient) {
-      // Ne renvoie pas d'erreur pour ne pas indiquer si un email est valide
-      return { success: true };
+    if (!emailClient || typeof emailClient !== 'string' || !emailClient.trim()) {
+      DBG_log_('WARN', 'envoyerLienDeConnexion a été appelé sans email valide.');
+      // On retourne un succès générique pour ne pas révéler d'informations.
+      return DBG_ok({ message: "Si un compte existe pour cette adresse, un e-mail a été envoyé." });
     }
 
-    const infosClient = obtenirInfosClientParEmail(emailClient.trim());
+    const emailPropre = emailClient.trim();
+    const infosClient = obtenirInfosClientParEmail(emailPropre);
 
-    // On ne procède à l'envoi que si le client existe
     if (infosClient) {
-      const token = genererEtStockerToken(emailClient);
+      const token = genererEtStockerToken(emailPropre);
       const appUrl = ScriptApp.getService().getUrl();
       const lienEspaceClient = `${appUrl}?page=gestion&token=${token}`;
 
@@ -362,19 +364,23 @@ function envoyerLienDeConnexion(emailClient) {
       `;
 
       MailApp.sendEmail({
-        to: emailClient,
+        to: emailPropre,
         subject: sujet,
         htmlBody: corpsHtml,
         replyTo: EMAIL_ENTREPRISE
       });
+      DBG_log_('INFO', 'Lien de connexion envoyé', { email: emailPropre });
+    } else {
+      // L'email n'est pas dans la base, on log mais on ne dit rien au client.
+      DBG_log_('INFO', 'Tentative de connexion pour un email inconnu', { email: emailPropre });
     }
     
     // On retourne toujours un succès pour ne pas permettre de deviner les emails enregistrés.
-    return { success: true };
+    return DBG_ok({ message: "Si un compte existe pour cette adresse, un e-mail a été envoyé." });
 
   } catch (e) {
-    Logger.log(`Erreur dans envoyerLienDeConnexion pour ${emailClient}: ${e.stack}`);
-    // On retourne quand même un succès au client pour la sécurité.
-    return { success: true };
+    // Utilise le helper pour logguer l'erreur et la retourner au client.
+    // Le client pourra l'afficher grâce au withFailureHandler.
+    return DBG_err_(e);
   }
 }

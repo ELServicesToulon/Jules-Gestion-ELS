@@ -121,14 +121,26 @@ document.addEventListener('DOMContentLoaded', () => {
     function demanderNouveauLien(email) {
         basculerIndicateurChargement(true);
         erreurConnexionDiv.classList.add('hidden');
+
         google.script.run
-            .withSuccessHandler(reponse => {
+            .withSuccessHandler(function(res) {
                 basculerIndicateurChargement(false);
-                afficherErreurConnexion("Si cette adresse e-mail est associée à un compte, un nouveau lien de connexion vient de vous être envoyé.", "succes");
+                // Le serveur retourne maintenant un objet standard {ok, data, error}
+                if (res && res.ok) {
+                    // On affiche le message générique renvoyé par le serveur
+                    afficherErreurConnexion(res.data.message, "succes");
+                } else {
+                    // Gère les cas où la fonction serveur s'exécute mais renvoie une erreur métier
+                    const msg = (res && res.error && res.error.message) || 'Une erreur inconnue est survenue côté serveur.';
+                    afficherErreurConnexion(msg, "erreur");
+                    console.error('Le serveur a retourné une erreur:', res ? res.error : 'Réponse vide');
+                }
             })
-            .withFailureHandler(err => {
+            .withFailureHandler(function(err) {
+                // Gère les erreurs catastrophiques (le script s'arrête, timeout, etc.)
                 basculerIndicateurChargement(false);
-                afficherErreurConnexion("Une erreur de communication est survenue.");
+                afficherErreurConnexion('Erreur de communication avec le serveur : ' + err.message, "erreur");
+                console.error('FailureHandler a attrapé une erreur:', err);
             })
             .envoyerLienDeConnexion(email);
     }

@@ -1,184 +1,164 @@
-// =================================================================
-//                      SUITE DE TESTS (DEBUG)
-// =================================================================
-// Description: Ce fichier contient des fonctions pour tester l'ensemble
-//              des fonctionnalités du back-office. Exécutez la fonction
-//              'lancerTousLesTests' pour un rapport complet.
-// =================================================================
+/** =================================================================
+ *  Debug.gs — Outils de debug pour Apps Script (WebApp HTMLService)
+ *  Coller tel quel. Aucun autre fichier requis.
+ *  - Journalise dans Logger et dans une feuille "DEBUG_LOGS" si possible
+ *  - Fournit des endpoints de test: DBG_ping, DBG_echo, DBG_call
+ *  - Uniformise les réponses: { ok: true|false, data?, error? }
+ *  ================================================================= */
 
-// --- CONFIGURATION DES TESTS ---
-// Utilisez un client de test pour ne pas modifier les vraies données.
-const TEST_CLIENT = {
-  email: "test.client@example.com",
-  nom: "Pharmacie de Test",
-  adresse: "123 Rue du Test, 75000 Paris",
-  siret: "12345678901234",
-  typeRemise: "Pourcentage",
-  valeurRemise: 10,
-  nbTourneesOffertes: 2
-};
+const DBG_SHEET_NAME = 'DEBUG_LOGS';
+const DBG_PROP_KEY   = 'ELS_DEBUG_ENABLED';
 
-const ADMIN_TEST_EMAIL = ADMIN_EMAIL; // Utilise l'email admin de la configuration
-
-/**
- * Fonction principale pour exécuter tous les tests séquentiellement.
- */
-function lancerTousLesTests() {
-  Logger.log("===== DÉBUT DE LA SUITE DE TESTS COMPLÈTE =====");
-  
-  testerValidationConfiguration();
-  testerUtilitaires();
-  testerFeuilleCalcul();
-  testerCalendrier();
-  testerReservation();
-  testerGestionClient();
-  testerAdministration();
-  testerMaintenance();
-
-  Logger.log("===== FIN DE LA SUITE DE TESTS COMPLÈTE =====");
-  // SpreadsheetApp.getUi().alert("Tests terminés. Consultez les journaux (Logs) pour les résultats détaillés.");
+/** Active/désactive le debug de façon persistante (Script Properties). */
+function DBG_setEnabled(enabled) {
+  PropertiesService.getScriptProperties().setProperty(DBG_PROP_KEY, String(!!enabled));
+  return { ok: true, data: { enabled: DBG_isEnabled() } };
 }
 
+/** Retourne l’état du debug. */
+function DBG_isEnabled() {
+  const v = PropertiesService.getScriptProperties().getProperty(DBG_PROP_KEY);
+  return v === 'true';
+}
 
-// =================================================================
-//                      SUITES DE TESTS INDIVIDUELLES
-// =================================================================
+/** Ping basique pour tester la chaîne google.script.run. */
+function DBG_ping() {
+  return DBG_ok({
+    now: DBG_isoNow_(),
+    userEmail: safeGetUserEmail_(),
+    debug: DBG_isEnabled(),
+    scriptId: ScriptApp.getScriptId()
+  });
+}
 
-function testerValidationConfiguration() {
-  Logger.log("\n--- Test de Validation.gs ---");
+/** Echo (retourne ce qu’on envoie) — utile pour tester les handlers. */
+function DBG_echo(anything) {
+  return DBG_ok({ received: anything, at: DBG_isoNow_() });
+}
+
+/**
+ * Appel indirect: exécute une fonction server par son nom avec ses args.
+ * Usage (client): google.script.run.DBG_call('nomDeTaFonction', [arg1, arg2])
+ * ⚠️ À utiliser pour tester seulement.
+ */
+function DBG_call(fnName, args) {
   try {
-    validerConfiguration();
-    Logger.log("SUCCESS: validerConfiguration() s'est exécutée sans erreur.");
+    if (!fnName) throw new Error('DBG_call: fnName manquant');
+    const tgt = (globalThis || this)[fnName];
+    if (typeof tgt !== 'function') throw new new Error(`DBG_call: fonction introuvable: ${fnName}`);
+    const res = tgt.apply(null, Array.isArray(args) ? args : []);
+    return DBG_ok({ called: fnName, result: res });
+  } catch (err) {
+    DBG_log_('ERROR', 'DBG_call failed', { fnName, message: String(err), stack: err && err.stack });
+    return DBG_err_(err);
+  }
+}
+
+/** ========================= Helpers réponse ========================= */
+
+function DBG_ok(data) {
+  DBG_log_('INFO', 'OK', data);
+  return { ok: true, data: data };
+}
+
+function DBG_err_(err) {
+  const payload = {
+    message: err && err.message ? String(err.message) : String(err),
+    stack: err && err.stack ? String(err.stack) : null
+  };
+  DBG_log_('ERROR', payload.message, payload);
+  return { ok: false, error: payload };
+}
+
+/** ========================= Journalisation ========================== */
+
+function DBG_log_(level, message, details) {
+  try {
+    const entry = {
+      ts: DBG_isoNow_(),
+      level: level,
+      message: String(message || ''),
+      details: details || {},
+      user: safeGetUserEmail_(),
+      scriptId: ScriptApp.getScriptId()
+    };
+    // Logger (Stackdriver)
+    Logger.log('%s %s — %s %s', entry.ts, level, entry.message, JSON.stringify(entry.details));
+
+    if (!DBG_isEnabled()) return;
+
+    // Écriture optionnelle dans une feuille de calcul si disponible
+    const sh = DBG_getLogSheet_();
+    if (sh) {
+      sh.insertRowBefore(1);
+      sh.getRange(1, 1, 1, 6).setValues([[
+        entry.ts,
+        level,
+        entry.message,
+        JSON.stringify(entry.details),
+        entry.user,
+        entry.scriptId
+      ]]);
+      // Garde max 1000 lignes
+      const last = sh.getLastRow();
+      if (last > 1000) sh.deleteRows(1001, last - 1000);
+    } else {
+      // Fallback: on garde un petit ring buffer en Properties
+      const sp = PropertiesService.getScriptProperties();
+      const raw = sp.getProperty('DBG_RING') || '[]';
+      const arr = JSON.parse(raw);
+      arr.unshift(entry);
+      if (arr.length > 50) arr.pop();
+      sp.setProperty('DBG_RING', JSON.stringify(arr));
+    }
   } catch (e) {
-    Logger.log(`FAILURE: validerConfiguration() a échoué. Erreur: ${e.message}`);
+    // Évite toute exception dans le logger
+    Logger.log('DBG_log_ failed: %s', e);
   }
 }
 
-function testerUtilitaires() {
-  Logger.log("\n--- Test de Utilitaires.gs ---");
-  const testDate = new Date(2025, 9, 31, 14, 30); // 31 Octobre 2025, 14:30
-  
-  // Test formaterDateEnYYYYMMDD
-  const yyyymmdd = formaterDateEnYYYYMMDD(testDate);
-  if (yyyymmdd === "2025-10-31") {
-    Logger.log("SUCCESS: formaterDateEnYYYYMMDD()");
-  } else {
-    Logger.log(`FAILURE: formaterDateEnYYYYMMDD(). Attendu: "2025-10-31", Obtenu: "${yyyymmdd}"`);
-  }
-
-  // Test formaterDateEnHHMM
-  const hhmm = formaterDateEnHHMM(testDate);
-  if (hhmm === "14h30") {
-    Logger.log("SUCCESS: formaterDateEnHHMM()");
-  } else {
-    Logger.log(`FAILURE: formaterDateEnHHMM(). Attendu: "14h30", Obtenu: "${hhmm}"`);
+function DBG_getLogSheet_() {
+  try {
+    const ss = SpreadsheetApp.getActive();
+    if (!ss) return null;
+    let sh = ss.getSheetByName(DBG_SHEET_NAME);
+    if (!sh) {
+      sh = ss.insertSheet(DBG_SHEET_NAME);
+      sh.getRange(1, 1, 1, 6).setValues([['ts','level','message','details','user','scriptId']]);
+      sh.protect().setWarningOnly(true); // protection douce
+      sh.insertRowBefore(2); // pour la première insertion
+    }
+    return sh;
+  } catch (e) {
+    return null; // script non lié à un Sheet
   }
 }
 
-function testerFeuilleCalcul() {
-  Logger.log("\n--- Test de FeuilleCalcul.gs ---");
-  
-  // Test enregistrerOuMajClient (création)
-  enregistrerOuMajClient(TEST_CLIENT);
-  const clientCree = obtenirInfosClientParEmail(TEST_CLIENT.email);
-  if (clientCree && clientCree.nom === TEST_CLIENT.nom) {
-    Logger.log("SUCCESS: enregistrerOuMajClient() - Création");
-  } else {
-    Logger.log("FAILURE: enregistrerOuMajClient() - Création");
-  }
+/** ========================= Utilitaires ============================= */
 
-  // Test decrementerTourneesOffertesClient
-  decrementerTourneesOffertesClient(TEST_CLIENT.email);
-  const clientMaj = obtenirInfosClientParEmail(TEST_CLIENT.email);
-  if (clientMaj && clientMaj.nbTourneesOffertes === TEST_CLIENT.nbTourneesOffertes - 1) {
-     Logger.log("SUCCESS: decrementerTourneesOffertesClient()");
-  } else {
-     Logger.log(`FAILURE: decrementerTourneesOffertesClient(). Attendu: ${TEST_CLIENT.nbTourneesOffertes - 1}, Obtenu: ${clientMaj ? clientMaj.nbTourneesOffertes : 'N/A'}`);
-  }
-  // Remettre la valeur initiale
-  enregistrerOuMajClient(TEST_CLIENT);
+function DBG_isoNow_() {
+  const tz = Session.getScriptTimeZone() || 'Europe/Paris';
+  return Utilities.formatDate(new Date(), tz, "yyyy-MM-dd'T'HH:mm:ssXXX");
 }
 
-function testerCalendrier() {
-  Logger.log("\n--- Test de Calendrier.gs ---");
-  const demain = new Date();
-  demain.setDate(demain.getDate() + 1);
-  const dateTest = formaterDateEnYYYYMMDD(demain);
-
-  const creneaux = obtenirCreneauxDisponiblesPourDate(dateTest, 30);
-  if (Array.isArray(creneaux)) {
-    Logger.log(`SUCCESS: obtenirCreneauxDisponiblesPourDate() a retourné ${creneaux.length} créneaux pour demain.`);
-  } else {
-    Logger.log("FAILURE: obtenirCreneauxDisponiblesPourDate() n'a pas retourné un tableau.");
-  }
-
-  const calPublic = obtenirDonneesCalendrierPublic(demain.getMonth() + 1, demain.getFullYear());
-  if (calPublic && typeof calPublic.disponibilite === 'object') {
-     Logger.log("SUCCESS: obtenirDonneesCalendrierPublic()");
-  } else {
-     Logger.log("FAILURE: obtenirDonneesCalendrierPublic()");
+function safeGetUserEmail_() {
+  try {
+    const em = Session.getActiveUser().getEmail();
+    return em || null;
+  } catch (e) {
+    return null;
   }
 }
 
-function testerReservation() {
-  Logger.log("\n--- Test de Reservation.gs ---");
-  const demain = new Date();
-  demain.setDate(demain.getDate() + 1);
-  const dateTest = formaterDateEnYYYYMMDD(demain);
+/** ================== Aides pour doGet/doPost (optionnel) ============= */
 
-  const calcul = calculerPrixEtDureeServeur(2, true, dateTest, "10h00", TEST_CLIENT);
-  if (calcul && typeof calcul.prix === 'number' && typeof calcul.duree === 'number') {
-    Logger.log(`SUCCESS: calculerPrixEtDureeServeur(). Prix calculé: ${calcul.prix.toFixed(2)}€, Durée: ${calcul.duree}min.`);
-  } else {
-    Logger.log("FAILURE: calculerPrixEtDureeServeur()");
-  }
+/** À appeler au début de doGet(e) pour tracer les params. */
+function DBG_traceDoGet(e) {
+  DBG_log_('INFO', 'doGet', { query: e && e.parameter ? e.parameter : {} });
 }
 
-function testerGestionClient() {
-  Logger.log("\n--- Test de Gestion.gs ---");
-  const validation = validerClientParEmail(TEST_CLIENT.email);
-  if (validation && validation.success) {
-    Logger.log("SUCCESS: validerClientParEmail()");
-  } else {
-    Logger.log(`FAILURE: validerClientParEmail(). Erreur: ${validation.error}`);
-  }
-}
-
-function testerAdministration() {
-  Logger.log("\n--- Test de Administration.gs ---");
-  const demain = new Date();
-  demain.setDate(demain.getDate() + 1);
-  const dateTest = formaterDateEnYYYYMMDD(demain);
-
-  // Simuler l'exécution en tant qu'admin
-  const reponse = obtenirToutesReservationsPourDate(dateTest);
-  if (reponse && reponse.success) {
-    Logger.log(`SUCCESS: obtenirToutesReservationsPourDate() a trouvé ${reponse.reservations.length} réservations.`);
-  } else {
-    Logger.log(`FAILURE: obtenirToutesReservationsPourDate(). Erreur: ${reponse.error}`);
-  }
-}
-
-function testerMaintenance() {
-  Logger.log("\n--- Test de Maintenance.gs ---");
-  logAdminAction("TEST", "Test de la fonction de log");
-  Logger.log("SUCCESS: logAdminAction() exécuté. Vérifiez l'onglet Admin_Logs.");
-  
-  notifyAdminWithThrottle("TEST_ERREUR", "Email de test", "Ceci est un test de la fonction de notification.");
-  Logger.log("SUCCESS: notifyAdminWithThrottle() exécuté. Vérifiez votre boîte de réception.");
-}
-
-/**
- * Exécute tous les tests et retourne le contenu du Logger pour l'afficher côté client.
- * @returns {string} Les logs générés par la suite de tests.
- */
-function lancerTousLesTestsEtRetournerLogs() {
-  // Vide le logger pour cette session de test
-  Logger.clear();
-  
-  // Lance la suite de tests
-  lancerTousLesTests();
-  
-  // Retourne le contenu des logs
-  return Logger.getLog();
+/** À appeler au début de doPost(e) pour tracer les payloads. */
+function DBG_traceDoPost(e) {
+  const body = e && e.postData ? { type: e.postData.type, length: (e.postData.contents||'').length } : {};
+  DBG_log_('INFO', 'doPost', body);
 }
