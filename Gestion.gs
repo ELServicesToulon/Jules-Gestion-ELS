@@ -328,15 +328,50 @@ function replanifierReservation(idReservation, nouvelleDate, nouvelleHeure) {
 }
 function envoyerLienDeConnexion(email) {
   try {
-    if (!email || !/^.+@.+\..+$/.test(email)) throw new Error('Email invalide');
+    const emailPropre = (email || '').trim();
+    if (!emailPropre || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailPropre)) {
+        DBG_log_('WARN', 'envoyerLienDeConnexion a été appelé sans email valide.', { email });
+        throw new Error('Format d’email invalide.');
+    }
 
-    // Pendant le debug : pas d’envoi, on trace seulement
-    DBG_log_('INFO', 'Demande de lien', { email });
+    const infosClient = obtenirInfosClientParEmail(emailPropre);
 
-    // TODO: quand ça répond bien, remets ici ta logique (token + MailApp/GmailApp)
-    // et conserve le try/catch + le format de réponse.
-    return DBG_ok({ sent: true, message: 'Lien simulé (debug on)' });
+    if (infosClient) {
+      const token = genererEtStockerToken(emailPropre);
+      const appUrl = ScriptApp.getService().getUrl();
+      const lienEspaceClient = `${appUrl}?page=gestion&token=${token}`;
+
+      const sujet = `Votre lien d'accès à l'espace client - ${NOM_ENTREPRISE}`;
+      const corpsHtml = `
+        <div style="font-family: Arial, sans-serif; color: #333;">
+          <h2>Votre lien de connexion personnel</h2>
+          <p>Bonjour ${infosClient.nom},</p>
+          <p>Suite à votre demande, voici votre nouveau lien pour accéder à votre espace client. Ce lien est personnel et expirera dans 24 heures.</p>
+          <p style="text-align: center; margin: 20px 0;">
+            <a href="${lienEspaceClient}" style="background-color: #007bff; color: white; padding: 12px 20px; text-decoration: none; border-radius: 5px; font-size: 16px;">Accéder à mon espace client</a>
+          </p>
+          <p>Si vous n'êtes pas à l'origine de cette demande, vous pouvez ignorer cet e-mail en toute sécurité.</p>
+          <p>Merci,<br>L'équipe ${NOM_ENTREPRISE}</p>
+        </div>
+      `;
+
+      MailApp.sendEmail({
+        to: emailPropre,
+        subject: sujet,
+        htmlBody: corpsHtml,
+        replyTo: EMAIL_ENTREPRISE
+      });
+      DBG_log_('INFO', 'Lien de connexion envoyé', { email: emailPropre });
+    } else {
+      // L'email n'est pas dans la base, on log mais on ne dit rien au client pour la sécurité.
+      DBG_log_('INFO', 'Tentative de connexion pour un email inconnu', { email: emailPropre });
+    }
+
+    // On retourne toujours un message de succès générique pour ne pas permettre de deviner les emails enregistrés.
+    return DBG_ok({ message: "Si un compte existe pour cette adresse, un e-mail a été envoyé." });
+
   } catch (err) {
+    // Utilise le helper pour logguer l'erreur et la retourner au client.
     return DBG_err_(err);
   }
 }
