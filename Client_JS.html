@@ -20,7 +20,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnFermerModale = document.getElementById('btn-fermer-modale');
     const formulaireConnexionClient = document.getElementById('formulaire-connexion-client');
     const emailConnexionInput = document.getElementById('email-connexion');
-    const erreurConnexionDiv = document.getElementById('erreur-connexion');
+    const messageConnexionDiv = document.getElementById('message-connexion');
     const messageBienvenue = document.getElementById('message-bienvenue-client');
 
     let toutesLesReservationsClient = [];
@@ -69,7 +69,7 @@ document.addEventListener('DOMContentLoaded', () => {
             .withFailureHandler(err => {
                 afficherVueNonConnecte("Une erreur de communication est survenue.");
             })
-            .validerToken(token);
+            .verifierJetonMagique(token);
     }
 
     function chargerDonneesClient(email) {
@@ -120,7 +120,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function demanderNouveauLien(email) {
         basculerIndicateurChargement(true);
-        erreurConnexionDiv.classList.add('hidden');
+        messageConnexionDiv.classList.add('hidden');
         google.script.run
             .withSuccessHandler(reponse => {
                 basculerIndicateurChargement(false);
@@ -130,7 +130,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 basculerIndicateurChargement(false);
                 afficherErreurConnexion("Une erreur de communication est survenue.");
             })
-            .envoyerLienDeConnexion(email);
+            .envoyerLienMagique(email);
     }
     
     function afficherVueNonConnecte(messageErreur = null) {
@@ -303,10 +303,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function afficherErreurConnexion(message, type = "erreur") {
-        if (erreurConnexionDiv) {
-            erreurConnexionDiv.textContent = message;
-            erreurConnexionDiv.className = `message-erreur-connexion ${type}`;
-            erreurConnexionDiv.classList.remove('hidden');
+        if (messageConnexionDiv) {
+            messageConnexionDiv.textContent = message;
+            messageConnexionDiv.className = `message-erreur-connexion ${type}`;
+            messageConnexionDiv.classList.remove('hidden');
         }
     }
 
