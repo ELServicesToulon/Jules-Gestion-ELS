@@ -1,15 +1,6 @@
 <script>
-/**
- * =================================================================
- * MODULE JAVASCRIPT - ESPACE CLIENT (Version Sécurisée et Complète)
- * =================================================================
- * Description: Gère l'interactivité de l'espace client, y compris
- * la logique de connexion par token, le chargement des réservations
- * et leur modification.
- */
-
 document.addEventListener('DOMContentLoaded', () => {
-    // --- Références aux éléments du DOM ---
+    // --- Références aux éléments du DOM (fusion de l'original et du correctif) ---
     const indicateurChargement = document.getElementById('indicateur-chargement');
     const conteneurApp = document.getElementById('conteneur-app');
     const nonConnecte = document.getElementById('non-connecte');
@@ -18,62 +9,95 @@ document.addEventListener('DOMContentLoaded', () => {
     const modale = document.getElementById('modale-modification');
     const contenuModale = document.getElementById('contenu-modale-wrapper');
     const btnFermerModale = document.getElementById('btn-fermer-modale');
-    const formulaireConnexionClient = document.getElementById('formulaire-connexion-client');
-    const emailConnexionInput = document.getElementById('email-connexion');
-    const erreurConnexionDiv = document.getElementById('erreur-connexion');
-    const messageConnexionDiv = document.getElementById('message-connexion');
+    const form = document.getElementById('formulaire-connexion-client');
+    const emailInput = document.getElementById('email-connexion');
+    const msg = document.getElementById('message-connexion');
     const messageBienvenue = document.getElementById('message-bienvenue-client');
 
+    // --- Variables d'état ---
     let toutesLesReservationsClient = [];
-    let emailClientActif = null;
-    let loginInFlight = false;
+    let emailClientActif = null; // Maintenu pour les fonctions existantes
+    let inFlight = false; // "Verrou" pour l'envoi du formulaire
 
-    function initialiser() {
-        gererAffichageInitial();
+    // --- NOUVELLE LOGIQUE DE CONNEXION ET SESSION (correctif) ---
 
-        if (btnFermerModale) {
-            btnFermerModale.addEventListener('click', () => modale?.classList.add('hidden'));
-        }
-
-        if (formulaireConnexionClient) {
-            formulaireConnexionClient.addEventListener('submit', (e) => {
-                e.preventDefault();
-                if (loginInFlight) return;
-                const email = emailConnexionInput.value.trim();
-                if (email) {
-                    loginInFlight = true;
-                    demanderNouveauLien(email);
-                }
-            });
-        }
+    function setMsg(text, type = 'info') {
+        if (!msg) return;
+        msg.textContent = text;
+        msg.className = `message-connexion ${type}`;
+        msg.classList.remove('hidden');
     }
 
-    function gererAffichageInitial() {
-        const params = new URLSearchParams(window.location.search);
-        const token = params.get('token');
+    // 1) Envoi du lien — UN SEUL écouteur (submit)
+    form?.addEventListener('submit', (e) => {
+        e.preventDefault();
+        if (inFlight) return; // anti double-clic
+        inFlight = true;
 
-        if (token) {
-            validerTokenEtChargerClient(token);
-        } else {
-            afficherVueNonConnecte();
+        const email = (emailInput?.value || '').trim().toLowerCase();
+        if (!email) {
+            inFlight = false;
+            return setMsg("Adresse e-mail manquante.", "erreur");
         }
-    }
 
-    function validerTokenEtChargerClient(token) {
         basculerIndicateurChargement(true);
         google.script.run
-            .withSuccessHandler(reponse => {
-                if (reponse.success && reponse.email) {
-                    emailClientActif = reponse.email;
-                    chargerDonneesClient(reponse.email);
-                } else {
-                    afficherVueNonConnecte(reponse.error || "Lien invalide ou expiré.");
-                }
+            .withSuccessHandler((ok) => {
+                inFlight = false;
+                basculerIndicateurChargement(false);
+                setMsg(ok ? "Un lien de connexion vient d’être envoyé." :
+                    "Adresse inconnue. Vérifiez ou contactez l’admin.", ok ? "info" : "erreur");
             })
-            .withFailureHandler(err => {
-                afficherVueNonConnecte("Une erreur de communication est survenue.");
+            .withFailureHandler(() => {
+                inFlight = false;
+                basculerIndicateurChargement(false);
+                setMsg("Problème réseau. Réessayez dans une minute.", "erreur");
+            })
+            .envoyerLienMagique(email);
+    });
+
+    // 2) Connexion par lien magique + persistance
+    const url = new URL(window.location.href);
+    const token = url.searchParams.get('token');
+    const savedEmail = sessionStorage.getItem('ELS_client_email');
+
+    if (token) {
+        basculerIndicateurChargement(true);
+        google.script.run
+            .withSuccessHandler((email) => {
+                // Note: le chargement des données client masquera l'indicateur
+                if (!email) {
+                    basculerIndicateurChargement(false);
+                    return setMsg("Lien invalide ou expiré.", "erreur");
+                }
+
+                sessionStorage.setItem('ELS_client_email', email);
+                emailClientActif = email; // Mettre à jour la variable d'état
+                history.replaceState({}, '', url.pathname + '?page=gestion');
+
+                nonConnecte?.classList.add('hidden');
+                conteneurApp?.classList.remove('hidden');
+                chargerDonneesClient(email);
+            })
+            .withFailureHandler(() => {
+                basculerIndicateurChargement(false);
+                setMsg("Erreur de vérification du lien.", "erreur");
             })
             .verifierJetonMagique(token);
+    } else if (savedEmail) {
+        emailClientActif = savedEmail;
+        nonConnecte?.classList.add('hidden');
+        conteneurApp?.classList.remove('hidden');
+        chargerDonneesClient(savedEmail);
+    } else {
+        nonConnecte?.classList.remove('hidden');
+        conteneurApp?.classList.add('hidden');
+    }
+
+    // --- FONCTIONS EXISTANTES CONSERVÉES ---
+
+    if (btnFermerModale) {
+        btnFermerModale.addEventListener('click', () => modale?.classList.add('hidden'));
     }
 
     function chargerDonneesClient(email) {
@@ -81,15 +105,17 @@ document.addEventListener('DOMContentLoaded', () => {
             .withSuccessHandler(reponse => {
                 if (reponse.success) {
                     messageBienvenue.textContent = `Bienvenue, ${reponse.client.nom}`;
-                    conteneurApp.classList.remove('hidden');
-                    nonConnecte.classList.add('hidden');
                     chargerReservationsFutures(email);
                     chargerReservationsPassees(email);
                 } else {
-                    afficherVueNonConnecte(reponse.error);
+                    basculerIndicateurChargement(false);
+                    setMsg(reponse.error || "Impossible de charger les données client.", "erreur");
                 }
             })
-            .withFailureHandler(err => afficherVueNonConnecte("Erreur de chargement des informations client."))
+            .withFailureHandler(err => {
+                basculerIndicateurChargement(false);
+                setMsg("Erreur de chargement des informations client.", "erreur")
+            })
             .validerClientParEmail(email);
     }
 
@@ -120,33 +146,6 @@ document.addEventListener('DOMContentLoaded', () => {
             })
             .withFailureHandler(err => console.error("Erreur chargement passées: ", err))
             .obtenirReservationsPasseesClient(email);
-    }
-
-    function demanderNouveauLien(email) {
-        basculerIndicateurChargement(true);
-        if(erreurConnexionDiv) erreurConnexionDiv.classList.add('hidden');
-        if(messageConnexionDiv) messageConnexionDiv.classList.add('hidden');
-        google.script.run
-            .withSuccessHandler(reponse => {
-                basculerIndicateurChargement(false);
-                afficherErreurConnexion("Si cette adresse e-mail est associée à un compte, un nouveau lien de connexion vient de vous être envoyé.", "succes");
-                loginInFlight = false;
-            })
-            .withFailureHandler(err => {
-                basculerIndicateurChargement(false);
-                afficherErreurConnexion("Une erreur de communication est survenue.");
-                loginInFlight = false;
-            })
-            .envoyerLienMagique(email);
-    }
-    
-    function afficherVueNonConnecte(messageErreur = null) {
-        conteneurApp.classList.add('hidden');
-        nonConnecte.classList.remove('hidden');
-        basculerIndicateurChargement(false);
-        if (messageErreur) {
-            afficherErreurConnexion(messageErreur, "erreur");
-        }
     }
 
     function afficherReservations(reservations) {
@@ -309,19 +308,6 @@ document.addEventListener('DOMContentLoaded', () => {
             .replanifierReservation(idReservation, nouvelleDate, nouvelleHeure);
     }
 
-    function afficherErreurConnexion(message, type = "erreur") {
-        if (erreurConnexionDiv) {
-            erreurConnexionDiv.textContent = message;
-            erreurConnexionDiv.className = `message-erreur-connexion ${type}`;
-            erreurConnexionDiv.classList.remove('hidden');
-        }
-        if (messageConnexionDiv) {
-            messageConnexionDiv.textContent = message;
-            messageConnexionDiv.className = `message-erreur-connexion ${type}`;
-            messageConnexionDiv.classList.remove('hidden');
-        }
-    }
-
     function basculerIndicateurChargement(afficher) {
         if(indicateurChargement) indicateurChargement.classList.toggle('hidden', !afficher);
     }
@@ -343,6 +329,5 @@ document.addEventListener('DOMContentLoaded', () => {
         console.error(erreur);
     }
 
-    initialiser();
 });
 </script>
