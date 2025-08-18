@@ -326,55 +326,17 @@ function replanifierReservation(idReservation, nouvelleDate, nouvelleHeure) {
     lock.releaseLock();
   }
 }
-/**
- * Gère la demande d'un nouveau lien de connexion par un utilisateur.
- * Vérifie si le client existe et, si oui, lui envoie un nouveau lien par e-mail.
- * @param {string} emailClient L'e-mail du client demandant le lien.
- * @returns {Object} Toujours un objet de succès pour des raisons de sécurité.
- */
-function envoyerLienDeConnexion(emailClient) {
+function envoyerLienDeConnexion(email) {
   try {
-    if (!emailClient) {
-      // Ne renvoie pas d'erreur pour ne pas indiquer si un email est valide
-      return { success: true };
-    }
+    if (!email || !/^.+@.+\..+$/.test(email)) throw new Error('Email invalide');
 
-    const infosClient = obtenirInfosClientParEmail(emailClient.trim());
+    // Pendant le debug : pas d’envoi, on trace seulement
+    DBG_log_('INFO', 'Demande de lien', { email });
 
-    // On ne procède à l'envoi que si le client existe
-    if (infosClient) {
-      const token = genererEtStockerToken(emailClient);
-      const appUrl = ScriptApp.getService().getUrl();
-      const lienEspaceClient = `${appUrl}?page=gestion&token=${token}`;
-
-      const sujet = `Votre lien d'accès à l'espace client - ${NOM_ENTREPRISE}`;
-      const corpsHtml = `
-        <div style="font-family: Arial, sans-serif; color: #333;">
-          <h2>Votre lien de connexion personnel</h2>
-          <p>Bonjour ${infosClient.nom},</p>
-          <p>Suite à votre demande, voici votre nouveau lien pour accéder à votre espace client. Ce lien est personnel et expirera dans 24 heures.</p>
-          <p style="text-align: center; margin: 20px 0;">
-            <a href="${lienEspaceClient}" style="background-color: #007bff; color: white; padding: 12px 20px; text-decoration: none; border-radius: 5px; font-size: 16px;">Accéder à mon espace client</a>
-          </p>
-          <p>Si vous n'êtes pas à l'origine de cette demande, vous pouvez ignorer cet e-mail en toute sécurité.</p>
-          <p>Merci,<br>L'équipe ${NOM_ENTREPRISE}</p>
-        </div>
-      `;
-
-      MailApp.sendEmail({
-        to: emailClient,
-        subject: sujet,
-        htmlBody: corpsHtml,
-        replyTo: EMAIL_ENTREPRISE
-      });
-    }
-    
-    // On retourne toujours un succès pour ne pas permettre de deviner les emails enregistrés.
-    return { success: true };
-
-  } catch (e) {
-    Logger.log(`Erreur dans envoyerLienDeConnexion pour ${emailClient}: ${e.stack}`);
-    // On retourne quand même un succès au client pour la sécurité.
-    return { success: true };
+    // TODO: quand ça répond bien, remets ici ta logique (token + MailApp/GmailApp)
+    // et conserve le try/catch + le format de réponse.
+    return DBG_ok({ sent: true, message: 'Lien simulé (debug on)' });
+  } catch (err) {
+    return DBG_err_(err);
   }
 }

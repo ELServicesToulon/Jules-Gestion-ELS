@@ -120,15 +120,32 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function demanderNouveauLien(email) {
         basculerIndicateurChargement(true);
-        erreurConnexionDiv.classList.add('hidden');
+        if(erreurConnexionDiv) erreurConnexionDiv.classList.add('hidden');
+
+        // Timeout de sécurité pour couper la boucle si le serveur ne répond pas
+        const killer = setTimeout(function() {
+          basculerIndicateurChargement(false);
+          afficherErreurConnexion('Timeout : le serveur ne répond pas (12s). Vérifiez les déploiements et les logs "Exécutions" dans Apps Script.', 'erreur');
+        }, 12000);
+
         google.script.run
-            .withSuccessHandler(reponse => {
+            .withSuccessHandler(function(res) {
+                clearTimeout(killer);
                 basculerIndicateurChargement(false);
-                afficherErreurConnexion("Si cette adresse e-mail est associée à un compte, un nouveau lien de connexion vient de vous être envoyé.", "succes");
+                if (!res || res.ok === false) {
+                    console.error('Réponse KO du serveur', res);
+                    const msg = (res && res.error && res.error.message) || 'Erreur inconnue';
+                    afficherErreurConnexion('Erreur : ' + msg, 'erreur');
+                    return;
+                }
+                afficherErreurConnexion('Lien envoyé. Pensez à vérifier vos spams.', 'succes');
             })
-            .withFailureHandler(err => {
+            .withFailureHandler(function(err) {
+                clearTimeout(killer);
                 basculerIndicateurChargement(false);
-                afficherErreurConnexion("Une erreur de communication est survenue.");
+                console.error('FailureHandler a intercepté une erreur', err);
+                const msg = (err && err.message) ? err.message : JSON.stringify(err);
+                afficherErreurConnexion('Erreur serveur : ' + msg, 'erreur');
             })
             .envoyerLienDeConnexion(email);
     }
@@ -343,5 +360,14 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     initialiser();
+
+    // Auto-test au chargement pour prouver que google.script.run est fonctionnel
+    window.addEventListener('load', function() {
+      console.log('Auto-test au chargement : envoi de DBG_ping...');
+      google.script.run
+        .withSuccessHandler(r => console.log('DBG_ping OK. La communication client-serveur fonctionne.', r))
+        .withFailureHandler(e => console.error('DBG_ping a échoué. La communication client-serveur est rompue. Vérifiez le déploiement et les autorisations.', e))
+        .DBG_ping();
+    });
 });
 </script>
