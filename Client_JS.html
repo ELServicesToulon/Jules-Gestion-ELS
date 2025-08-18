@@ -20,11 +20,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnFermerModale = document.getElementById('btn-fermer-modale');
     const formulaireConnexionClient = document.getElementById('formulaire-connexion-client');
     const emailConnexionInput = document.getElementById('email-connexion');
+    const erreurConnexionDiv = document.getElementById('erreur-connexion');
     const messageConnexionDiv = document.getElementById('message-connexion');
     const messageBienvenue = document.getElementById('message-bienvenue-client');
 
     let toutesLesReservationsClient = [];
     let emailClientActif = null;
+    let loginInFlight = false;
 
     function initialiser() {
         gererAffichageInitial();
@@ -36,8 +38,10 @@ document.addEventListener('DOMContentLoaded', () => {
         if (formulaireConnexionClient) {
             formulaireConnexionClient.addEventListener('submit', (e) => {
                 e.preventDefault();
+                if (loginInFlight) return;
                 const email = emailConnexionInput.value.trim();
                 if (email) {
+                    loginInFlight = true;
                     demanderNouveauLien(email);
                 }
             });
@@ -120,15 +124,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function demanderNouveauLien(email) {
         basculerIndicateurChargement(true);
-        messageConnexionDiv.classList.add('hidden');
+        if(erreurConnexionDiv) erreurConnexionDiv.classList.add('hidden');
+        if(messageConnexionDiv) messageConnexionDiv.classList.add('hidden');
         google.script.run
             .withSuccessHandler(reponse => {
                 basculerIndicateurChargement(false);
                 afficherErreurConnexion("Si cette adresse e-mail est associée à un compte, un nouveau lien de connexion vient de vous être envoyé.", "succes");
+                loginInFlight = false;
             })
             .withFailureHandler(err => {
                 basculerIndicateurChargement(false);
                 afficherErreurConnexion("Une erreur de communication est survenue.");
+                loginInFlight = false;
             })
             .envoyerLienMagique(email);
     }
@@ -303,6 +310,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function afficherErreurConnexion(message, type = "erreur") {
+        if (erreurConnexionDiv) {
+            erreurConnexionDiv.textContent = message;
+            erreurConnexionDiv.className = `message-erreur-connexion ${type}`;
+            erreurConnexionDiv.classList.remove('hidden');
+        }
         if (messageConnexionDiv) {
             messageConnexionDiv.textContent = message;
             messageConnexionDiv.className = `message-erreur-connexion ${type}`;
