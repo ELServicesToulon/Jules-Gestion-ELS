@@ -20,7 +20,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnFermerModale = document.getElementById('btn-fermer-modale');
     const formulaireConnexionClient = document.getElementById('formulaire-connexion-client');
     const emailConnexionInput = document.getElementById('email-connexion');
-    const erreurConnexionDiv = document.getElementById('erreur-connexion');
+    const erreurConnexionDiv = document.getElementById('message-connexion');
     const messageBienvenue = document.getElementById('message-bienvenue-client');
 
     let toutesLesReservationsClient = [];
@@ -134,6 +134,17 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     function afficherVueNonConnecte(messageErreur = null) {
+        // Supprime le paramètre 'token' de l'URL pour éviter les boucles de rechargement
+        try {
+            const url = new URL(window.location.href);
+            if (url.searchParams.has('token')) {
+                url.searchParams.delete('token');
+                window.history.replaceState({ path: url.href }, '', url.href);
+            }
+        } catch (e) {
+            console.error("Impossible de modifier l'URL:", e);
+        }
+
         conteneurApp.classList.add('hidden');
         nonConnecte.classList.remove('hidden');
         basculerIndicateurChargement(false);

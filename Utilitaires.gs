@@ -68,7 +68,7 @@ function obtenirIndicesEnTetes(feuille, enTetesRequis) {
   const enTete = feuille.getRange(1, 1, 1, feuille.getLastColumn()).getValues()[0];
   const indices = {};
   const enTetesManquants = enTetesRequis.filter(reqHeader => {
-    const index = enTete.findIndex(h => String(h).trim() === reqHeader);
+    const index = enTete.findIndex(h => String(h).trim().toLowerCase() === reqHeader.toLowerCase());
     if (index !== -1) {
       indices[reqHeader] = index;
       return false;
