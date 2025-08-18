@@ -3,8 +3,8 @@
  * =================================================================
  * MODULE JAVASCRIPT - INTERFACE UTILISATEUR (UI)
  * =================================================================
- * Description: Gère les composants d'interface utilisateur génériques
- * comme les notifications, les messages d'erreur et
+ * Description: Gère les composants d'interface utilisateur génériques 
+ * comme les notifications, les messages d'erreur et 
  * l'indicateur de chargement.
  */
 
@@ -23,7 +23,7 @@ function afficherNotification(message, type = "info") {
   notification.className = `notification ${type}`;
   notification.textContent = message;
   conteneur.appendChild(notification);
-
+  
   // La notification disparaît automatiquement après 5 secondes.
   setTimeout(() => {
     notification.remove();
@@ -56,3 +56,4 @@ function afficherErreur(erreur) {
   console.error(erreur);
 }
 </script>
+

@@ -101,8 +101,8 @@ function configurerEcouteursEvenements() {
  * Point d'entrée principal, exécuté après le chargement du DOM.
  */
 document.addEventListener('DOMContentLoaded', () => {
-  chargerPanierDepuisLocalStorage();
-  verifierSessionClient();
+  chargerPanierDepuisLocalStorage(); 
+  verifierSessionClient(); 
   afficherCalendrier(window.etat.dateActuelle.getMonth() + 1, window.etat.dateActuelle.getFullYear());
   configurerEcouteursEvenements();
 });
@@ -116,3 +116,6 @@ function changerMois(delta) {
     afficherCalendrier(window.etat.dateActuelle.getMonth() + 1, window.etat.dateActuelle.getFullYear());
 }
 </script>
+
+
+
