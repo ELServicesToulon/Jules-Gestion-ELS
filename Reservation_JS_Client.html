@@ -27,10 +27,10 @@ function verifierSessionClient() {
  */
 function preRemplirInfosClient(email) {
     if(!email) return;
-
+    
     const banniere = document.getElementById('banniere-client-reconnu');
     const nomClientEl = document.getElementById('nom-client-reconnu');
-
+    
     basculerIndicateurChargement(true);
     google.script.run
         .withSuccessHandler(client => {
@@ -40,7 +40,7 @@ function preRemplirInfosClient(email) {
                 if(window.ui.champNomClient) window.ui.champNomClient.value = client.nom || '';
                 if(window.ui.champAdresseClient) window.ui.champAdresseClient.value = client.adresse || '';
                 if(window.ui.champSiretClient) window.ui.champSiretClient.value = client.siret || '';
-
+                
                 if(nomClientEl) nomClientEl.textContent = client.nom;
                 if(banniere) banniere.classList.remove('hidden');
             }
@@ -63,3 +63,5 @@ function reinitialiserClient() {
     }
 }
 </script>
+
+

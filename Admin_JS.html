@@ -27,12 +27,12 @@ document.addEventListener('DOMContentLoaded', () => {
      */
     function initialiser() {
         const aujourdhui = new Date().toISOString().split('T')[0];
-
+        
         if (champDate) {
             champDate.value = aujourdhui;
             champDate.addEventListener('change', () => chargerReservationsParDate(champDate.value));
         }
-
+        
         btnToutVoir?.addEventListener('click', chargerToutesReservationsAdmin);
         btnAjouterReservation?.addEventListener('click', ouvrirModaleAjout);
         btnFermerModale?.addEventListener('click', () => modale?.classList.add('hidden'));
@@ -49,7 +49,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!dateString) return;
         vueActuelle = 'date'; // Mémorise la vue
         basculerIndicateurChargement(true);
-
+        
         if (contenuReservations) contenuReservations.innerHTML = '<p>Chargement des courses...</p>';
         const date = new Date(dateString + "T00:00:00");
         if (titreReservations) {
@@ -262,7 +262,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const reservation = toutesLesReservationsAffichees.find(r => r.id === idReservation);
         if (!reservation) return afficherErreur("Réservation introuvable.");
         const client = tousLesClients.find(c => c.email === reservation.clientEmail);
-        const nbTourneesOffertesActuelClient = client ? client.nbTourneesOffertes : 0;
+        const nbTourneesOffertesActuelClient = client ? client.nbTourneesOffertes : 0; 
         if (!contenuModale) return;
         contenuModale.innerHTML = `
             <h3 id="modale-titre">Appliquer une remise</h3><p><strong>Course :</strong> ${reservation.details}</p><p><strong>Client :</strong> ${reservation.clientName} (${reservation.clientEmail})</p><p><strong>Prix actuel :</strong> ${reservation.amount.toFixed(2)} €</p>
@@ -455,3 +455,4 @@ document.addEventListener('DOMContentLoaded', () => {
     initialiser();
 });
 </script>
+

@@ -48,13 +48,13 @@
 
     <div id="non-connecte" class="carte hidden">
         <h3>Accès à l'espace client</h3>
-        <p>Pour consulter vos réservations, veuillez utiliser le lien qui vous a été envoyé par e-mail ou saisissez votre adresse ci-dessous.</p>
+        <p>Pour recevoir un lien de connexion sécurisé par e-mail, veuillez saisir votre adresse ci-dessous.</p>
 
         <form id="formulaire-connexion-client" class="groupe-formulaire" style="margin-top: 20px;">
             <label for="email-connexion">Votre adresse e-mail :</label>
             <input type="email" id="email-connexion" class="champ-formulaire" required placeholder="exemple@domaine.com">
-            <div id="erreur-connexion" class="message-erreur-connexion hidden"></div>
-            <button type="submit" class="btn btn-primaire" style="margin-top: 15px; width: 100%;">Accéder à mes réservations</button>
+            <div id="message-connexion" class="hidden" style="margin-top: 10px; padding: 10px; border-radius: 5px;"></div>
+            <button type="submit" class="btn btn-primaire" style="margin-top: 15px; width: 100%;">Recevoir mon lien de connexion</button>
         </form>
 
         <a href="<?= ScriptApp.getService().getUrl() ?>" class="btn btn-secondaire" style="margin-top: 20px;">Retour à la page de réservation</a>

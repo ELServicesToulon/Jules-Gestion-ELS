@@ -3,7 +3,7 @@
  * =================================================================
  * MODULE JAVASCRIPT - CALENDRIER
  * =================================================================
- * Description: Gère l'affichage, la mise à jour et la navigation
+ * Description: Gère l'affichage, la mise à jour et la navigation 
  * du calendrier principal de réservation.
  */
 
@@ -14,17 +14,17 @@
  */
 function afficherCalendrier(mois, annee) {
   basculerIndicateurChargement(true);
-
+  
   google.script.run
     .withSuccessHandler(donnees => {
       const { grilleCalendrier, titreCalendrier } = window.ui;
-
+      
       if (donnees && donnees.disponibilite && grilleCalendrier && titreCalendrier) {
         window.etat.donneesCalendrier = donnees.disponibilite;
         grilleCalendrier.innerHTML = '';
-
+        
         titreCalendrier.textContent = new Date(annee, mois - 1).toLocaleString('fr-FR', { month: 'long', year: 'numeric' });
-
+        
         const premierJourDuMois = new Date(annee, mois - 1, 1).getDay();
         const joursDansLeMois = new Date(annee, mois, 0).getDate();
         const aujourdhui = new Date();
@@ -40,10 +40,10 @@ function afficherCalendrier(mois, annee) {
           const date = new Date(annee, mois - 1, jour);
           const dateString = `${annee}-${String(mois).padStart(2, '0')}-${String(jour).padStart(2, '0')}`;
           const disponibilite = window.etat.donneesCalendrier[dateString] || { disponibles: 0, total: 0 };
-
+          
           celluleJour.className = 'jour-calendrier';
           celluleJour.innerHTML = `<span>${jour}</span>`;
-
+          
           const estPasse = date < aujourdhui;
           const estDimanche = date.getDay() === 0;
           const estComplet = disponibilite.disponibles === 0;

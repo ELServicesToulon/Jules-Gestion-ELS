@@ -34,10 +34,10 @@ function ajouterTourneeAuPanier() {
   };
 
   window.etat.panier.push(nouvelleTournee);
-
+  
   afficherPanier();
   sauvegarderPanierDansLocalStorage();
-
+  
   ui.modaleSelectionCreneau.classList.add('hidden');
   afficherNotification("Tournée ajoutée au panier !", "succes");
 }
@@ -59,7 +59,7 @@ function afficherPanier() {
     const date = new Date(item.date + 'T00:00:00');
     const dateFormatee = date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' });
     const recurrenceInfo = item.isRecurrent ? '<small style="color: #6a0dad; display: block;">(Récurrence mensuelle)</small>' : '';
-
+    
     return `
       <li class="item-panier" data-id-item="${item.id}">
         <div class="item-panier-infos">
@@ -111,3 +111,4 @@ function chargerPanierDepuisLocalStorage() {
   }
 }
 </script>
+

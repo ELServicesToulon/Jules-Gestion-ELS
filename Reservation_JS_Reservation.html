@@ -21,7 +21,7 @@ function gererDemandeDevis() {
   if (!email && window.etat.clientReconnu) {
       email = window.etat.clientReconnu.email;
   }
-
+  
   if (email) {
     envoyerDevis(email);
   } else {
@@ -83,7 +83,7 @@ function afficherConteneurFinalisation() {
     ui.champEmailClient.readOnly = false;
     ui.champNomClient.readOnly = false;
   }
-
+  
   ui.conteneurFinalisation.classList.remove('hidden');
   ui.champEmailClient.focus();
 }
@@ -137,3 +137,6 @@ function gererSoumissionReservation(e) {
     .reserverPanier(donneesReservation);
 }
 </script>
+
+
+
