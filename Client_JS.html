@@ -1,347 +1,66 @@
 <script>
-/**
- * =================================================================
- * MODULE JAVASCRIPT - ESPACE CLIENT (Version Sécurisée et Complète)
- * =================================================================
- * Description: Gère l'interactivité de l'espace client, y compris
- * la logique de connexion par token, le chargement des réservations
- * et leur modification.
- */
-
 document.addEventListener('DOMContentLoaded', () => {
-    // --- Références aux éléments du DOM ---
-    const indicateurChargement = document.getElementById('indicateur-chargement');
-    const conteneurApp = document.getElementById('conteneur-app');
-    const nonConnecte = document.getElementById('non-connecte');
-    const contenuReservations = document.getElementById('contenu-reservations');
-    const contenuReservationsPassees = document.getElementById('contenu-reservations-passees');
-    const modale = document.getElementById('modale-modification');
-    const contenuModale = document.getElementById('contenu-modale-wrapper');
-    const btnFermerModale = document.getElementById('btn-fermer-modale');
-    const formulaireConnexionClient = document.getElementById('formulaire-connexion-client');
-    const emailConnexionInput = document.getElementById('email-connexion');
-    const erreurConnexionDiv = document.getElementById('message-connexion');
-    const messageBienvenue = document.getElementById('message-bienvenue-client');
+  const form   = document.getElementById('formulaire-connexion-client');
+  const emailI = document.getElementById('email-connexion');
+  const app    = document.getElementById('conteneur-app');
+  const login  = document.getElementById('non-connecte');
+  const msgBox = document.getElementById('message-connexion'); // un seul conteneur
+  let inFlight = false;
 
-    let toutesLesReservationsClient = [];
-    let emailClientActif = null;
+  const setMsg = (t, type='info') => {
+    if (!msgBox) return;
+    msgBox.textContent = t;
+    msgBox.className = `message-connexion ${type}`;
+    msgBox.classList.remove('hidden');
+  };
 
-    function initialiser() {
-        gererAffichageInitial();
+  // 1) Envoi du lien — UN seul écouteur (submit)
+  form?.addEventListener('submit', (e) => {
+    e.preventDefault();
+    if (inFlight) return;
+    inFlight = true;
 
-        if (btnFermerModale) {
-            btnFermerModale.addEventListener('click', () => modale?.classList.add('hidden'));
-        }
+    const email = (emailI?.value || '').trim().toLowerCase();
+    if (!email) { inFlight = false; return setMsg("Adresse e-mail manquante.", "erreur"); }
 
-        if (formulaireConnexionClient) {
-            formulaireConnexionClient.addEventListener('submit', (e) => {
-                e.preventDefault();
-                const email = emailConnexionInput.value.trim();
-                if (email) {
-                    demanderNouveauLien(email);
-                }
-            });
-        }
-    }
+    google.script.run
+      .withSuccessHandler(ok => {
+        inFlight = false;
+        setMsg(ok ? "Un lien de connexion vient d’être envoyé."
+                  : "Adresse inconnue. Vérifiez ou contactez l’admin.",
+              ok ? "info" : "erreur");
+      })
+      .withFailureHandler(() => { inFlight = false; setMsg("Problème réseau, réessayez.", "erreur"); })
+      .envoyerLienMagique(email);
+  });
 
-    function gererAffichageInitial() {
-        const params = new URLSearchParams(window.location.search);
-        const token = params.get('token');
+  // 2) Lecture du token dans le HASH, pas dans la query
+  const url = new URL(window.location.href);
+  const hashParams = new URLSearchParams((url.hash || '').replace(/^#/, ''));
+  const token = hashParams.get('t');
 
-        if (token) {
-            validerTokenEtChargerClient(token);
-        } else {
-            afficherVueNonConnecte();
-        }
-    }
+  function nettoyerURL() {
+    // On enlève le hash et on garde ?page=gestion
+    const clean = url.pathname + (url.searchParams.get('page') ? `?page=${url.searchParams.get('page')}` : '');
+    history.replaceState({}, '', clean);
+  }
 
-    function validerTokenEtChargerClient(token) {
-        basculerIndicateurChargement(true);
-        google.script.run
-            .withSuccessHandler(reponse => {
-                if (reponse.success && reponse.email) {
-                    emailClientActif = reponse.email;
-                    chargerDonneesClient(reponse.email);
-                } else {
-                    afficherVueNonConnecte(reponse.error || "Lien invalide ou expiré.");
-                }
-            })
-            .withFailureHandler(err => {
-                afficherVueNonConnecte("Une erreur de communication est survenue.");
-            })
-            .validerToken(token);
-    }
-
-    function chargerDonneesClient(email) {
-        google.script.run
-            .withSuccessHandler(reponse => {
-                if (reponse.success) {
-                    messageBienvenue.textContent = `Bienvenue, ${reponse.client.nom}`;
-                    conteneurApp.classList.remove('hidden');
-                    nonConnecte.classList.add('hidden');
-                    chargerReservationsFutures(email);
-                    chargerReservationsPassees(email);
-                } else {
-                    afficherVueNonConnecte(reponse.error);
-                }
-            })
-            .withFailureHandler(err => afficherVueNonConnecte("Erreur de chargement des informations client."))
-            .validerClientParEmail(email);
-    }
-
-    function chargerReservationsFutures(email) {
-         google.script.run
-            .withSuccessHandler(reponse => {
-                basculerIndicateurChargement(false);
-                if (reponse.success) {
-                    toutesLesReservationsClient = reponse.reservations;
-                    afficherReservations(toutesLesReservationsClient);
-                } else {
-                    afficherErreur(reponse.error);
-                }
-            })
-            .withFailureHandler(err => {
-                basculerIndicateurChargement(false);
-                afficherErreur(err.message);
-            })
-            .obtenirReservationsClient(email);
-    }
-
-    function chargerReservationsPassees(email) {
-        google.script.run
-            .withSuccessHandler(reponse => {
-                if (reponse.success) {
-                    afficherReservationsPassees(reponse.reservations);
-                }
-            })
-            .withFailureHandler(err => console.error("Erreur chargement passées: ", err))
-            .obtenirReservationsPasseesClient(email);
-    }
-
-    function demanderNouveauLien(email) {
-        basculerIndicateurChargement(true);
-        erreurConnexionDiv.classList.add('hidden');
-        google.script.run
-            .withSuccessHandler(reponse => {
-                basculerIndicateurChargement(false);
-                afficherErreurConnexion("Si cette adresse e-mail est associée à un compte, un nouveau lien de connexion vient de vous être envoyé.", "succes");
-            })
-            .withFailureHandler(err => {
-                basculerIndicateurChargement(false);
-                afficherErreurConnexion("Une erreur de communication est survenue.");
-            })
-            .envoyerLienDeConnexion(email);
-    }
-    
-    function afficherVueNonConnecte(messageErreur = null) {
-        // Supprime le paramètre 'token' de l'URL pour éviter les boucles de rechargement
-        try {
-            const url = new URL(window.location.href);
-            if (url.searchParams.has('token')) {
-                url.searchParams.delete('token');
-                window.history.replaceState({ path: url.href }, '', url.href);
-            }
-        } catch (e) {
-            console.error("Impossible de modifier l'URL:", e);
-        }
-
-        conteneurApp.classList.add('hidden');
-        nonConnecte.classList.remove('hidden');
-        basculerIndicateurChargement(false);
-        if (messageErreur) {
-            afficherErreurConnexion(messageErreur, "erreur");
-        }
-    }
-
-    function afficherReservations(reservations) {
-        contenuReservations.innerHTML = '';
-        if (!reservations || reservations.length === 0) {
-            contenuReservations.innerHTML = '<p class="message-aucune-reservation">Vous n\'avez aucune course à venir.</p>';
-            return;
-        }
-        reservations.sort((a, b) => new Date(a.start) - new Date(b.start));
-        reservations.forEach(resa => {
-            const dateDebut = new Date(resa.start);
-            const dateFormatee = dateDebut.toLocaleDateString('fr-FR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-            const heureFormatee = dateDebut.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
-            contenuReservations.insertAdjacentHTML('beforeend', `
-                <div class="reservation-item" data-id="${resa.id}">
-                    <div class="reservation-details">
-                        <h4>${dateFormatee} à ${heureFormatee}</h4>
-                        <p><strong>Détails :</strong> ${resa.details}</p>
-                        <p><strong>Montant :</strong> ${resa.amount.toFixed(2)} €</p>
-                    </div>
-                    <div class="reservation-actions">
-                        <button class="btn btn-primaire btn-modifier-arrets">Modifier les arrêts</button>
-                        <button class="btn btn-secondaire btn-deplacer">Déplacer</button>
-                    </div>
-                </div>
-            `);
-        });
-        document.querySelectorAll('.btn-modifier-arrets').forEach(btn => btn.addEventListener('click', (e) => gererModificationArrets(e.target.closest('.reservation-item').dataset.id)));
-        document.querySelectorAll('.btn-deplacer').forEach(btn => btn.addEventListener('click', (e) => gererDeplacement(e.target.closest('.reservation-item').dataset.id)));
-    }
-    
-    function afficherReservationsPassees(reservationsPassees) {
-        contenuReservationsPassees.innerHTML = '';
-        if (!reservationsPassees || reservationsPassees.length === 0) {
-            contenuReservationsPassees.innerHTML = '<p class="message-aucune-reservation">Vous n\'avez aucune course passée.</p>';
-            return;
-        }
-        reservationsPassees.sort((a, b) => new Date(b.date) - new Date(a.date));
-        reservationsPassees.forEach(function(resa) {
-            const date = new Date(resa.date);
-            const dateFormatee = date.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
-            let actionHtml = 'Pas de facture disponible';
-            if (resa.idPdf) {
-                const urlFacture = 'https://docs.google.com/uc?export=download&id=' + resa.idPdf;
-                actionHtml = '<a href="' + urlFacture + '" target="_blank" class="btn-facture">Télécharger la facture (N° ' + (resa.numeroFacture || 'N/A') + ')</a>';
-            }
-            contenuReservationsPassees.insertAdjacentHTML('beforeend', `
-                <div class="reservation-item passe">
-                    <div class="reservation-details">
-                        <p><strong>Date :</strong> ${dateFormatee}</p>
-                        <p><strong>Détails :</strong> ${resa.details}</p>
-                        <p><strong>Montant :</strong> ${resa.montant.toFixed(2)} €</p>
-                    </div>
-                    <div class="reservation-actions">${actionHtml}</div>
-                </div>
-            `);
-        });
-    }
-    
-    function gererModificationArrets(idReservation) {
-        const resa = toutesLesReservationsClient.find(r => r.id === idReservation);
-        if (!resa || !contenuModale) return;
-        const matchArrets = resa.details.match(/(\d+)\s*arrêt\(s\)\s*sup/);
-        const arretsActuels = matchArrets ? parseInt(matchArrets[1], 10) : 0;
-        contenuModale.innerHTML = `
-            <h3 id="modale-modification-titre">Modifier les arrêts</h3>
-            <p><strong>Course :</strong> ${new Date(resa.start).toLocaleString('fr-FR')}</p>
-            <div class="groupe-formulaire">
-                <label for="nouveaux-arrets">Nombre d'arrêts supplémentaires :</label>
-                <input type="number" id="nouveaux-arrets" class="champ-formulaire" value="${arretsActuels}" min="0">
-            </div>
-            <div class="modale-actions">
-                <button id="btn-valider-modif-arrets" class="btn btn-primaire">Valider</button>
-            </div>
-        `;
-        modale?.classList.remove('hidden');
-        document.getElementById('btn-valider-modif-arrets').addEventListener('click', () => {
-            const nouveauxArrets = document.getElementById('nouveaux-arrets').value;
-            validerModificationArrets(idReservation, parseInt(nouveauxArrets, 10));
-        });
-    }
-
-    function gererDeplacement(idReservation) {
-        const resa = toutesLesReservationsClient.find(r => r.id === idReservation);
-        if (!resa || !contenuModale) return;
-        const aujourdhui = new Date().toISOString().split('T')[0];
-        contenuModale.innerHTML = `
-            <h3 id="modale-modification-titre">Déplacer la course</h3>
-            <p><strong>Course actuelle :</strong> ${new Date(resa.start).toLocaleString('fr-FR')}</p>
-            <div class="groupe-formulaire">
-                <label for="nouvelle-date">Nouvelle date :</label>
-                <input type="date" id="nouvelle-date" class="champ-formulaire" min="${aujourdhui}">
-            </div>
-            <div class="groupe-formulaire">
-                <label>Nouveau créneau :</label>
-                <div id="grille-creneaux-deplacement" class="grille-creneaux"></div>
-            </div>
-        `;
-        modale?.classList.remove('hidden');
-        const inputDate = document.getElementById('nouvelle-date');
-        inputDate.addEventListener('change', () => chargerCreneauxDeplacement(idReservation, inputDate.value));
-    }
-
-    function chargerCreneauxDeplacement(idReservation, dateString) {
-        const resa = toutesLesReservationsClient.find(r => r.id === idReservation);
-        const grille = document.getElementById('grille-creneaux-deplacement');
-        if (!resa || !grille) return;
-        const duree = (new Date(resa.end) - new Date(resa.start)) / 60000;
-        grille.innerHTML = '<div class="spinner"></div>';
-        google.script.run
-            .withSuccessHandler(creneaux => {
-                grille.innerHTML = '';
-                if (creneaux && creneaux.length > 0) {
-                    creneaux.forEach(heure => {
-                        const btn = document.createElement('button');
-                        btn.className = 'slot-btn';
-                        btn.textContent = heure;
-                        btn.onclick = () => validerDeplacement(idReservation, dateString, heure);
-                        grille.appendChild(btn);
-                    });
-                } else {
-                    grille.innerHTML = '<p>Aucun créneau disponible.</p>';
-                }
-            })
-            .withFailureHandler(afficherErreur)
-            .obtenirCreneauxDisponiblesPourDate(dateString, duree, resa.eventId);
-    }
-
-    function validerModificationArrets(idReservation, nouveauxArrets) {
-        basculerIndicateurChargement(true);
-        modale?.classList.add('hidden');
-        google.script.run
-            .withSuccessHandler(reponse => {
-                if (reponse.success) {
-                    afficherNotification("Réservation mise à jour avec succès !");
-                    chargerDonneesClient(emailClientActif); // Recharger toutes les données
-                } else {
-                    basculerIndicateurChargement(false);
-                    afficherErreur(reponse.error);
-                }
-            })
-            .withFailureHandler(err => afficherErreur(err.message))
-            .mettreAJourDetailsReservation(idReservation, nouveauxArrets);
-    }
-
-    function validerDeplacement(idReservation, nouvelleDate, nouvelleHeure) {
-        basculerIndicateurChargement(true);
-        modale?.classList.add('hidden');
-        google.script.run
-            .withSuccessHandler(reponse => {
-                if (reponse.success) {
-                    afficherNotification("Réservation déplacée avec succès !");
-                    chargerDonneesClient(emailClientActif); // Recharger toutes les données
-                } else {
-                    basculerIndicateurChargement(false);
-                    afficherErreur(reponse.error);
-                }
-            })
-            .withFailureHandler(err => afficherErreur(err.message))
-            .replanifierReservation(idReservation, nouvelleDate, nouvelleHeure);
-    }
-
-    function afficherErreurConnexion(message, type = "erreur") {
-        if (erreurConnexionDiv) {
-            erreurConnexionDiv.textContent = message;
-            erreurConnexionDiv.className = `message-erreur-connexion ${type}`;
-            erreurConnexionDiv.classList.remove('hidden');
-        }
-    }
-
-    function basculerIndicateurChargement(afficher) {
-        if(indicateurChargement) indicateurChargement.classList.toggle('hidden', !afficher);
-    }
-
-    function afficherNotification(message, type = "succes") {
-        const conteneur = document.getElementById('conteneur-notifications');
-        if(!conteneur) return;
-        const notif = document.createElement('div');
-        notif.className = `notification ${type}`;
-        notif.textContent = message;
-        conteneur.appendChild(notif);
-        setTimeout(() => notif.remove(), 5000);
-    }
-    
-    function afficherErreur(erreur) {
-        basculerIndicateurChargement(false);
-        const message = typeof erreur === 'object' && erreur.message ? erreur.message : String(erreur);
-        afficherNotification(`Erreur : ${message}`, "erreur");
-        console.error(erreur);
-    }
-
-    initialiser();
+  if (token) {
+    google.script.run
+      .withSuccessHandler(email => {
+        if (!email) { setMsg("Lien invalide ou expiré.", "erreur"); nettoyerURL(); return; }
+        sessionStorage.setItem('ELS_client_email', email);
+        nettoyerURL();
+        login?.classList.add('hidden');
+        app?.classList.remove('hidden');
+        if (typeof chargerDonneesClient === 'function') chargerDonneesClient(email);
+      })
+      .withFailureHandler(() => { setMsg("Erreur de vérification du lien.", "erreur"); nettoyerURL(); })
+      .verifierJetonMagique(token);
+  } else {
+    const saved = sessionStorage.getItem('ELS_client_email');
+    if (saved) { login?.classList.add('hidden'); app?.classList.remove('hidden'); if (typeof chargerDonneesClient === 'function') chargerDonneesClient(saved); }
+    else { login?.classList.remove('hidden'); app?.classList.add('hidden'); }
+  }
 });
 </script>
