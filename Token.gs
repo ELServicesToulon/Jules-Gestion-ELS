@@ -83,6 +83,15 @@ function validerToken(token) {
         if (expirationDate > now) {
           const email = data[i][0];
           Logger.log(`Token validé avec succès pour ${email}`);
+
+          // Supprimer le token après utilisation pour le rendre à usage unique
+          try {
+            sheet.deleteRow(i + 1);
+            Logger.log(`Token pour ${email} supprimé après validation.`);
+          } catch (e) {
+            Logger.log(`Avertissement: n'a pas pu supprimer le token pour ${email} après validation. Erreur: ${e.message}`);
+          }
+
           return { success: true, email: email };
         } else {
           Logger.log(`Tentative d'utilisation d'un token expiré pour ${data[i][0]}`);
