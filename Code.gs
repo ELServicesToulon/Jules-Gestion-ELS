@@ -51,10 +51,9 @@ function doGet(e) {
                 } else {
                     return HtmlService.createHtmlOutput('<h1>Accès Refusé</h1><p>Vous n\'avez pas les permissions nécessaires.</p>');
                 }
+            case 'client':
             case 'gestion':
-                const templateGestion = HtmlService.createTemplateFromFile('Client_Espace');
-                templateGestion.ADMIN_EMAIL = ADMIN_EMAIL;
-                return templateGestion.evaluate().setTitle("Mon Espace Client").setXFrameOptionsMode(HtmlService.XFrameOptionsMode.DEFAULT);
+                return renderClientPage(e);
             case 'debug':
                  const debugEmail = Session.getActiveUser().getEmail();
                 if (debugEmail && debugEmail.toLowerCase() === ADMIN_EMAIL.toLowerCase()) {
@@ -115,3 +114,38 @@ function doGet(e) {
 function include(nomFichier) {
   return HtmlService.createHtmlOutputFromFile(nomFichier).getContent();
 }
+
+function renderClientPage(e) {
+  var tpl = HtmlService.createTemplateFromFile('Client_Espace');
+
+  var session = '';
+  var email = '';
+
+  if (e && e.parameter && e.parameter.auth) {
+    var r = validateAndConsumeToken(e.parameter.auth);
+    if (r.ok) {
+      session = createSession(r.email);
+      email = r.email;
+    }
+  }
+
+  if (!email && e && e.parameter && e.parameter.session) {
+    var s = validateSession(e.parameter.session);
+    if (s.ok) {
+      session = e.parameter.session;
+      email = s.email;
+    }
+  }
+
+  tpl.SESSION_ID = session;
+  tpl.SESSION_EMAIL = email;
+  tpl.WEBAPP_URL = getConfiguration().WEBAPP_URL || ScriptApp.getService().getUrl();
+  tpl.ADMIN_EMAIL = ADMIN_EMAIL;
+
+  return tpl.evaluate()
+            .setTitle('Espace Client')
+            .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL); // si iFrame/Google Sites
+}
+
+// Exposer au client
+function validateSessionServer(sessionId){ return validateSession(sessionId); } // alias clair

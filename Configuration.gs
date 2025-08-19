@@ -74,3 +74,23 @@ const TARIFS = {
 const COLONNE_TYPE_REMISE_CLIENT = "Type de Remise";
 const COLONNE_VALEUR_REMISE_CLIENT = "Valeur Remise";
 const COLONNE_NB_TOURNEES_OFFERTES = "Nombre Tournées Offertes";
+
+// =================================================================
+//                      AUTHENTIFICATION & SESSIONS
+// =================================================================
+const WEBAPP_URL = "https://script.google.com/macros/s/AKfycbyHD5OLTbL39asKeXQJLoskkRnPCiifFk87vkSgHwMMmelhSKV1Dx_b8QptOleGFtBi/exec";
+const TOKEN_TTL_MINUTES = 15;
+const SESSION_TTL_HOURS = 24;
+
+/**
+ * Retourne un objet contenant les configurations dynamiques
+ * pour l'authentification et la session.
+ * @returns {{WEBAPP_URL: string, TOKEN_TTL_MINUTES: number, SESSION_TTL_HOURS: number}}
+ */
+function getConfiguration() {
+  return {
+    WEBAPP_URL: WEBAPP_URL,
+    TOKEN_TTL_MINUTES: TOKEN_TTL_MINUTES,
+    SESSION_TTL_HOURS: SESSION_TTL_HOURS
+  };
+}

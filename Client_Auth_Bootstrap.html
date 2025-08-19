@@ -1,0 +1,80 @@
+<script>
+(function(){
+  window.ELS = window.ELS || {};
+  ELS.WEBAPP_URL = '<?= WEBAPP_URL ?>';
+  ELS.SESSION_ID = '<?= SESSION_ID ?>';
+  ELS.SESSION_EMAIL = '<?= SESSION_EMAIL ?>';
+
+  function setSession(id){ try{ sessionStorage.setItem('ELS_SESSION', id); }catch(e){} }
+  function getSession(){
+    try{
+      return sessionStorage.getItem('ELS_SESSION')
+          || new URL(location.href).searchParams.get('session')
+          || ELS.SESSION_ID || '';
+    }catch(e){ return ELS.SESSION_ID || ''; }
+  }
+  function show(view){ document.documentElement.setAttribute('data-view', view); }
+
+  window.ELS_signOut = function(){
+    var sid = getSession();
+    if (sid) google.script.run.destroySession(sid);
+    try{ sessionStorage.removeItem('ELS_SESSION'); }catch(e){}
+    const url = new URL(location.href);
+    url.searchParams.delete('session'); url.searchParams.delete('auth');
+    history.replaceState({},'',url);
+    show('login');
+  };
+
+  document.addEventListener('DOMContentLoaded', function(){
+    const params = new URLSearchParams(location.search);
+    const hasAuth = params.has('auth');
+    const sid = getSession();
+
+    if (sid) {
+      google.script.run.withSuccessHandler(function(res){
+        if (res && res.ok){ setSession(sid); show('app'); }
+        else { show('login'); }
+      }).validateSessionServer(sid);
+      return;
+    }
+
+    if (hasAuth) {
+      const token = params.get('auth');
+      google.script.run.withSuccessHandler(function(res){
+        const url = new URL(location.href); url.searchParams.delete('auth');
+        if (res && res.ok){
+          setSession(res.sessionId);
+          url.searchParams.set('session', res.sessionId);
+          history.replaceState({},'',url);
+          show('app');
+        } else {
+          history.replaceState({},'',url);
+          show('login');
+          alert('Lien expiré ou déjà utilisé. Demandez un nouveau lien.');
+        }
+      }).validateMagicLinkAndCreateSession(token);
+      return;
+    }
+
+    show(ELS.SESSION_EMAIL ? 'app' : 'login');
+  });
+
+  window.ELS_requestLink = function(){
+    const input = document.querySelector('[data-email]');
+    const email = (input && input.value || '').trim();
+    if (!email) return alert('Saisissez votre e-mail.');
+    google.script.run.withSuccessHandler(function(r){
+      if (r && r.ok) alert('Lien envoyé. Vérifiez le dossier Spam si besoin.');
+      else alert('Envoi impossible (' + (r && r.error || '?') + ').');
+    }).requestMagicLink(email);
+  };
+})();
+</script>
+
+<style>
+  /* Toggle basique par attribut data-view */
+  [data-view="login"] #view-app { display:none; }
+  [data-view="login"] #view-login { display:block; }
+  [data-view="app"] #view-login { display:none; }
+  [data-view="app"] #view-app { display:block; }
+</style>

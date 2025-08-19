@@ -1,3 +1,4 @@
+<?!= include('Client_Auth_Bootstrap'); ?>
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -14,63 +15,61 @@
 </head>
 <body>
 
-  <div id="indicateur-chargement" class="indicateur-chargement-overlay">
-    <div class="spinner"></div>
-  </div>
-
-  <div id="app-conteneur-principal">
-    <header class="app-en-tete">
-      <?!= include('Logo'); ?>
-      <p id="message-bienvenue-client"></p>
-    </header>
-
-    <main id="conteneur-app" class="hidden">
-      <div id="liste-reservations" class="carte">
-        <h3>Vos prochaines courses</h3>
-        <div id="contenu-reservations">
-          <!-- Les réservations seront injectées ici par le script JS -->
-        </div>
-      </div>
-
-      <div id="liste-reservations-passees" class="carte">
-        <h3>Vos courses passées et factures</h3>
-        <div id="contenu-reservations-passees">
-          <!-- Les réservations passées et les factures seront injectées ici -->
-        </div>
-      </div>
-
-      <div class="carte">
-        <p>Pour toute annulation ou pour une modification non disponible ici, veuillez nous contacter directement.</p>
-        <a href="<?= ScriptApp.getService().getUrl() ?>" class="btn btn-secondaire">Faire une nouvelle réservation</a>
-        <a href="mailto:<?= ADMIN_EMAIL ?>" class="btn btn-secondaire" style="margin-left: 10px;">Contacter le support</a>
-      </div>
-    </main>
-
-    <div id="non-connecte" class="carte hidden">
-        <h3>Accès à l'espace client</h3>
-        <p>Pour recevoir un lien de connexion sécurisé par e-mail, veuillez saisir votre adresse ci-dessous.</p>
-
-        <form id="formulaire-connexion-client" class="groupe-formulaire" style="margin-top: 20px;">
-            <label for="email-connexion">Votre adresse e-mail :</label>
-            <input type="email" id="email-connexion" class="champ-formulaire" required placeholder="exemple@domaine.com">
-            <div id="message-connexion" class="hidden" style="margin-top: 10px; padding: 10px; border-radius: 5px;"></div>
-            <button type="submit" class="btn btn-primaire" style="margin-top: 15px; width: 100%;">Recevoir mon lien de connexion</button>
-        </form>
-
-        <a href="<?= ScriptApp.getService().getUrl() ?>" class="btn btn-secondaire" style="margin-top: 20px;">Retour à la page de réservation</a>
+  <div id="view-login">
+    <div class="carte" style="margin: 20px auto; max-width: 400px; padding: 20px;">
+        <h2>Connexion sans mot de passe</h2>
+        <p>Entrez votre e-mail pour recevoir un lien d’accès.</p>
+        <input type="email" data-email placeholder="votre@email" class="champ-formulaire" style="width: 100%; margin-top: 10px;">
+        <button onclick="ELS_requestLink()" class="btn btn-primaire" style="margin-top: 15px; width: 100%;">Recevoir le lien</button>
     </div>
   </div>
 
-  <div id="modale-modification" class="modale-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="modale-modification-titre">
-    <div class="modale-contenu">
-      <button id="btn-fermer-modale" class="btn-fermer" aria-label="Fermer la fenêtre de modification">&times;</button>
-      <div id="contenu-modale-wrapper">
-        <!-- Le contenu de la modale sera injecté ici -->
+  <div id="view-app">
+    <div id="indicateur-chargement" class="indicateur-chargement-overlay">
+      <div class="spinner"></div>
+    </div>
+
+    <div id="app-conteneur-principal">
+      <header class="app-en-tete">
+        <?!= include('Logo'); ?>
+        <p id="message-bienvenue-client"></p>
+      </header>
+
+      <main id="conteneur-app" class="hidden">
+        <div id="liste-reservations" class="carte">
+          <h3>Vos prochaines courses</h3>
+          <div id="contenu-reservations">
+            <!-- Les réservations seront injectées ici par le script JS -->
+          </div>
+        </div>
+
+        <div id="liste-reservations-passees" class="carte">
+          <h3>Vos courses passées et factures</h3>
+          <div id="contenu-reservations-passees">
+            <!-- Les réservations passées et les factures seront injectées ici -->
+          </div>
+        </div>
+
+        <div class="carte">
+          <p>Pour toute annulation ou pour une modification non disponible ici, veuillez nous contacter directement.</p>
+          <a href="<?= ScriptApp.getService().getUrl() ?>" class="btn btn-secondaire">Faire une nouvelle réservation</a>
+          <a href="mailto:<?= ADMIN_EMAIL ?>" class="btn btn-secondaire" style="margin-left: 10px;">Contacter le support</a>
+          <button onclick="ELS_signOut()" class="btn btn-secondaire" style="margin-left: 10px;">Se déconnecter</button>
+        </div>
+      </main>
+    </div>
+
+    <div id="modale-modification" class="modale-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="modale-modification-titre">
+      <div class="modale-contenu">
+        <button id="btn-fermer-modale" class="btn-fermer" aria-label="Fermer la fenêtre de modification">&times;</button>
+        <div id="contenu-modale-wrapper">
+          <!-- Le contenu de la modale sera injecté ici -->
+        </div>
       </div>
     </div>
-  </div>
 
-  <div id="conteneur-notifications"></div>
+    <div id="conteneur-notifications"></div>
+  </div>
 
   <?!= include('Client_JS'); ?>
 </body>
