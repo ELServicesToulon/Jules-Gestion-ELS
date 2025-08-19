@@ -53,15 +53,15 @@ const KM_ARRET_SUP = 3;
 const TARIFS = {
   'Normal': {
     base: 15,
-    arrets: [5, 3, 4, 5, 5] // Prix pour Arrêt 2, 3, 4, 5, et 6+
+    arrets: [5, 4, 3, 4, 5] // Prix pour Arrêt 2, 3, 4, 5, et 6+
   },
   'Samedi': {
     base: 25,
-    arrets: [5, 3, 4, 5, 5]
+    arrets: [5, 4, 3, 4, 5]
   },
   'Urgent': {
     base: 20,
-    arrets: [5, 3, 4, 5, 5]
+    arrets: [5, 4, 3, 4, 5]
   },
   'Special': { // Vous pouvez ajouter autant de types que vous voulez
     base: 10,
