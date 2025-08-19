@@ -103,7 +103,9 @@ function getConfiguration() {
     // --- Paramètres de facturation ---
     TVA_APPLICABLE: TVA_APPLICABLE,
 
-    // --- Système de tarification & options ---
+    // --- Données pour la logique de tarification ---
+    DUREE_ARRET_SUP: DUREE_ARRET_SUP,
+    KM_ARRET_SUP: KM_ARRET_SUP,
     TARIFS: TARIFS,
     APP_URL: WEBAPP_URL,
 
@@ -116,7 +118,8 @@ function getConfiguration() {
     PRIX_ARRET_2: normalStops[0],
     PRIX_ARRET_3: normalStops[1],
     PRIX_ARRET_4: normalStops[2],
-    PRIX_ARRET_5P: normalStops[3],
+    PRIX_ARRET_5: normalStops[3],
+    PRIX_ARRET_6P: normalStops[4], // Prix pour le 6eme arret et plus
     SAMEDI_MIN: saturdayRates.base,
     URGENT_PRIX_MIN: urgentRates.base,
     URGENT_DELAI_MIN: URGENT_THRESHOLD_MINUTES,
