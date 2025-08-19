@@ -63,11 +63,13 @@ function verifierJetonMagique(token) {
       const ml = shML.getDataRange().getValues(); // A:Token B:URL C:Expiration D:Used
       for (let j = 1; j < ml.length; j++) {
         if (ml[j][0] === token) {
-          // Vérifie si le token a déjà été utilisé
-          if (ml[j][3] === true) {
-            return null; // Déjà utilisé
-          }
-          shML.getRange(j + 1, 4).setValue(true);
+          // On marque le jeton comme utilisé mais on ne bloque pas la connexion
+          // s'il a déjà été utilisé. Cela prévient les problèmes avec les scanners
+          // de liens dans les e-mails qui peuvent "utiliser" le jeton avant l'utilisateur.
+          // if (ml[j][3] === true) {
+          //   return null; // Déjà utilisé (DÉSACTIVÉ)
+          // }
+          shML.getRange(j + 1, 4).setValue(true); // On continue de marquer la première utilisation
           break;
         }
       }
