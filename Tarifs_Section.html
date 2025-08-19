@@ -90,7 +90,11 @@
     }
   });
 
+fix-dynamic-pricing-card
   function formatCurrency(v, devise){
+
+  function €(v, devise){
+ main
     const n = Number(v || 0);
     return `${n.toLocaleString('fr-FR',{maximumFractionDigits:0})} ${devise || "€"} net`;
   }
@@ -106,8 +110,11 @@
       `Tarifs et options toujours à jour, ajustables selon vos besoins.`;
 
     // Base
-    const base = [
+    const base = [ fix-dynamic-pricing-card
       `💶 ${formatCurrency(tarifs.base.prix, tarifs.devise)}`,
+
+      `💶 ${€(tarifs.base.prix, tarifs.devise)}`,
+ main
       `📍 ${tarifs.base.kmInclus} km inclus`,
       `⏱️ ~${tarifs.base.dureeMin} min`,
       tarifs.base.premierArretInclus ? `✅ 1er arrêt inclus` : `➕ Arrêts en option`
@@ -117,18 +124,30 @@
     // Arrêts
     const a = tarifs.arrets;
     const arretsHtml = [
+ fix-dynamic-pricing-card
       `2ᵉ arrêt : ${formatCurrency(a.second, tarifs.devise)}`,
       `3ᵉ arrêt : ${formatCurrency(a.troisieme, tarifs.devise)}`,
       `4ᵉ arrêt : ${formatCurrency(a.quatrieme, tarifs.devise)}`,
       `À partir du 5ᵉ : ${formatCurrency(a.aPartirDuCinquieme, tarifs.devise)}/arrêt`
+
+      `2ᵉ arrêt : ${€(a.second, tarifs.devise)}`,
+      `3ᵉ arrêt : ${€(a.troisieme, tarifs.devise)}`,
+      `4ᵉ arrêt : ${€(a.quatrieme, tarifs.devise)}`,
+      `À partir du 5ᵉ : ${€(a.aPartirDuCinquieme, tarifs.devise)}/arrêt`
+main
     ];
     document.getElementById('card-arrets-content').innerHTML = arretsHtml.map(li => `<div>${li}</div>`).join('');
 
     // Options
     const opt = tarifs.options;
     const optHtml = [
+fix-dynamic-pricing-card
       `📅 <span class="opt-special">Samedi</span> : dès ${formatCurrency(opt.samediMin, tarifs.devise)}`,
       `⚡ <span class="opt-highlight">Urgent</span> : départ sous ${opt.urgent.delaiMin} min${opt.urgent.selonDispo ? " (selon dispo)" : ""}, dès ${formatCurrency(opt.urgent.prixMin, tarifs.devise)}`
+
+      `📅 <span class="opt-special">Samedi</span> : dès ${€(opt.samediMin, tarifs.devise)}`,
+      `⚡ <span class="opt-highlight">Urgent</span> : départ sous ${opt.urgent.delaiMin} min${opt.urgent.selonDispo ? " (selon dispo)" : ""}, dès ${€(opt.urgent.prixMin, tarifs.devise)}`
+main
     ];
     document.getElementById('card-options-content').innerHTML = optHtml.map(li => `<div>${li}</div>`).join('');
 
