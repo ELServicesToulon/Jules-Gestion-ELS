@@ -68,20 +68,32 @@
     try{
       if (google && google.script && google.script.run){
         google.script.run
-          .withSuccessHandler(function(payload){
+          .withSuccessHandler(function(payload){  
+        fix-dynamic-pricing-card
             console.log('getPublicConfig ->', payload);
+
+            console.log('getPublicConfig →', payload);
+         main
             renderTarifsSection(payload);
           })
           .withFailureHandler(function(err){
             console.error('getPublicConfig FAILED', err);
+fix-dynamic-pricing-card
             failTarifs('Erreur de lecture configuration (getPublicConfig). Verifie PublicConfig.gs & Configuration.gs');
+
+            failTarifs('Erreur de lecture configuration (getPublicConfig). Vérifie PublicConfig.gs & Configuration.gs');
+main
           })
           .getPublicConfig();
       } else {
         // Preview hors Apps Script
         renderTarifsSection({
           meta:{ nomService:"EL Services", zones:["Tamaris","Mar Vivo","Six-Fours-les-Plages","Sanary","Portissol","Bandol"], tvaApplicable:false, articleTVA:"Art. 293 B CGI", contact:"elservicestoulon@gmail.com", appUrl:"" },
+ fix-dynamic-pricing-card
           tarifs:{ devise:"\u20AC", base:{ prix:15, kmInclus:9, dureeMin:30, premierArretInclus:true }, arrets:{ second:5, troisieme:3, quatrieme:4, aPartirDuCinquieme:5 }, options:{ samediMin:25, urgent:{ delaiMin:30, prixMin:20, selonDispo:true } } }
+
+          tarifs:{ devise:"€", base:{ prix:15, kmInclus:9, dureeMin:30, premierArretInclus:true }, arrets:{ second:5, troisieme:3, quatrieme:4, aPartirDuCinquieme:5 }, options:{ samediMin:25, urgent:{ delaiMin:30, prixMin:20, selonDispo:true } } }
+ main
         });
       }
     }catch(e){
@@ -89,10 +101,21 @@
       failTarifs('Erreur front : ' + e.message);
     }
   });
+ fix-dynamic-pricing-card
 
   function formatCurrency(v, devise){
     const n = Number(v || 0);
     return `${n.toLocaleString('fr-FR',{maximumFractionDigits:0})} ${devise || "\u20AC"} net`;
+
+
+fix-dynamic-pricing-card
+  function formatCurrency(v, devise){
+
+  function €(v, devise){
+ main
+    const n = Number(v || 0);
+    return `${n.toLocaleString('fr-FR',{maximumFractionDigits:0})} ${devise || "€"} net`;
+ main
   }
 
   function renderTarifsSection(payload){
@@ -106,6 +129,7 @@
       `Tarifs et options toujours \u00E0 jour, ajustables selon vos besoins.`;
 
     // Base
+ fix-dynamic-pricing-card
     const base = [
       `\uD83D\uDCB6 ${formatCurrency(tarifs.base.prix, tarifs.devise)}`,
       `\uD83D\uDCCD ${tarifs.base.kmInclus} km inclus`,
@@ -121,14 +145,51 @@
       `3\u1D49 arr\u00EAt : ${formatCurrency(a.troisieme, tarifs.devise)}`,
       `4\u1D49 arr\u00EAt : ${formatCurrency(a.quatrieme, tarifs.devise)}`,
       `\u00C0 partir du 5\u1D49 : ${formatCurrency(a.aPartirDuCinquieme, tarifs.devise)}/arr\u00EAt`
+
+    const base = [ fix-dynamic-pricing-card
+      `💶 ${formatCurrency(tarifs.base.prix, tarifs.devise)}`,
+
+      `💶 ${€(tarifs.base.prix, tarifs.devise)}`,
+ main
+      `📍 ${tarifs.base.kmInclus} km inclus`,
+      `⏱️ ~${tarifs.base.dureeMin} min`,
+      tarifs.base.premierArretInclus ? `✅ 1er arrêt inclus` : `➕ Arrêts en option`
+    ];
+    document.getElementById('card-base-content').innerHTML = base.map(li => `<div>${li}</div>`).join('');
+
+    // Arrêts
+    const a = tarifs.arrets;
+    const arretsHtml = [
+ fix-dynamic-pricing-card
+      `2ᵉ arrêt : ${formatCurrency(a.second, tarifs.devise)}`,
+      `3ᵉ arrêt : ${formatCurrency(a.troisieme, tarifs.devise)}`,
+      `4ᵉ arrêt : ${formatCurrency(a.quatrieme, tarifs.devise)}`,
+      `À partir du 5ᵉ : ${formatCurrency(a.aPartirDuCinquieme, tarifs.devise)}/arrêt`
+
+      `2ᵉ arrêt : ${€(a.second, tarifs.devise)}`,
+      `3ᵉ arrêt : ${€(a.troisieme, tarifs.devise)}`,
+      `4ᵉ arrêt : ${€(a.quatrieme, tarifs.devise)}`,
+      `À partir du 5ᵉ : ${€(a.aPartirDuCinquieme, tarifs.devise)}/arrêt`
+main
+main
     ];
     document.getElementById('card-arrets-content').innerHTML = arretsHtml.map(li => `<div>${li}</div>`).join('');
 
     // Options
     const opt = tarifs.options;
     const optHtml = [
+fix-dynamic-pricing-card
       `\uD83D\uDCC5 Samedi : d\u00E8s ${formatCurrency(opt.samediMin, tarifs.devise)}`,
       `\u26A1 Urgent : d\u00E9part sous ${opt.urgent.delaiMin} min${opt.urgent.selonDispo ? " (selon dispo)" : ""}, d\u00E8s ${formatCurrency(opt.urgent.prixMin, tarifs.devise)}`
+
+fix-dynamic-pricing-card
+      `📅 <span class="opt-special">Samedi</span> : dès ${formatCurrency(opt.samediMin, tarifs.devise)}`,
+      `⚡ <span class="opt-highlight">Urgent</span> : départ sous ${opt.urgent.delaiMin} min${opt.urgent.selonDispo ? " (selon dispo)" : ""}, dès ${formatCurrency(opt.urgent.prixMin, tarifs.devise)}`
+
+      `📅 <span class="opt-special">Samedi</span> : dès ${€(opt.samediMin, tarifs.devise)}`,
+      `⚡ <span class="opt-highlight">Urgent</span> : départ sous ${opt.urgent.delaiMin} min${opt.urgent.selonDispo ? " (selon dispo)" : ""}, dès ${€(opt.urgent.prixMin, tarifs.devise)}`
+main
+ main
     ];
     document.getElementById('card-options-content').innerHTML = optHtml.map(li => `<div>${li}</div>`).join('');
 
