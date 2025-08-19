@@ -5,127 +5,57 @@
 
 <style>
   :root{
-    --violet: #8e44ad;      /* éléments principaux et boutons */
-    --bleu:   #3498db;      /* jours, actions */
-    --bleuC:  #5dade2;      /* options spéciales */
-    --txt:    #1f2d3d;
-    --txt-soft:#6b7b8c;
-    --bg:     #f6f8fb;
+    --violet:#8e44ad;     /* principal/boutons */
+    --bleu:#3498db;       /* actions/jours */
+    --bleuC:#5dade2;      /* options spéciales */
+    --txt:#1f2d3d; --txt-soft:#6b7b8c;
   }
-  .tarifs-wrap{
-    font-family: 'Montserrat', sans-serif;
-    color: var(--txt);
-    background: linear-gradient(135deg, var(--violet) 0%, var(--bleu) 100%);
-    border-radius: 24px;
-    padding: clamp(16px, 3vw, 28px);
-    box-shadow: 0 10px 24px rgba(0,0,0,0.12);
-  }
-  .tarifs-inner{
-    background: rgba(255,255,255,0.12);
-    border: 1px solid rgba(255,255,255,0.2);
-    border-radius: 20px;
-    padding: clamp(16px, 2.5vw, 24px);
-  }
-  .tarifs-title{
-    font-weight: 700;
-    font-size: clamp(20px, 2.4vw, 28px);
-    color: #fff;
-    text-align: center;
-    margin: 4px 0 6px;
-    letter-spacing: 0.2px;
-  }
-  .tarifs-sub{
-    text-align: center;
-    color: rgba(255,255,255,0.9);
-    font-size: clamp(12px, 1.6vw, 14px);
-    margin-bottom: 18px;
-  }
-
-  .cards{
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0,1fr));
-    gap: clamp(12px, 2vw, 20px);
-  }
-  @media (max-width: 920px){
-    .cards{ grid-template-columns: 1fr; }
-  }
-
-  .card{
-    background: rgba(255,255,255,0.92);
-    border-radius: 16px;
-    padding: clamp(14px, 2vw, 18px);
-    box-shadow: 0 6px 16px rgba(0,0,0,0.08);
-    transition: transform .2s ease, box-shadow .2s ease;
-  }
-  .card:hover{
-    transform: translateY(-2px);
-    box-shadow: 0 10px 22px rgba(0,0,0,0.12);
-  }
-  .card h3{
-    margin: 0 0 10px;
-    font-size: clamp(16px, 2vw, 18px);
-    color: var(--txt);
-  }
-  .card small{ color: var(--txt-soft); }
-
-  .bullet{
-    display: grid;
-    gap: 6px;
-    font-size: 14px;
-    line-height: 1.45;
-  }
-
-  /* Bouton gélule */
-  .cta{
-    margin-top: 18px;
-    display: inline-block;
-    padding: 10px 18px;
-    border-radius: 999px;
-    background: linear-gradient(90deg, var(--violet), var(--bleu));
-    color: #fff;
-    font-weight: 700;
-    text-decoration: none;
-    box-shadow: inset 0 1px 0 rgba(255,255,255,0.25), 0 8px 16px rgba(0,0,0,0.15);
-    transition: transform .12s ease, box-shadow .12s ease, filter .12s ease;
-  }
-  .cta:hover{ transform: translateY(-1px); filter: brightness(1.02); }
-  .cta:active{ transform: translateY(0); filter: brightness(.98); }
-
-  .footer{
-    color: #fff; text-align: center;
-    margin-top: 14px; font-size: 13px;
-  }
-  .footer a{ color: #fff; text-underline-offset: 2px; }
-  .tag{
-    display: inline-block; padding: 4px 10px; border-radius: 999px;
-    background: rgba(255,255,255,0.16); color: #fff; font-size: 12px; margin-top: 6px;
-  }
-  .opt-note{ color: var(--txt-soft); font-size: 13px; }
-  .opt-highlight{ color: var(--bleu); font-weight: 700; }
-  .opt-special{ color: var(--bleuC); font-weight: 700; }
+  .tarifs-wrap{font-family:'Montserrat',sans-serif;color:var(--txt);
+    background:linear-gradient(135deg,var(--violet) 0%,var(--bleu) 100%);
+    border-radius:24px;padding:clamp(16px,3vw,28px);box-shadow:0 10px 24px rgba(0,0,0,.12)}
+  .tarifs-inner{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);
+    border-radius:20px;padding:clamp(16px,2.5vw,24px)}
+  .tarifs-title{font-weight:700;font-size:clamp(20px,2.4vw,28px);color:#fff;text-align:center;margin:4px 0 6px}
+  .tarifs-sub{text-align:center;color:rgba(255,255,255,.9);font-size:clamp(12px,1.6vw,14px);margin-bottom:18px}
+  .cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:clamp(12px,2vw,20px)}
+  @media (max-width:920px){.cards{grid-template-columns:1fr}}
+  .card{background:rgba(255,255,255,.92);border-radius:16px;padding:clamp(14px,2vw,18px);box-shadow:0 6px 16px rgba(0,0,0,.08);transition:.2s}
+  .card:hover{transform:translateY(-2px);box-shadow:0 10px 22px rgba(0,0,0,.12)}
+  .card h3{margin:0 0 10px;font-size:clamp(16px,2vw,18px);color:var(--txt)}
+  .bullet{display:grid;gap:6px;font-size:14px;line-height:1.45;min-height:72px}
+  .cta{margin-top:18px;display:inline-block;padding:10px 18px;border-radius:999px;
+    background:linear-gradient(90deg,var(--violet),var(--bleu));color:#fff;font-weight:700;text-decoration:none;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.25),0 8px 16px rgba(0,0,0,.15)}
+  .cta:hover{filter:brightness(1.02)}
+  .footer{color:#fff;text-align:center;margin-top:14px;font-size:13px}
+  .footer a{color:#fff;text-underline-offset:2px}
+  .tag{display:inline-block;padding:4px 10px;border-radius:999px;background:rgba(255,255,255,.16);color:#fff;font-size:12px;margin-top:6px}
+  .opt-note{color:var(--txt-soft);font-size:13px}
+  .opt-highlight{color:var(--bleu);font-weight:700}
+  .opt-special{color:var(--bleuC);font-weight:700}
 </style>
 
 <section class="tarifs-wrap" aria-labelledby="tarifs-title">
   <div class="tarifs-inner">
-    <h2 id="tarifs-title" class="tarifs-title"></h2>
-    <p class="tarifs-sub" id="tarifs-sub"></p>
+    <h2 id="tarifs-title" class="tarifs-title">Chargement des tarifs…</h2>
+    <p class="tarifs-sub" id="tarifs-sub">Lecture de la configuration</p>
 
     <div class="cards" role="list">
       <article class="card" role="listitem" aria-labelledby="card-base-title">
         <h3 id="card-base-title">🏺 Course de base</h3>
-        <div class="bullet" id="card-base-content"></div>
+        <div class="bullet" id="card-base-content"><small>—</small></div>
         <a href="#" class="cta" id="cta-reserver" aria-label="Réserver une tournée">Réserver</a>
       </article>
 
       <article class="card" role="listitem" aria-labelledby="card-arrets-title">
         <h3 id="card-arrets-title">➕ Arrêts supplémentaires</h3>
-        <div class="bullet" id="card-arrets-content"></div>
+        <div class="bullet" id="card-arrets-content"><small>—</small></div>
       </article>
 
       <article class="card" role="listitem" aria-labelledby="card-options-title">
         <h3 id="card-options-title">🗓️ Options</h3>
-        <div class="bullet" id="card-options-content"></div>
-        <p class="opt-note">(<span class="opt-highlight">selon dispo</span> si précisé)</p>
+        <div class="bullet" id="card-options-content"><small>—</small></div>
+        <p class="opt-note">( <span class="opt-highlight">selon dispo</span> si précisé )</p>
       </article>
     </div>
 
@@ -134,62 +64,75 @@
 </section>
 
 <script>
-  // Initialise la section en appelant la config côté serveur
-  (function initTarifs(){
-    if (google && google.script && google.script.run){
-      google.script.run.withSuccessHandler(renderTarifsSection).getPublicConfig();
-    } else {
-      // Fallback local (utile en aperçu HTML hors Apps Script)
-      renderTarifsSection({
-        meta:{ nomService:"EL Services", zones:["Tamaris","Mar Vivo","Six-Fours-les-Plages","Sanary","Portissol","Bandol"], tvaApplicable:false, articleTVA:"Art. 293 B CGI", contact:"elservicestoulon@gmail.com", appUrl:"" },
-        tarifs:{ devise:"€", base:{ prix:15, kmInclus:9, dureeMin:30, premierArretInclus:true }, arrets:{ second:5, troisieme:3, quatrieme:4, aPartirDuCinquieme:5 }, options:{ samediMin:25, urgent:{ delaiMin:30, prixMin:20, selonDispo:true } } }
-      });
+  document.addEventListener('DOMContentLoaded', function(){
+    try{
+      if (google && google.script && google.script.run){
+        google.script.run
+          .withSuccessHandler(function(payload){
+            console.log('getPublicConfig →', payload);
+            renderTarifsSection(payload);
+          })
+          .withFailureHandler(function(err){
+            console.error('getPublicConfig FAILED', err);
+            failTarifs('Erreur de lecture configuration (getPublicConfig). Vérifie PublicConfig.gs & Configuration.gs');
+          })
+          .getPublicConfig();
+      } else {
+        // Preview hors Apps Script
+        renderTarifsSection({
+          meta:{ nomService:"EL Services", zones:["Tamaris","Mar Vivo","Six-Fours-les-Plages","Sanary","Portissol","Bandol"], tvaApplicable:false, articleTVA:"Art. 293 B CGI", contact:"elservicestoulon@gmail.com", appUrl:"" },
+          tarifs:{ devise:"€", base:{ prix:15, kmInclus:9, dureeMin:30, premierArretInclus:true }, arrets:{ second:5, troisieme:3, quatrieme:4, aPartirDuCinquieme:5 }, options:{ samediMin:25, urgent:{ delaiMin:30, prixMin:20, selonDispo:true } } }
+        });
+      }
+    }catch(e){
+      console.error(e);
+      failTarifs('Erreur front : ' + e.message);
     }
-  })();
+  });
 
-  function €(v, devise){ 
+  function formatCurrency(v, devise){
     const n = Number(v || 0);
-    return `${n.toLocaleString('fr-FR', {maximumFractionDigits:0})} ${devise || "€"} net`;
+    return `${n.toLocaleString('fr-FR',{maximumFractionDigits:0})} ${devise || "€"} net`;
   }
 
   function renderTarifsSection(payload){
-    const { meta, tarifs } = payload;
-    const devise = tarifs.devise || "€";
+    const { meta, tarifs } = payload || {};
+    if(!meta || !tarifs){ return failTarifs('Config vide ou invalide'); }
 
-    // Titre & sous-titre
+    // Titre/sous-titre
     document.getElementById('tarifs-title').textContent =
       `Réservez vos tournées pro en 1 clic sur ${meta.zones.join(', ')}`;
     document.getElementById('tarifs-sub').textContent =
       `Tarifs et options toujours à jour, ajustables selon vos besoins.`;
 
-    // Carte — base
+    // Base
     const base = [
-      `💶 ${€(tarifs.base.prix, devise)}`,
+      `💶 ${formatCurrency(tarifs.base.prix, tarifs.devise)}`,
       `📍 ${tarifs.base.kmInclus} km inclus`,
       `⏱️ ~${tarifs.base.dureeMin} min`,
       tarifs.base.premierArretInclus ? `✅ 1er arrêt inclus` : `➕ Arrêts en option`
     ];
     document.getElementById('card-base-content').innerHTML = base.map(li => `<div>${li}</div>`).join('');
 
-    // Carte — arrêts
-    const arr = tarifs.arrets;
+    // Arrêts
+    const a = tarifs.arrets;
     const arretsHtml = [
-      `2ᵉ arrêt : ${€(arr.second, devise)}`,
-      `3ᵉ arrêt : ${€(arr.troisieme, devise)}`,
-      `4ᵉ arrêt : ${€(arr.quatrieme, devise)}`,
-      `À partir du 5ᵉ : ${€(arr.aPartirDuCinquieme, devise)}/arrêt`
+      `2ᵉ arrêt : ${formatCurrency(a.second, tarifs.devise)}`,
+      `3ᵉ arrêt : ${formatCurrency(a.troisieme, tarifs.devise)}`,
+      `4ᵉ arrêt : ${formatCurrency(a.quatrieme, tarifs.devise)}`,
+      `À partir du 5ᵉ : ${formatCurrency(a.aPartirDuCinquieme, tarifs.devise)}/arrêt`
     ];
     document.getElementById('card-arrets-content').innerHTML = arretsHtml.map(li => `<div>${li}</div>`).join('');
 
-    // Carte — options
+    // Options
     const opt = tarifs.options;
     const optHtml = [
-      `📅 <span class="opt-special">Samedi</span> : dès ${€(opt.samediMin, devise)}`,
-      `⚡ <span class="opt-highlight">Urgent</span> : départ sous ${opt.urgent.delaiMin} min${opt.urgent.selonDispo ? " (selon dispo)" : ""}, dès ${€(opt.urgent.prixMin, devise)}`
+      `📅 <span class="opt-special">Samedi</span> : dès ${formatCurrency(opt.samediMin, tarifs.devise)}`,
+      `⚡ <span class="opt-highlight">Urgent</span> : départ sous ${opt.urgent.delaiMin} min${opt.urgent.selonDispo ? " (selon dispo)" : ""}, dès ${formatCurrency(opt.urgent.prixMin, tarifs.devise)}`
     ];
     document.getElementById('card-options-content').innerHTML = optHtml.map(li => `<div>${li}</div>`).join('');
 
-    // Footer (TVA + contact)
+    // Footer
     const tva = meta.tvaApplicable ? "TVA applicable" : `TVA non applicable (${meta.articleTVA})`;
     document.getElementById('tarifs-footer').innerHTML =
       `${tva} — <span class="tag">Tarifs & forfaits modifiables à tout moment par l’administrateur</span><br>
@@ -197,12 +140,18 @@
        <small>(CGV, documents officiels et conditions accessibles à tout moment)</small><br>
        Contact : <a href="mailto:${meta.contact}">${meta.contact}</a>`;
 
-    // Bouton Réserver → si un appUrl est fourni, on l'utilise.
+    // CTA
     const btn = document.getElementById('cta-reserver');
     btn.addEventListener('click', (e) => {
       e.preventDefault();
       const target = meta.appUrl ? meta.appUrl : (new URL('?page=reservation', window.location.href)).toString();
       window.location.href = target;
     });
+  }
+
+  function failTarifs(message){
+    document.getElementById('card-base-content').innerHTML = `<small>${message}</small>`;
+    document.getElementById('card-arrets-content').innerHTML = `<small>${message}</small>`;
+    document.getElementById('card-options-content').innerHTML = `<small>${message}</small>`;
   }
 </script>
