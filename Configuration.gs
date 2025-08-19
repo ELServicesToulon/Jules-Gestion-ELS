@@ -83,12 +83,46 @@ const TOKEN_TTL_MINUTES = 15;
 const SESSION_TTL_HOURS = 24;
 
 /**
- * Retourne un objet contenant les configurations dynamiques
- * pour l'authentification et la session.
- * @returns {{WEBAPP_URL: string, TOKEN_TTL_MINUTES: number, SESSION_TTL_HOURS: number}}
+ * Retourne un objet contenant TOUTES les configurations de l'application
+ * pour les rendre accessibles aux autres modules côté serveur.
+ * @returns {object}
  */
 function getConfiguration() {
+  // On s'assure que les objets existent pour éviter les erreurs
+  const normalRates = TARIFS['Normal'] || {};
+  const normalStops = normalRates.arrets || [];
+  const saturdayRates = TARIFS['Samedi'] || {};
+  const urgentRates = TARIFS['Urgent'] || {};
+
   return {
+    // --- Informations sur l'entreprise ---
+    NOM_ENTREPRISE: NOM_ENTREPRISE,
+    EMAIL_ENTREPRISE: EMAIL_ENTREPRISE,
+    ADMIN_EMAIL: ADMIN_EMAIL,
+
+    // --- Paramètres de facturation ---
+    TVA_APPLICABLE: TVA_APPLICABLE,
+
+    // --- Système de tarification & options ---
+    TARIFS: TARIFS,
+    APP_URL: WEBAPP_URL,
+
+    // --- Clés pour PublicConfig.gs (compatibilité ascendante) ---
+    // Ces clés permettent à normaliseTarifs_ de fonctionner même avec l'ancienne structure de constantes.
+    TARIF_BASE: normalRates.base,
+    KM_INCLUS: KM_BASE,
+    DUREE_BASE_MIN: DUREE_BASE,
+    PREMIER_ARRET_INCLUS: true,
+    PRIX_ARRET_2: normalStops[0],
+    PRIX_ARRET_3: normalStops[1],
+    PRIX_ARRET_4: normalStops[2],
+    PRIX_ARRET_5P: normalStops[3],
+    SAMEDI_MIN: saturdayRates.base,
+    URGENT_PRIX_MIN: urgentRates.base,
+    URGENT_DELAI_MIN: URGENT_THRESHOLD_MINUTES,
+    URGENT_SELON_DISPO: true,
+
+    // --- Authentification & Sessions (inchangé) ---
     WEBAPP_URL: WEBAPP_URL,
     TOKEN_TTL_MINUTES: TOKEN_TTL_MINUTES,
     SESSION_TTL_HOURS: SESSION_TTL_HOURS
