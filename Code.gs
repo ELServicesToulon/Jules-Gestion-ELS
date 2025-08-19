@@ -37,6 +37,12 @@ function onOpen() {
  * @returns {HtmlOutput} Le contenu HTML à afficher.
  */
 function doGet(e) {
+  // Health check rapide
+  if (e && e.parameter && e.parameter.health === '1') {
+    var payload = { ok: true, ts: new Date().toISOString(), page: (e.parameter.page || 'client') };
+    return ContentService.createTextOutput(JSON.stringify(payload))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
   try {
     // validerConfiguration(); // Assurez-vous que cette fonction existe ou commentez-la si non utilisée
 
@@ -116,35 +122,51 @@ function include(nomFichier) {
 }
 
 function renderClientPage(e) {
-  var tpl = HtmlService.createTemplateFromFile('Client_Espace');
+  try {
+    var tpl = HtmlService.createTemplateFromFile('Client_Espace');
 
-  var session = '';
-  var email = '';
+    var session = '';
+    var email = '';
 
-  if (e && e.parameter && e.parameter.auth) {
-    var r = validateAndConsumeToken(e.parameter.auth);
-    if (r.ok) {
-      session = createSession(r.email);
-      email = r.email;
+    // Consommer un token auth → créer session
+    if (e && e.parameter && e.parameter.auth) {
+      var r = validateAndConsumeToken(e.parameter.auth);
+      if (r.ok) {
+        session = createSession(r.email);
+        email = r.email;
+      }
     }
-  }
 
-  if (!email && e && e.parameter && e.parameter.session) {
-    var s = validateSession(e.parameter.session);
-    if (s.ok) {
-      session = e.parameter.session;
-      email = s.email;
+    // Valider une session existante
+    if (!email && e && e.parameter && e.parameter.session) {
+      var s = validateSession(e.parameter.session);
+      if (s.ok) {
+        session = e.parameter.session;
+        email = s.email;
+      }
     }
+
+    var base = (getConfiguration().WEBAPP_URL || ScriptApp.getService().getUrl() || '').trim();
+    base = base.split('#')[0].split('?')[0];
+
+    tpl.SESSION_ID = session;
+    tpl.SESSION_EMAIL = email;
+    tpl.WEBAPP_URL = base;
+    tpl.ADMIN_EMAIL = ADMIN_EMAIL; // Maintenu pour le lien "Contacter le support"
+
+    return tpl.evaluate()
+      .setTitle('Espace Client')
+      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+
+  } catch (err) {
+    // Mode debug lisible dans le navigateur: ?page=client&debug=1
+    if (e && e.parameter && e.parameter.debug === '1') {
+      var pre = HtmlService.createHtmlOutput('<pre style="white-space:pre-wrap">'
+        + String(err && err.stack || err) + '</pre>');
+      return pre.setTitle('Debug');
+    }
+    throw err;
   }
-
-  tpl.SESSION_ID = session;
-  tpl.SESSION_EMAIL = email;
-  tpl.WEBAPP_URL = getConfiguration().WEBAPP_URL || ScriptApp.getService().getUrl();
-  tpl.ADMIN_EMAIL = ADMIN_EMAIL;
-
-  return tpl.evaluate()
-            .setTitle('Espace Client')
-            .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL); // si iFrame/Google Sites
 }
 
 // Exposer au client

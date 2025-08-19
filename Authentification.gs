@@ -2,23 +2,32 @@ function requestMagicLink(email) {
   email = (email || '').trim().toLowerCase();
   if (!email) return { ok: false, error: 'EMAIL_REQUIRED' };
 
-  // (Optionnel) vérifier que l'email appartient à un client connu
-  // if (!isKnownClient(email)) return { ok:false, error:'UNKNOWN_EMAIL' };
-
+  // 1) Créer le token (usage unique)
   var token = createMagicToken(email);
-  var baseUrl = getConfiguration().WEBAPP_URL || ScriptApp.getService().getUrl();
-  var url = baseUrl + '?page=client&auth=' + encodeURIComponent(token);
+  if (!token) return { ok: false, error: 'TOKEN_CREATE_FAILED' };
 
+  // 2) Normaliser l’URL de base (exec), sans query/fragment
+  var base = (getConfiguration().WEBAPP_URL || ScriptApp.getService().getUrl() || '').trim();
+  base = base.split('#')[0].split('?')[0]; // IMPORTANT
+
+  // 3) Construire l’URL AVEC le token
+  var url = base + '?page=client&auth=' + encodeURIComponent(token);
+
+  // 4) Log (contrôle immédiat dans Exécutions/Logs)
+  Logger.log('MAGIC_LINK for %s → %s', email, url);
+
+  // 5) Envoyer e-mail HTML + lien texte de secours
   var subject = 'Accès à votre espace client — EL Services';
-  var htmlBody =
-    '<p>Bonjour,</p>' +
-    '<p>Cliquez pour ouvrir votre espace client :</p>' +
-    '<p><a href="' + url + '"><strong>Ouvrir mon espace client</strong></a></p>' +
-    '<p>Ce lien expire dans ' + (getConfiguration().TOKEN_TTL_MINUTES || 15) + ' minutes et n’est utilisable qu’une seule fois.</p>' +
-    '<p>— EL Services</p>';
+  var html = ''
+    + '<p>Bonjour,</p>'
+    + '<p><a href="' + url + '"><strong>Ouvrir mon espace client</strong></a></p>'
+    + '<p>Si le bouton ne s’ouvre pas, copiez-collez ce lien dans votre navigateur :</p>'
+    + '<p><code style="word-break:break-all;">' + url + '</code></p>'
+    + '<p>Le lien expire dans ' + (getConfiguration().TOKEN_TTL_MINUTES || 15) + ' minutes (usage unique).</p>'
+    + '<p>— EL Services</p>';
 
-  MailApp.sendEmail({ to: email, subject: subject, htmlBody: htmlBody, name: 'EL Services' });
-  return { ok: true };
+  MailApp.sendEmail({ to: email, subject: subject, htmlBody: html, name: 'EL Services' });
+  return { ok: true, url: url };
 }
 
 function validateMagicLinkAndCreateSession(token) {
