@@ -116,13 +116,11 @@
 
     // Arrets
     const a = tarifs.arrets;
-    const detailsSup = `(+${a.dureeSup} min, +${a.kmSup} km)`;
     const arretsHtml = [
-      `2\u1D49 arr\u00EAt : ${formatCurrency(a.second, tarifs.devise)} <small>${detailsSup}</small>`,
-      `3\u1D49 arr\u00EAt : ${formatCurrency(a.troisieme, tarifs.devise)} <small>${detailsSup}</small>`,
-      `4\u1D49 arr\u00EAt : ${formatCurrency(a.quatrieme, tarifs.devise)} <small>${detailsSup}</small>`,
-      `5\u1D49 arr\u00EAt : ${formatCurrency(a.cinquieme, tarifs.devise)} <small>${detailsSup}</small>`,
-      `6\u1D49 et + : ${formatCurrency(a.sixiemeEtPlus, tarifs.devise)}/arr\u00EAt <small>${detailsSup}</small>`
+      `2\u1D49 arr\u00EAt : ${formatCurrency(a.second, tarifs.devise)}`,
+      `3\u1D49 arr\u00EAt : ${formatCurrency(a.troisieme, tarifs.devise)}`,
+      `4\u1D49 arr\u00EAt : ${formatCurrency(a.quatrieme, tarifs.devise)}`,
+      `\u00C0 partir du 5\u1D49 : ${formatCurrency(a.aPartirDuCinquieme, tarifs.devise)}/arr\u00EAt`
     ];
     document.getElementById('card-arrets-content').innerHTML = arretsHtml.map(li => `<div>${li}</div>`).join('');
 

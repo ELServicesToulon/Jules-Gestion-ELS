@@ -41,10 +41,7 @@ function normaliseTarifs_(cfg){
       second:               toNum(ARRETS.SECOND ?? cfg.PRIX_ARRET_2 ?? 5),
       troisieme:            toNum(ARRETS.TROISIEME ?? cfg.PRIX_ARRET_3 ?? 3),
       quatrieme:            toNum(ARRETS.QUATRIEME ?? cfg.PRIX_ARRET_4 ?? 4),
-      cinquieme:            toNum(ARRETS.CINQUIEME ?? cfg.PRIX_ARRET_5 ?? 4),
-      sixiemeEtPlus:        toNum(ARRETS.SIXIEME_ET_PLUS ?? cfg.PRIX_ARRET_6P ?? 5),
-      dureeSup:             toNum(cfg.DUREE_ARRET_SUP ?? 15),
-      kmSup:                toNum(cfg.KM_ARRET_SUP ?? 3)
+      aPartirDuCinquieme:   toNum(ARRETS.A_PARTIR_DU_5 ?? cfg.PRIX_ARRET_5P ?? 5),
     },
     options: {
       samediMin:            toNum(OPT.SAMEDI_MIN ?? cfg.SAMEDI_MIN ?? 25),
