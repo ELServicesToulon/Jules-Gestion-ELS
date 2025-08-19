@@ -183,11 +183,7 @@ function lancerTousLesTestsEtRetournerLogs() {
   return Logger.getLog();
 }
 
-function testMagicLink() {
+function testMagicLinkForSelf(){
   var email = Session.getActiveUser().getEmail() || 'elservicestoulon@gmail.com';
-  var token = createMagicToken(email);
-  var baseUrl = getConfiguration().WEBAPP_URL || ScriptApp.getService().getUrl();
-  var url = baseUrl + '?page=client&auth=' + encodeURIComponent(token);
-  Logger.log('TEST MAGIC LINK => ' + url);
-  return url;
+  return adminGenerateMagicLink(email);
 }

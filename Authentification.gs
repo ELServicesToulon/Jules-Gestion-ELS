@@ -36,3 +36,29 @@ function validateMagicLinkAndCreateSession(token) {
   var sessionId = createSession(res.email);
   return { ok: true, sessionId: sessionId, email: res.email };
 }
+
+/**
+ * Génère un lien magique SANS envoyer d'email (usage admin/test).
+ * Retourne { ok, url, email }.
+ */
+function adminGenerateMagicLink(email) {
+  var admin = (getConfiguration().ADMIN_EMAIL || '').toLowerCase();
+  var caller = (Session.getActiveUser().getEmail() || '').toLowerCase();
+  // Si Apps Script nous donne l'email de l'appelant et qu'il n'est pas admin → on bloque.
+  if (admin && caller && caller !== admin) {
+    return { ok: false, error: 'NOT_ADMIN' };
+  }
+
+  email = (email || '').trim().toLowerCase();
+  if (!email) return { ok: false, error: 'EMAIL_REQUIRED' };
+
+  var token = createMagicToken(email);
+  if (!token) return { ok: false, error: 'TOKEN_CREATE_FAILED' };
+
+  var base = (getConfiguration().WEBAPP_URL || ScriptApp.getService().getUrl() || '').trim();
+  base = base.split('#')[0].split('?')[0]; // nettoie hash & query
+  var url = base + '?page=client&auth=' + encodeURIComponent(token);
+
+  Logger.log('ADMIN MAGIC_LINK for %s => %s', email, url);
+  return { ok: true, url: url, email: email };
+}
