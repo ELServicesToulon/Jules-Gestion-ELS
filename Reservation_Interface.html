@@ -42,11 +42,6 @@
     const configServeur = {
       appUrl: "<?= appUrl ?>",
       nomService: "<?= nomService ?>",
-      TARIFS: JSON.parse('<?= TARIFS_JSON ?>'),
-      DUREE_BASE: <?= DUREE_BASE ?>,
-      DUREE_ARRET_SUP: <?= DUREE_ARRET_SUP ?>,
-      KM_BASE: <?= KM_BASE ?>,
-      KM_ARRET_SUP: <?= KM_ARRET_SUP ?>,
       URGENT_THRESHOLD_MINUTES: <?= URGENT_THRESHOLD_MINUTES || 45 ?>,
       dateDuJour: "<?= dateDuJour ?>"
     };
@@ -68,100 +63,7 @@
         <a href="<?= appUrl ?>?page=gestion" class="btn btn-secondaire btn-espace-client">Mon Espace Client</a>
     </header>
 
-    <!-- NOUVELLE SECTION D'INFORMATION -->
- <style>
-  .reservation-wrapper {
-    font-family: Montserrat, Arial, sans-serif;
-    background: linear-gradient(135deg, #8e44ad, #5dade2);
-    color: #fff;
-    border-radius: 20px;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
-    padding: 30px 20px;
-    max-width: 950px;
-    margin: auto;
-    text-align: center;
-  }
-  .reservation-columns {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 24px;
-    margin-top: 25px;
-    margin-bottom: 20px;
-  }
-  .reservation-box {
-    background: rgba(255, 255, 255, 0.08);
-    border-radius: 14px;
-    padding: 18px 16px;
-    flex: 1 1 260px;
-    min-width: 250px;
-    max-width: 300px;
-    text-align: center;
-  }
-  .reservation-box h3 {
-    margin-bottom: 10px;
-    font-size: 1.1em;
-    color: #ffffff;
-  }
-  .reservation-box p,
-  .reservation-box li {
-    font-size: 0.98em;
-    margin: 4px 0;
-    color: #f5f5f5;
-  }
-  .reservation-footer {
-    margin-top: 18px;
-    font-size: 0.95em;
-    color: #e6f4fa;
-  }
-  .reservation-footer a {
-    color: #ffffff;
-    text-decoration: underline;
-  }
-</style>
-
-<div class="reservation-wrapper">
-  <h2>Réservez vos tournées pro en 1 clic sur<br>
-    <span style="color: #ffffffcc;">Tamaris, Mar Vivo, Six-Fours, Portissol, Bandol</span>
-  </h2>
-  <p>Tarifs et options toujours à jour, ajustables selon vos besoins.</p>
-
-  <div class="reservation-columns">
-    <div class="reservation-box">
-      <h3>📦 Course de base</h3>
-      <p>15 € net</p>
-      <p>9 km inclus</p>
-      <p>~30 min</p>
-      <p><strong>1<sup>er</sup> arrêt inclus</strong></p>
-    </div>
-
-    <div class="reservation-box">
-      <h3>➕ Arrêts supplémentaires</h3>
-      <ul style="list-style: none; padding: 0;">
-        <li>2<sup>e</sup> arrêt : 5 €</li>
-        <li>3<sup>e</sup> arrêt : 3 €</li>
-        <li>4<sup>e</sup> arrêt : 4 €</li>
-        <li>À partir du 5<sup>e</sup> : 5 €/arrêt</li>
-      </ul>
-    </div>
-
-    <div class="reservation-box">
-      <h3>📅 Options</h3>
-      <p><strong>Samedi</strong> : dès 25 € net</p>
-      <p><strong>Urgent</strong> : départ sous 30 min (selon dispo), dès 20 € net</p>
-    </div>
-  </div>
-
-  <div class="reservation-footer">
-    <p><strong>TVA non applicable (art. 293 B CGI)</strong></p>
-    <p>Tarifs et forfaits modulables à tout moment par l’administrateur.</p>
-    <p>📦 Traçabilité & sécurité garanties – 📬 Confirmation et facture immédiates</p>
-    <p>(CGV, documents officiels et conditions accessibles à tout moment)</p>
-    <p>📧 Contact : <a href="mailto:elservicetoulon@gmail.com">elservicetoulon@gmail.com</a></p>
-  </div>
-</div>
-
-
+    <?!= include('Tarifs_Section'); ?>
 
 </div>
 
