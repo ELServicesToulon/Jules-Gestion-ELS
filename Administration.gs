@@ -203,6 +203,64 @@ function obtenirToutesReservationsPourDate(dateFiltreString) {
 // --- Le reste de vos fonctions (obtenirTousLesClients, creerReservationAdmin, etc.) reste ici ---
 // --- Il est essentiel de conserver le reste du fichier tel quel. ---
 
+// =================================================================
+//                      GESTION DU SCHÉMA
+// =================================================================
+// Description: Fonctions wrapper pour exposer les outils de shema.gs
+//              à l'interface d'administration de manière sécurisée.
+// =================================================================
+
+/**
+ * Exécute la fonction schemaReport de shema.gs.
+ * @returns {Object} Résultat de l'opération.
+ */
+function runSchemaReport() {
+  try {
+    if (Session.getActiveUser().getEmail().toLowerCase() !== ADMIN_EMAIL.toLowerCase()) {
+      return { success: false, error: "Accès non autorisé." };
+    }
+    const message = schemaReport();
+    return { success: true, message: message };
+  } catch (e) {
+    Logger.log(`Erreur dans runSchemaReport: ${e.stack}`);
+    return { success: false, error: e.message };
+  }
+}
+
+/**
+ * Exécute la fonction ensureSchema de shema.gs.
+ * @returns {Object} Résultat de l'opération.
+ */
+function runEnsureSchema() {
+  try {
+    if (Session.getActiveUser().getEmail().toLowerCase() !== ADMIN_EMAIL.toLowerCase()) {
+      return { success: false, error: "Accès non autorisé." };
+    }
+    const message = ensureSchema();
+    return { success: true, message: message };
+  } catch (e) {
+    Logger.log(`Erreur dans runEnsureSchema: ${e.stack}`);
+    return { success: false, error: e.message };
+  }
+}
+
+/**
+ * Exécute la fonction applyMigrations de shema.gs.
+ * @returns {Object} Résultat de l'opération.
+ */
+function runApplyMigrations() {
+  try {
+    if (Session.getActiveUser().getEmail().toLowerCase() !== ADMIN_EMAIL.toLowerCase()) {
+      return { success: false, error: "Accès non autorisé." };
+    }
+    const message = applyMigrations();
+    return { success: true, message: message };
+  } catch (e) {
+    Logger.log(`Erreur dans runApplyMigrations: ${e.stack}`);
+    return { success: false, error: e.message };
+  }
+}
+
 /**
  * Récupère la liste complète des clients pour le formulaire d'ajout.
  * @returns {Array<Object>} La liste des clients.

@@ -35,6 +35,16 @@
 
     <?!= include('Admin_MagicLink_Tool'); ?>
 
+    <div class="carte">
+      <h3>Gestion du Schéma de la Base de Données</h3>
+      <p>Utilisez ces outils pour vérifier et mettre à jour la structure de votre feuille Google Sheets. Il est conseillé de toujours générer un rapport avant d'appliquer des changements.</p>
+      <div class="barre-outils-schema">
+        <button id="btn-schema-report" class="btn btn-secondaire">Générer Rapport d'Analyse</button>
+        <button id="btn-schema-ensure" class="btn btn-primaire">Synchroniser Schéma (Ajouts)</button>
+        <button id="btn-schema-migrate" class="btn btn-primaire">Appliquer Renommages</button>
+      </div>
+    </div>
+
     <main id="conteneur-app">
       <div id="liste-reservations" class="carte">
         <h3 id="titre-reservations">Courses du jour</h3>

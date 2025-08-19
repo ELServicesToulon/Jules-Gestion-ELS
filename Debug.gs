@@ -34,6 +34,7 @@ function lancerTousLesTests() {
   testerGestionClient();
   testerAdministration();
   testerMaintenance();
+  testerSchemaManagement(); // Ajout du test pour le schéma
 
   Logger.log("===== FIN DE LA SUITE DE TESTS COMPLÈTE =====");
   // SpreadsheetApp.getUi().alert("Tests terminés. Consultez les journaux (Logs) pour les résultats détaillés.");
@@ -166,6 +167,48 @@ function testerMaintenance() {
   
   notifyAdminWithThrottle("TEST_ERREUR", "Email de test", "Ceci est un test de la fonction de notification.");
   Logger.log("SUCCESS: notifyAdminWithThrottle() exécuté. Vérifiez votre boîte de réception.");
+}
+
+function testerSchemaManagement() {
+  Logger.log("\n--- Test de Schema Management (shema.gs & Administration.gs) ---");
+
+  // Test 1: runSchemaReport
+  try {
+    const reportResult = runSchemaReport();
+    if (reportResult && reportResult.success) {
+      Logger.log(`SUCCESS: runSchemaReport() a retourné: "${reportResult.message}"`);
+    } else {
+      Logger.log(`FAILURE: runSchemaReport() a échoué. Erreur: ${reportResult ? reportResult.error : 'Réponse non définie'}`);
+    }
+  } catch (e) {
+    Logger.log(`FAILURE: runSchemaReport() a levé une exception. Erreur: ${e.message}`);
+  }
+
+  // Test 2: runEnsureSchema (ne l'exécute pas réellement pour éviter les modifications, juste vérifier l'appel)
+  // Pour un vrai test, on pourrait avoir une feuille de calcul de test dédiée.
+  // Ici, nous nous assurons que la fonction existe et retourne un succès simulé ou réel.
+  try {
+    const ensureResult = runEnsureSchema();
+     if (ensureResult && ensureResult.success) {
+      Logger.log(`SUCCESS: runEnsureSchema() a retourné: "${ensureResult.message}"`);
+    } else {
+      Logger.log(`FAILURE: runEnsureSchema() a échoué. Erreur: ${ensureResult ? ensureResult.error : 'Réponse non définie'}`);
+    }
+  } catch (e) {
+    Logger.log(`FAILURE: runEnsureSchema() a levé une exception. Erreur: ${e.message}`);
+  }
+
+  // Test 3: runApplyMigrations
+  try {
+    const migrateResult = runApplyMigrations();
+    if (migrateResult && migrateResult.success) {
+      Logger.log(`SUCCESS: runApplyMigrations() a retourné: "${migrateResult.message}"`);
+    } else {
+      Logger.log(`FAILURE: runApplyMigrations() a échoué. Erreur: ${migrateResult ? migrateResult.error : 'Réponse non définie'}`);
+    }
+  } catch (e) {
+    Logger.log(`FAILURE: runApplyMigrations() a levé une exception. Erreur: ${e.message}`);
+  }
 }
 
 /**

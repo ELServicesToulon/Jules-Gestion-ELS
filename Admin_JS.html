@@ -453,6 +453,50 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Point de départ ---
     initialiser();
+
+    // --- GESTION DU SCHÉMA ---
+    const btnSchemaReport = document.getElementById('btn-schema-report');
+    const btnSchemaEnsure = document.getElementById('btn-schema-ensure');
+    const btnSchemaMigrate = document.getElementById('btn-schema-migrate');
+
+    /**
+     * Gère l'appel à une fonction de gestion du schéma et affiche le résultat.
+     * @param {string} functionName Le nom de la fonction à appeler sur le serveur.
+     * @param {string} confirmationMessage Un message de confirmation optionnel.
+     */
+    function handleSchemaAction(functionName, confirmationMessage) {
+        if (confirmationMessage && !confirm(confirmationMessage)) {
+            return;
+        }
+
+        basculerIndicateurChargement(true);
+        google.script.run
+            .withSuccessHandler(response => {
+                basculerIndicateurChargement(false);
+                if (response.success) {
+                    afficherNotification(response.message, 'succes');
+                } else {
+                    afficherErreur(response.error);
+                }
+            })
+            .withFailureHandler(err => {
+                basculerIndicateurChargement(false);
+                afficherErreur(err);
+            })
+            [functionName](); // Appel dynamique de la fonction
+    }
+
+    btnSchemaReport?.addEventListener('click', () => {
+        handleSchemaAction('runSchemaReport');
+    });
+
+    btnSchemaEnsure?.addEventListener('click', () => {
+        handleSchemaAction('runEnsureSchema', 'Cette action va créer les onglets et colonnes manquants dans votre Google Sheet. Êtes-vous sûr ?');
+    });
+
+    btnSchemaMigrate?.addEventListener('click', () => {
+        handleSchemaAction('runApplyMigrations', 'Cette action va renommer les onglets et colonnes selon les définitions du schéma. Assurez-vous d\'avoir une sauvegarde. Êtes-vous sûr ?');
+    });
 });
 </script>
 
