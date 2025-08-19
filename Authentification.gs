@@ -1,85 +1,29 @@
-// =================================================================
-//                      AUTHENTIFICATION CLIENT
-// =================================================================
-// Description: Gère la logique de connexion de l'espace client via
-//              des liens magiques (tokens).
-// =================================================================
+function requestMagicLink(email) {
+  email = (email || '').trim().toLowerCase();
+  if (!email) return { ok: false, error: 'EMAIL_REQUIRED' };
 
-function envoyerLienMagique(email) {
-  if (!email) return false;
+  // (Optionnel) vérifier que l'email appartient à un client connu
+  // if (!isKnownClient(email)) return { ok:false, error:'UNKNOWN_EMAIL' };
 
-  // Anti double-envoi 60s
-  const cache = CacheService.getScriptCache();
-  const key = 'send:'+email.toLowerCase();
-  if (cache.get(key)) return true;
-  cache.put(key, '1', 60);
+  var token = createMagicToken(email);
+  var baseUrl = getConfiguration().WEBAPP_URL || ScriptApp.getService().getUrl();
+  var url = baseUrl + '?page=client&auth=' + encodeURIComponent(token);
 
-  // Crée le token + enregistre dans Sheets (onglet Tokens + MagicLinks)
-  const token = Utilities.getUuid();
-  const expires = new Date(Date.now() + 15 * 60 * 1000); // 15 min
+  var subject = 'Accès à votre espace client — EL Services';
+  var htmlBody =
+    '<p>Bonjour,</p>' +
+    '<p>Cliquez pour ouvrir votre espace client :</p>' +
+    '<p><a href="' + url + '"><strong>Ouvrir mon espace client</strong></a></p>' +
+    '<p>Ce lien expire dans ' + (getConfiguration().TOKEN_TTL_MINUTES || 15) + ' minutes et n’est utilisable qu’une seule fois.</p>' +
+    '<p>— EL Services</p>';
 
-  const ss = SpreadsheetApp.openById(ID_FEUILLE_CALCUL); // ou ton ID Sheet
-  const shTokens = ss.getSheetByName('Tokens');
-  shTokens.appendRow([email.toLowerCase(), token, expires]);
-
-  const baseUrl = ScriptApp.getService().getUrl(); // URL du déploiement
-  const link = baseUrl + '?page=gestion#t=' + encodeURIComponent(token);
-
-  const shML = ss.getSheetByName('MagicLinks');
-  if (shML) shML.appendRow([token, link, expires, false]);
-
-  MailApp.sendEmail({
-    to: email,
-    subject: 'Votre lien de connexion sécurisé',
-    htmlBody: 'Cliquez pour vous connecter : <a href="'+link+'">'+link+'</a>'
-  });
-  return true;
+  MailApp.sendEmail({ to: email, subject: subject, htmlBody: htmlBody, name: 'EL Services' });
+  return { ok: true };
 }
 
-function verifierJetonMagique(token) {
-  if (!token) return null;
-
-  const lock = LockService.getScriptLock();
-  lock.waitLock(20000);
-  try {
-    const ss = SpreadsheetApp.openById(ID_FEUILLE_CALCUL);
-    const shTokens = ss.getSheetByName('Tokens');
-    const data = shTokens.getDataRange().getValues(); // A:Email B:Token C:Expiration
-
-    let email = null, exp = null;
-    for (let i = 1; i < data.length; i++) {
-      if (data[i][1] === token) { // colonne B
-        email = String(data[i][0] || '').toLowerCase();
-        exp = new Date(data[i][2]);
-        break;
-      }
-    }
-    if (!email) return null;
-    if (new Date() > exp) return null;
-
-    // Marque "Used" dans MagicLinks (col D)
-    const shML = ss.getSheetByName('MagicLinks');
-    if (shML) {
-      const ml = shML.getDataRange().getValues(); // A:Token B:URL C:Expiration D:Used
-      for (let j = 1; j < ml.length; j++) {
-        if (ml[j][0] === token) {
-          // On marque le jeton comme utilisé mais on ne bloque pas la connexion
-          // s'il a déjà été utilisé. Cela prévient les problèmes avec les scanners
-          // de liens dans les e-mails qui peuvent "utiliser" le jeton avant l'utilisateur.
-          // if (ml[j][3] === true) {
-          //   return null; // Déjà utilisé (DÉSACTIVÉ)
-          // }
-          shML.getRange(j + 1, 4).setValue(true); // On continue de marquer la première utilisation
-          break;
-        }
-      }
-    }
-
-    // (Optionnel) supprimer la ligne du token pour usage unique strict
-    // -> shTokens.deleteRow(i+1);
-
-    return email;
-  } finally {
-    lock.releaseLock();
-  }
+function validateMagicLinkAndCreateSession(token) {
+  var res = validateAndConsumeToken(token);
+  if (!res.ok) return res;
+  var sessionId = createSession(res.email);
+  return { ok: true, sessionId: sessionId, email: res.email };
 }

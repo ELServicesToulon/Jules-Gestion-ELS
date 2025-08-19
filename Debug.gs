@@ -182,3 +182,12 @@ function lancerTousLesTestsEtRetournerLogs() {
   // Retourne le contenu des logs
   return Logger.getLog();
 }
+
+function testMagicLink() {
+  var email = Session.getActiveUser().getEmail() || 'elservicestoulon@gmail.com';
+  var token = createMagicToken(email);
+  var baseUrl = getConfiguration().WEBAPP_URL || ScriptApp.getService().getUrl();
+  var url = baseUrl + '?page=client&auth=' + encodeURIComponent(token);
+  Logger.log('TEST MAGIC LINK => ' + url);
+  return url;
+}
