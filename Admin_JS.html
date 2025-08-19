@@ -380,12 +380,26 @@ document.addEventListener('DOMContentLoaded', () => {
             conteneurNbTourneesOffertes.classList.toggle('hidden', typeSelectionne !== 'Tournées Offertes');
         };
         const remplirChampsClient = (client) => {
-            champsClient.email.value = client ? client.email : ''; champsClient.nom.value = client ? client.nom : '';
-            champsClient.adresse.value = client ? client.adresse : ''; champsClient.siret.value = client ? client.siret : '';
-            champsClient.typeRemise.value = client ? (client.typeRemise || '') : ''; champsClient.valeurRemise.value = client ? (client.valeurRemise || 0) : 0;
-            champsClient.nbTourneesOffertes.value = client ? (client.nbTourneesOffertes || 0) : 0;
             const isNewClient = !client;
-            Object.values(champsClient).forEach(champ => { if (champ.id !== 'type-remise' && champ.id !== 'valeur-remise' && champ.id !== 'nb-tournees-offertes') { champ.readOnly = !isNewClient; } });
+
+            // Remplissage sécurisé des champs
+            champsClient.email.value = client?.email || '';
+            champsClient.nom.value = client?.nom || '';
+            champsClient.adresse.value = client?.adresse || '';
+            champsClient.siret.value = client?.siret || '';
+            champsClient.typeRemise.value = client?.typeRemise || '';
+            champsClient.valeurRemise.value = client?.valeurRemise || 0;
+            champsClient.nbTourneesOffertes.value = client?.nbTourneesOffertes || 0;
+
+            // Gestion de l'état readOnly de manière plus robuste
+            Object.keys(champsClient).forEach(key => {
+                const champ = champsClient[key];
+                // On ne modifie que les champs de saisie principaux du client
+                if (champ && ['email', 'nom', 'adresse', 'siret'].includes(key)) {
+                    champ.readOnly = !isNewClient;
+                }
+            });
+
             majAffichageRemise();
         };
         selectClient?.addEventListener('change', () => { const selectedEmail = selectClient.value; remplirChampsClient(selectedEmail === 'new' ? null : tousLesClients.find(c => c.email === selectedEmail)); });
