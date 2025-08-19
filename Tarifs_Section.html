@@ -42,18 +42,18 @@
 
     <div class="cards" role="list">
       <article class="card" role="listitem" aria-labelledby="card-base-title">
-        <h3 id="card-base-title">🏺 Course de base</h3>
+        <h3 id="card-base-title">Course de base</h3>
         <div class="bullet" id="card-base-content"><small>—</small></div>
         <a href="#" class="cta" id="cta-reserver" aria-label="Réserver une tournée">Réserver</a>
       </article>
 
       <article class="card" role="listitem" aria-labelledby="card-arrets-title">
-        <h3 id="card-arrets-title">➕ Arrêts supplémentaires</h3>
+        <h3 id="card-arrets-title">Arrêts supplémentaires</h3>
         <div class="bullet" id="card-arrets-content"><small>—</small></div>
       </article>
 
       <article class="card" role="listitem" aria-labelledby="card-options-title">
-        <h3 id="card-options-title">🗓️ Options</h3>
+        <h3 id="card-options-title">Options</h3>
         <div class="bullet" id="card-options-content"><small>—</small></div>
         <p class="opt-note">( <span class="opt-highlight">selon dispo</span> si précisé )</p>
       </article>
@@ -69,19 +69,19 @@
       if (google && google.script && google.script.run){
         google.script.run
           .withSuccessHandler(function(payload){
-            console.log('getPublicConfig →', payload);
+            console.log('getPublicConfig ->', payload);
             renderTarifsSection(payload);
           })
           .withFailureHandler(function(err){
             console.error('getPublicConfig FAILED', err);
-            failTarifs('Erreur de lecture configuration (getPublicConfig). Vérifie PublicConfig.gs & Configuration.gs');
+            failTarifs('Erreur de lecture configuration (getPublicConfig). Verifie PublicConfig.gs & Configuration.gs');
           })
           .getPublicConfig();
       } else {
         // Preview hors Apps Script
         renderTarifsSection({
           meta:{ nomService:"EL Services", zones:["Tamaris","Mar Vivo","Six-Fours-les-Plages","Sanary","Portissol","Bandol"], tvaApplicable:false, articleTVA:"Art. 293 B CGI", contact:"elservicestoulon@gmail.com", appUrl:"" },
-          tarifs:{ devise:"€", base:{ prix:15, kmInclus:9, dureeMin:30, premierArretInclus:true }, arrets:{ second:5, troisieme:3, quatrieme:4, aPartirDuCinquieme:5 }, options:{ samediMin:25, urgent:{ delaiMin:30, prixMin:20, selonDispo:true } } }
+          tarifs:{ devise:"\u20AC", base:{ prix:15, kmInclus:9, dureeMin:30, premierArretInclus:true }, arrets:{ second:5, troisieme:3, quatrieme:4, aPartirDuCinquieme:5 }, options:{ samediMin:25, urgent:{ delaiMin:30, prixMin:20, selonDispo:true } } }
         });
       }
     }catch(e){
@@ -90,13 +90,9 @@
     }
   });
 
-fix-dynamic-pricing-card
   function formatCurrency(v, devise){
-
-  function €(v, devise){
- main
     const n = Number(v || 0);
-    return `${n.toLocaleString('fr-FR',{maximumFractionDigits:0})} ${devise || "€"} net`;
+    return `${n.toLocaleString('fr-FR',{maximumFractionDigits:0})} ${devise || "\u20AC"} net`;
   }
 
   function renderTarifsSection(payload){
@@ -105,58 +101,43 @@ fix-dynamic-pricing-card
 
     // Titre/sous-titre
     document.getElementById('tarifs-title').textContent =
-      `Réservez vos tournées pro en 1 clic sur ${meta.zones.join(', ')}`;
+      `R\u00E9servez vos tourn\u00E9es pro en 1 clic sur ${meta.zones.join(', ')}`;
     document.getElementById('tarifs-sub').textContent =
-      `Tarifs et options toujours à jour, ajustables selon vos besoins.`;
+      `Tarifs et options toujours \u00E0 jour, ajustables selon vos besoins.`;
 
     // Base
-    const base = [ fix-dynamic-pricing-card
-      `💶 ${formatCurrency(tarifs.base.prix, tarifs.devise)}`,
-
-      `💶 ${€(tarifs.base.prix, tarifs.devise)}`,
- main
-      `📍 ${tarifs.base.kmInclus} km inclus`,
-      `⏱️ ~${tarifs.base.dureeMin} min`,
-      tarifs.base.premierArretInclus ? `✅ 1er arrêt inclus` : `➕ Arrêts en option`
+    const base = [
+      `\uD83D\uDCB6 ${formatCurrency(tarifs.base.prix, tarifs.devise)}`,
+      `\uD83D\uDCCD ${tarifs.base.kmInclus} km inclus`,
+      `\u23F1\uFE0F ~${tarifs.base.dureeMin} min`,
+      tarifs.base.premierArretInclus ? `\u2705 1er arr\u00EAt inclus` : `\u2795 Arr\u00EAts en option`
     ];
     document.getElementById('card-base-content').innerHTML = base.map(li => `<div>${li}</div>`).join('');
 
-    // Arrêts
+    // Arrets
     const a = tarifs.arrets;
     const arretsHtml = [
- fix-dynamic-pricing-card
-      `2ᵉ arrêt : ${formatCurrency(a.second, tarifs.devise)}`,
-      `3ᵉ arrêt : ${formatCurrency(a.troisieme, tarifs.devise)}`,
-      `4ᵉ arrêt : ${formatCurrency(a.quatrieme, tarifs.devise)}`,
-      `À partir du 5ᵉ : ${formatCurrency(a.aPartirDuCinquieme, tarifs.devise)}/arrêt`
-
-      `2ᵉ arrêt : ${€(a.second, tarifs.devise)}`,
-      `3ᵉ arrêt : ${€(a.troisieme, tarifs.devise)}`,
-      `4ᵉ arrêt : ${€(a.quatrieme, tarifs.devise)}`,
-      `À partir du 5ᵉ : ${€(a.aPartirDuCinquieme, tarifs.devise)}/arrêt`
-main
+      `2\u1D49 arr\u00EAt : ${formatCurrency(a.second, tarifs.devise)}`,
+      `3\u1D49 arr\u00EAt : ${formatCurrency(a.troisieme, tarifs.devise)}`,
+      `4\u1D49 arr\u00EAt : ${formatCurrency(a.quatrieme, tarifs.devise)}`,
+      `\u00C0 partir du 5\u1D49 : ${formatCurrency(a.aPartirDuCinquieme, tarifs.devise)}/arr\u00EAt`
     ];
     document.getElementById('card-arrets-content').innerHTML = arretsHtml.map(li => `<div>${li}</div>`).join('');
 
     // Options
     const opt = tarifs.options;
     const optHtml = [
-fix-dynamic-pricing-card
-      `📅 <span class="opt-special">Samedi</span> : dès ${formatCurrency(opt.samediMin, tarifs.devise)}`,
-      `⚡ <span class="opt-highlight">Urgent</span> : départ sous ${opt.urgent.delaiMin} min${opt.urgent.selonDispo ? " (selon dispo)" : ""}, dès ${formatCurrency(opt.urgent.prixMin, tarifs.devise)}`
-
-      `📅 <span class="opt-special">Samedi</span> : dès ${€(opt.samediMin, tarifs.devise)}`,
-      `⚡ <span class="opt-highlight">Urgent</span> : départ sous ${opt.urgent.delaiMin} min${opt.urgent.selonDispo ? " (selon dispo)" : ""}, dès ${€(opt.urgent.prixMin, tarifs.devise)}`
-main
+      `\uD83D\uDCC5 Samedi : d\u00E8s ${formatCurrency(opt.samediMin, tarifs.devise)}`,
+      `\u26A1 Urgent : d\u00E9part sous ${opt.urgent.delaiMin} min${opt.urgent.selonDispo ? " (selon dispo)" : ""}, d\u00E8s ${formatCurrency(opt.urgent.prixMin, tarifs.devise)}`
     ];
     document.getElementById('card-options-content').innerHTML = optHtml.map(li => `<div>${li}</div>`).join('');
 
     // Footer
     const tva = meta.tvaApplicable ? "TVA applicable" : `TVA non applicable (${meta.articleTVA})`;
     document.getElementById('tarifs-footer').innerHTML =
-      `${tva} — <span class="tag">Tarifs & forfaits modifiables à tout moment par l’administrateur</span><br>
-       Traçabilité & sécurité garanties — Confirmation et facture immédiates<br>
-       <small>(CGV, documents officiels et conditions accessibles à tout moment)</small><br>
+      `${tva} \u2014 <span class="tag">Tarifs & forfaits modifiables \u00E0 tout moment par l\u2019administrateur</span><br>
+       Tra\u00E7abilit\u00E9 & s\u00E9curit\u00E9 garanties \u2014 Confirmation et facture imm\u00E9diates<br>
+       <small>(CGV, documents officiels et conditions accessibles \u00E0 tout moment)</small><br>
        Contact : <a href="mailto:${meta.contact}">${meta.contact}</a>`;
 
     // CTA
