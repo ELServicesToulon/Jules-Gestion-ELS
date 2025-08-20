@@ -32,8 +32,13 @@
 
     if (sid) {
       google.script.run.withSuccessHandler(function(res){
-        if (res && res.ok){ setSession(sid); show('app'); }
-        else { show('login'); }
+        if (res && res.ok){
+          setSession(sid);
+          show('app');
+          if (typeof chargerDonneesClient === 'function') chargerDonneesClient(res.email);
+        } else {
+          show('login');
+        }
       }).validateSessionServer(sid);
       return;
     }
@@ -47,6 +52,7 @@
           url.searchParams.set('session', res.sessionId);
           history.replaceState({},'',url);
           show('app');
+          if (typeof chargerDonneesClient === 'function') chargerDonneesClient(res.email);
         } else {
           history.replaceState({},'',url);
           show('login');
@@ -56,7 +62,12 @@
       return;
     }
 
-    show(ELS.SESSION_EMAIL ? 'app' : 'login');
+    if (ELS.SESSION_EMAIL) {
+      show('app');
+      if (typeof chargerDonneesClient === 'function') chargerDonneesClient(ELS.SESSION_EMAIL);
+    } else {
+      show('login');
+    }
   });
 
   window.ELS_requestLink = function(){
