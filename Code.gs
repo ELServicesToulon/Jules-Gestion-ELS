@@ -24,7 +24,9 @@ function onOpen(e) {
   const sousMenuMaintenance = ui.createMenu('Maintenance')
       .addItem("Sauvegarder le code du projet", "sauvegarderCodeProjet")
       .addItem("Sauvegarder les données", "sauvegarderDonnees")
-      .addItem("Purger les anciennes données (RGPD)", "purgerAnciennesDonnees");
+      .addItem("Purger les anciennes données (RGPD)", "purgerAnciennesDonnees")
+      .addSeparator() // Added separator for clarity
+      .addItem('Vérifier les en-têtes de colonnes', 'lancerVerificationManuelle'); // Added from Verification.gs
       
   // Sous-menu Debug
   const sousMenuDebug = ui.createMenu('Debug')
