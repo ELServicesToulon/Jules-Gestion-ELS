@@ -65,6 +65,7 @@ function doGet(e) {
     if (e.parameter.page) {
         switch (e.parameter.page) {
             case 'admin':
+            case 'gestion':
                 const adminEmail = Session.getActiveUser().getEmail();
                 if (adminEmail && adminEmail.toLowerCase() === ADMIN_EMAIL.toLowerCase()) {
                     const template = HtmlService.createTemplateFromFile('Admin_Interface');
@@ -73,7 +74,6 @@ function doGet(e) {
                     return HtmlService.createHtmlOutput('<h1>Accès Refusé</h1><p>Vous n\'avez pas les permissions nécessaires.</p>');
                 }
             case 'client':
-            case 'gestion':
                 return renderClientPage(e);
             case 'debug':
                  const debugEmail = Session.getActiveUser().getEmail();
