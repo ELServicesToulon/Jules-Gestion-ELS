@@ -9,6 +9,12 @@
  * Copie client de la logique de tarification.
  */
 function calculerInfosTourneeClient(totalStops, returnToPharmacy, dateString, startTime) {
+  // Vérification de la disponibilité de la configuration serveur
+  if (!configServeur || !configServeur.TARIFS || !configServeur.TARIFS.Normal) {
+    console.error("Configuration du serveur non chargée. Utilisation de valeurs par défaut.");
+    return { prix: 0, duree: 0, km: 0, details: "Configuration non disponible", typeCourse: "Normal" };
+  }
+
   const DUREE_BASE_NUM = parseInt(configServeur.DUREE_BASE, 10);
   const DUREE_ARRET_SUP_NUM = parseInt(configServeur.DUREE_ARRET_SUP, 10);
   const KM_BASE_NUM = parseInt(configServeur.KM_BASE, 10);
