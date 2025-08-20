@@ -9,7 +9,9 @@
  * S'exécute à l'ouverture du Google Sheet pour créer les menus.
  */
 function onOpen(e) {
-buildMenus_(e);
+  const ui = SpreadsheetApp.getUi();
+
+  // Menu principal
   const menuPrincipal = ui.createMenu('EL Services')
       .addItem('Générer les factures sélectionnées', 'genererFactures')
       .addItem('Envoyer les factures contrôlées', 'envoyerFacturesControlees')
@@ -18,23 +20,29 @@ buildMenus_(e);
       .addItem("Vérifier la cohérence du calendrier", "verifierCoherenceCalendrier")
       .addItem("Lancer un audit des partages Drive", "lancerAuditDrive");
 
+  // Sous-menu Maintenance
   const sousMenuMaintenance = ui.createMenu('Maintenance')
       .addItem("Sauvegarder le code du projet", "sauvegarderCodeProjet")
       .addItem("Sauvegarder les données", "sauvegarderDonnees")
-      .addItem("Purger les anciennes données (RGPD)", "purgerAnciennesDonnees");
+      .addItem("Purger les anciennes données (RGPD)", "purgerAnciennesDonnees")
+      .addSeparator() // Added separator for clarity
+      .addItem('Vérifier les en-têtes de colonnes', 'lancerVerificationManuelle'); // Added from Verification.gs
       
-
+  // Sous-menu Debug
   const sousMenuDebug = ui.createMenu('Debug')
       .addItem("Lancer tous les tests", "lancerTousLesTests");
       
+  // Ajout des sous-menus et affichage du menu principal
+  menuPrincipal.addSubMenu(sousMenuMaintenance);
+  menuPrincipal.addSubMenu(sousMenuDebug);
+  menuPrincipal.addToUi();
 
-  menuPrincipal.addSubMenu(sousMenuMaintenance).addToUi();
-  menuPrincipal.addSubMenu(sousMenuDebug).addToUi();
-}
-try {
-SCHEMA_attachMenu();
-} catch (err) {
-Logger.log('SCHEMA_attachMenu indisponible (Schemas.gs non chargé ?) : ' + err);
+  // Ajout du menu de gestion du schéma
+  try {
+    SCHEMA_attachMenu();
+  } catch (err) {
+    Logger.log('SCHEMA_attachMenu indisponible (Schemas.gs non chargé ?) : ' + err);
+  }
 }
 
 /**

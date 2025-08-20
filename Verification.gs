@@ -7,19 +7,6 @@
 //              des données.
 // =================================================================
 
-/**
- * Point d'entrée pour ajouter un menu dédié à la vérification.
- * S'exécute à l'ouverture du Google Sheet.
- */
-function onOpen() {
-  // On s'assure de ne pas écraser le menu existant
-  const ui = SpreadsheetApp.getUi();
-  const menu = ui.createMenu('EL Services Admin');
-  
-  // Ajout du sous-menu de vérification
-  menu.addItem('Vérifier les en-têtes de colonnes', 'lancerVerificationManuelle');
-  menu.addToUi();
-}
 
 /**
  * Fonction appelée depuis le menu pour afficher le résultat à l'utilisateur.
