@@ -8,8 +8,8 @@
 /**
  * S'exécute à l'ouverture du Google Sheet pour créer les menus.
  */
-function onOpen() {
-  const ui = SpreadsheetApp.getUi();
+function onOpen(e) {
+buildMenus_(e);
   const menuPrincipal = ui.createMenu('EL Services')
       .addItem('Générer les factures sélectionnées', 'genererFactures')
       .addItem('Envoyer les factures contrôlées', 'envoyerFacturesControlees')
@@ -22,12 +22,19 @@ function onOpen() {
       .addItem("Sauvegarder le code du projet", "sauvegarderCodeProjet")
       .addItem("Sauvegarder les données", "sauvegarderDonnees")
       .addItem("Purger les anciennes données (RGPD)", "purgerAnciennesDonnees");
+      
 
   const sousMenuDebug = ui.createMenu('Debug')
       .addItem("Lancer tous les tests", "lancerTousLesTests");
+      
 
   menuPrincipal.addSubMenu(sousMenuMaintenance).addToUi();
   menuPrincipal.addSubMenu(sousMenuDebug).addToUi();
+}
+try {
+SCHEMA_attachMenu();
+} catch (err) {
+Logger.log('SCHEMA_attachMenu indisponible (Schemas.gs non chargé ?) : ' + err);
 }
 
 /**
