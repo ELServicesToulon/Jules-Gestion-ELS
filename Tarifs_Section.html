@@ -65,19 +65,40 @@
 
 <script>
   document.addEventListener('DOMContentLoaded', function(){
+    const grilleCalendrier = document.getElementById('grille-calendrier');
+    if (grilleCalendrier) {
+      grilleCalendrier.style.opacity = '0.5';
+      grilleCalendrier.style.pointerEvents = 'none';
+    }
+
     try{
       if (google && google.script && google.script.run){
         google.script.run
           .withSuccessHandler(function(payload){
             console.log('getPublicConfig ->', payload);
+            if (window.configServeur && payload && payload.tarifs) {
+              window.configServeur.TARIFS = payload.tarifs;
+            }
             renderTarifsSection(payload);
+            if (grilleCalendrier) {
+              grilleCalendrier.style.opacity = '1';
+              grilleCalendrier.style.pointerEvents = 'auto';
+            }
           })
           .withFailureHandler(function(err){
             console.error('getPublicConfig FAILED', err);
             failTarifs('Erreur de lecture configuration (getPublicConfig). Verifie PublicConfig.gs & Configuration.gs');
+            if (grilleCalendrier) {
+              grilleCalendrier.innerHTML = '<p style="color: red; text-align: center;">Impossible de charger la configuration des tarifs. Le calendrier est désactivé.</p>';
+              grilleCalendrier.style.opacity = '1';
+            }
           })
           .getPublicConfig();
       } else {
+        if (grilleCalendrier) {
+          grilleCalendrier.style.opacity = '1';
+          grilleCalendrier.style.pointerEvents = 'auto';
+        }
         // Preview hors Apps Script
         renderTarifsSection({
           meta:{ nomService:"EL Services", zones:["Tamaris","Mar Vivo","Six-Fours-les-Plages","Sanary","Portissol","Bandol"], tvaApplicable:false, articleTVA:"Art. 293 B CGI", contact:"elservicestoulon@gmail.com", appUrl:"" },
