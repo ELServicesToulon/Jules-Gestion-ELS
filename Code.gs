@@ -68,7 +68,7 @@ function doGet(e) {
                 const adminEmail = Session.getActiveUser().getEmail();
                 if (adminEmail && adminEmail.toLowerCase() === ADMIN_EMAIL.toLowerCase()) {
                     const template = HtmlService.createTemplateFromFile('Admin_Interface');
-                    return template.evaluate().setTitle("Tableau de Bord Administrateur").setXFrameOptionsMode(HtmlService.XFrameOptionsMode.DEFAULT);
+                    return template.evaluate().setTitle("Tableau de Bord Administrateur").setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
                 } else {
                     return HtmlService.createHtmlOutput('<h1>Accès Refusé</h1><p>Vous n\'avez pas les permissions nécessaires.</p>');
                 }
@@ -78,7 +78,7 @@ function doGet(e) {
             case 'debug':
                  const debugEmail = Session.getActiveUser().getEmail();
                 if (debugEmail && debugEmail.toLowerCase() === ADMIN_EMAIL.toLowerCase()) {
-                    return HtmlService.createHtmlOutputFromFile('Debug_Interface').setTitle("Panneau de Débogage");
+                    return HtmlService.createHtmlOutputFromFile('Debug_Interface').setTitle("Panneau de Débogage").setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
                 } else {
                     return HtmlService.createHtmlOutput('<h1>Accès Refusé</h1><p>Vous n\'avez pas les permissions nécessaires.</p>');
                 }
@@ -117,7 +117,7 @@ function doGet(e) {
 
     return template.evaluate()
         .setTitle(NOM_ENTREPRISE + " | Réservation")
-        .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.DEFAULT);
+        .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 
   } catch (error) {
     Logger.log(`Erreur critique dans doGet: ${error.stack}`);
