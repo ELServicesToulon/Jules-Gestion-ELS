@@ -78,27 +78,6 @@ function mettreAJourResumeTournee() {
 }
 
 /**
- * Gère la demande de créneaux après configuration.
- */
-function gererDemandeCreneaux(e) {
-  e.preventDefault();
-  basculerIndicateurChargement(true);
-  const { tourneeEnCours } = window.etat;
-  const infosTournee = calculerInfosTourneeClient(tourneeEnCours.totalStops, tourneeEnCours.returnToPharmacy, tourneeEnCours.date, '12h00');
-  tourneeEnCours.duree = infosTournee.duree;
-  const autresCoursesPanier = window.etat.panier
-    .filter(item => item.date === tourneeEnCours.date)
-    .map(item => ({ startTime: item.startTime, duree: item.duree }));
-  google.script.run
-    .withSuccessHandler(creneaux => {
-      basculerIndicateurChargement(false);
-      afficherSelectionCreneaux(creneaux);
-    })
-    .withFailureHandler(afficherErreur)
-    .obtenirCreneauxDisponiblesPourDate(tourneeEnCours.date, tourneeEnCours.duree, null, null, autresCoursesPanier);
-}
-
-/**
  * Affiche la modale de sélection des créneaux.
  */
 function afficherSelectionCreneaux(creneaux) {
