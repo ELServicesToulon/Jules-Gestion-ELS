@@ -78,7 +78,6 @@ const COLONNE_NB_TOURNEES_OFFERTES = "Nombre Tournées Offertes";
 // =================================================================
 //                      AUTHENTIFICATION & SESSIONS
 // =================================================================
-const WEBAPP_URL = "https://script.google.com/macros/s/AKfycbyHD5OLTbL39asKeXQJLoskkRnPCiifFk87vkSgHwMMmelhSKV1Dx_b8QptOleGFtBi/exec";
 const TOKEN_TTL_MINUTES = 15;
 const SESSION_TTL_HOURS = 24;
 
@@ -105,7 +104,7 @@ function getConfiguration() {
 
     // --- Système de tarification & options ---
     TARIFS: TARIFS,
-    APP_URL: WEBAPP_URL,
+    APP_URL: ScriptApp.getService().getUrl(),
 
     // --- Clés pour PublicConfig.gs (compatibilité ascendante) ---
     // Ces clés permettent à normaliseTarifs_ de fonctionner même avec l'ancienne structure de constantes.
@@ -123,7 +122,7 @@ function getConfiguration() {
     URGENT_SELON_DISPO: true,
 
     // --- Authentification & Sessions (inchangé) ---
-    WEBAPP_URL: WEBAPP_URL,
+    WEBAPP_URL: ScriptApp.getService().getUrl(),
     TOKEN_TTL_MINUTES: TOKEN_TTL_MINUTES,
     SESSION_TTL_HOURS: SESSION_TTL_HOURS
   };
