@@ -360,7 +360,7 @@ function obtenirReservationsPourClient(email, date) {
     var clientEmail = (row[emailIndex] || '').toString().trim().toLowerCase();
     var statut = row[statutIndex];
     var matchEmail = email ? clientEmail === email.trim().toLowerCase() : true;
-    var matchStatut = statut === "Confirmée";
+    var matchStatut = statut === "Enregistrée";
     var matchDate = true;
     if (date) {
       var resDay = Utilities.formatDate(resDate, Session.getScriptTimeZone(), "dd/MM/yyyy");
