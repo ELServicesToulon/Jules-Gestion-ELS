@@ -1,0 +1,81 @@
+<script>
+function chargerDonneesClient(email) {
+  const indicateurChargement = document.getElementById('indicateur-chargement');
+  const conteneurApp = document.getElementById('conteneur-app');
+  const conteneurReservations = document.getElementById('contenu-reservations');
+  const conteneurReservationsPassees = document.getElementById('contenu-reservations-passees');
+  const messageBienvenue = document.getElementById('message-bienvenue-client');
+
+  if (!conteneurReservations || !conteneurReservationsPassees || !indicateurChargement || !conteneurApp) {
+    console.error("Éléments de l'interface non trouvés.");
+    return;
+  }
+
+  indicateurChargement.classList.remove('hidden');
+  conteneurApp.classList.add('hidden');
+
+  if(messageBienvenue) {
+    messageBienvenue.textContent = `Bonjour ${email}`;
+  }
+
+  google.script.run
+    .withSuccessHandler(response => {
+      indicateurChargement.classList.add('hidden');
+      conteneurApp.classList.remove('hidden');
+
+      if (response.ok && response.data) {
+        const reservations = response.data;
+        // NOTE: Indexes are assumed based on standard sheet structure.
+        // 0: Date, 1: Client Name, 2: Client Email, 3: Type, 4: Details, 8: Event ID, 9: Statut, 10: Montant
+        const now = new Date();
+
+        let htmlProchaines = '';
+        let htmlPassees = '';
+
+        if (reservations.length === 0) {
+          htmlProchaines = '<p>Aucune réservation à venir.</p>';
+          htmlPassees = '<p>Aucune réservation passée.</p>';
+        } else {
+          reservations.forEach(row => {
+            const resDate = new Date(row[0]);
+            const details = row[4];
+            const montant = parseFloat(row[10]).toFixed(2);
+
+            const dateFormatee = resDate.toLocaleDateString('fr-FR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+            const heureFormatee = resDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+
+            const reservationHtml = `
+              <div class="reservation-item">
+                <p><strong>Date :</strong> ${dateFormatee} à ${heureFormatee}</p>
+                <p><strong>Détails :</strong> ${details}</p>
+                <p><strong>Montant :</strong> ${montant} €</p>
+              </div>
+            `;
+
+            if (resDate >= now) {
+              htmlProchaines += reservationHtml;
+            } else {
+              htmlPassees += reservationHtml;
+            }
+          });
+
+          if(htmlProchaines === '') htmlProchaines = '<p>Aucune réservation à venir.</p>';
+          if(htmlPassees === '') htmlPassees = '<p>Aucune réservation passée.</p>';
+        }
+
+        conteneurReservations.innerHTML = htmlProchaines;
+        conteneurReservationsPassees.innerHTML = htmlPassees;
+
+      } else {
+        conteneurReservations.innerHTML = `<p>Erreur lors de la récupération de vos réservations : ${response.error}</p>`;
+      }
+    })
+    .withFailureHandler(err => {
+      indicateurChargement.classList.add('hidden');
+      conteneurApp.classList.remove('hidden');
+      conteneurReservations.innerHTML = `<p>Une erreur technique est survenue. Veuillez réessayer plus tard.</p>`;
+      console.error(err);
+    })
+    .getClientReservations(email);
+}
+</script>
