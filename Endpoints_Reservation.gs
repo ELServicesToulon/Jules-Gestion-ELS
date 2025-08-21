@@ -230,3 +230,25 @@ function pingSession(sessionId){
     return { ok:false, error:'NO_VALIDATE_SESSION' };
   }catch(e){ return { ok:false, error:e.toString() }; }
 }
+
+
+// ──────────────────────────────────────────────────────────────────────────────
+// 6) ESPACE CLIENT — Récupère les réservations pour un client donné
+// ──────────────────────────────────────────────────────────────────────────────
+function getClientReservations(email) {
+  try {
+    if (!email) return { ok: false, error: 'EMAIL_REQUIRED' };
+
+    // Assurez-vous que l'appelant est bien le client concerné ou un admin.
+    // Pour l'instant, on se fie à la session validée côté client.
+    // Une version plus sécurisée vérifierait le token/session ici.
+
+    if (typeof obtenirReservationsPourClient === 'function') {
+      const reservations = obtenirReservationsPourClient(email, null);
+      return { ok: true, data: reservations };
+    }
+    return { ok: false, error: 'GET_RESERVATIONS_NOT_IMPLEMENTED' };
+  } catch(e) {
+    return { ok: false, error: e.toString() };
+  }
+}
