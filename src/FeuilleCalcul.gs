@@ -12,7 +12,7 @@
 function enregistrerOuMajClient(donneesClient) {
   try {
     if (!donneesClient || !donneesClient.email) return;
-    const feuilleClients = SpreadsheetApp.openById(ID_FEUILLE_CALCUL).getSheetByName("Clients");
+    const feuilleClients = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Clients");
     if (!feuilleClients) throw new Error("La feuille 'Clients' est introuvable.");
 
     const enTetesRequis = ["Email", "Raison Sociale", "Adresse", "SIRET", COLONNE_TYPE_REMISE_CLIENT, COLONNE_VALEUR_REMISE_CLIENT, COLONNE_NB_TOURNEES_OFFERTES];
@@ -53,7 +53,7 @@ function enregistrerOuMajClient(donneesClient) {
  */
 function obtenirInfosClientParEmail(email) {
   try {
-    const feuilleClients = SpreadsheetApp.openById(ID_FEUILLE_CALCUL).getSheetByName("Clients");
+    const feuilleClients = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Clients");
     if (!feuilleClients) return null;
 
     const enTetesRequis = ["Email", "Raison Sociale", "Adresse", "SIRET", COLONNE_TYPE_REMISE_CLIENT, COLONNE_VALEUR_REMISE_CLIENT, COLONNE_NB_TOURNEES_OFFERTES];
@@ -88,7 +88,7 @@ function decrementerTourneesOffertesClient(emailClient) {
   const lock = LockService.getScriptLock();
   if (!lock.tryLock(10000)) return;
   try {
-    const feuilleClients = SpreadsheetApp.openById(ID_FEUILLE_CALCUL).getSheetByName("Clients");
+    const feuilleClients = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Clients");
     if (!feuilleClients) throw new Error("La feuille 'Clients' est introuvable.");
 
     const enTetesRequis = ["Email", COLONNE_NB_TOURNEES_OFFERTES];
@@ -127,7 +127,7 @@ function decrementerTourneesOffertesClient(emailClient) {
  */
 function enregistrerReservationPourFacturation(dateHeureDebut, nomClient, emailClient, type, details, montant, idEvenement, idReservation, note, tourneeOfferteAppliquee = false, typeRemiseAppliquee = '', valeurRemiseAppliquee = 0) {
   try {
-    const feuilleFacturation = SpreadsheetApp.openById(ID_FEUILLE_CALCUL).getSheetByName("Facturation");
+    const feuilleFacturation = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Facturation");
     if (!feuilleFacturation) throw new Error("La feuille 'Facturation' est introuvable.");
 
     const enTetesRequis = ["Date", "Client (Raison S. Client)", "Client (Email)", "Type", "Détails", "Montant", "Statut", "Valider", "N° Facture", "Event ID", "ID Réservation", "Note Interne", "Tournée Offerte Appliquée", "Type Remise Appliquée", "Valeur Remise Appliquée", "Lien Note"];
@@ -165,7 +165,7 @@ function enregistrerReservationPourFacturation(dateHeureDebut, nomClient, emailC
  */
 function obtenirPlagesBloqueesPourDate(date) {
     try {
-        const feuillePlagesBloquees = SpreadsheetApp.openById(ID_FEUILLE_CALCUL).getSheetByName("Plages_Bloquees");
+        const feuillePlagesBloquees = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Plages_Bloquees");
         if (!feuillePlagesBloquees) return [];
 
         const indices = obtenirIndicesEnTetes(feuillePlagesBloquees, ["Date", "Heure_Debut", "Heure_Fin"]);
@@ -221,7 +221,7 @@ function rechercherClientParEmail(email) {
 function obtenirDetailsReservationsParIds(ids) {
   if (!ids || ids.length === 0) return [];
 
-  const feuille = SpreadsheetApp.openById(ID_FEUILLE_CALCUL).getSheetByName("Facturation");
+  const feuille = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Facturation");
   const enTetesRequis = ["ID Réservation", "Date", "Détails", "Client (Raison S. Client)"];
   const indices = obtenirIndicesEnTetes(feuille, enTetesRequis);
   const donnees = feuille.getDataRange().getValues();
@@ -236,7 +236,7 @@ function obtenirDetailsReservationsParIds(ids) {
 
         const matchDuree = details.match(/(\d+)\s*min/);
         const duree = matchDuree ? parseInt(matchDuree[1], 10) : DUREE_BASE;
-        
+
         const dateFin = new Date(dateDebut.getTime() + duree * 60000);
         const titre = `Réservation ${NOM_ENTREPRISE} - ${nomClient}`;
         const description = `Détails: ${details}`;
@@ -266,7 +266,7 @@ function obtenirDetailsReservationsParIds(ids) {
 function obtenirReservationsPourClient(email) {
   try {
     if (!email) return [];
-    const feuilleFacturation = SpreadsheetApp.openById(ID_FEUILLE_CALCUL).getSheetByName("Facturation");
+    const feuilleFacturation = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Facturation");
     if (!feuilleFacturation) {
       throw new Error("La feuille 'Facturation' est introuvable.");
     }
