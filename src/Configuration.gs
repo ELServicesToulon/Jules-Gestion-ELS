@@ -99,8 +99,18 @@ function getConfiguration() {
     EMAIL_ENTREPRISE: EMAIL_ENTREPRISE,
     ADMIN_EMAIL: ADMIN_EMAIL,
 
+    // --- Identifiants ---
+    ID_CALENDRIER: ID_CALENDRIER,
+
     // --- Paramètres de facturation ---
     TVA_APPLICABLE: TVA_APPLICABLE,
+
+    // --- Horaires & Durées ---
+    HEURE_DEBUT_SERVICE: HEURE_DEBUT_SERVICE,
+    HEURE_FIN_SERVICE: HEURE_FIN_SERVICE,
+    DUREE_TAMPON_MINUTES: DUREE_TAMPON_MINUTES,
+    INTERVALLE_CRENEAUX_MINUTES: INTERVALLE_CRENEAUX_MINUTES,
+    DUREE_BASE: DUREE_BASE,
 
     // --- Système de tarification & options ---
     TARIFS: TARIFS,

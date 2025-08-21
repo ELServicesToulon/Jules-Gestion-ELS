@@ -9,11 +9,12 @@
  * Récupère les événements du calendrier Google pour une période donnée via l'API avancée.
  * @param {Date} dateDebut La date de début de la période.
  * @param {Date} dateFin La date de fin de la période.
+ * @param {string} calendarId L'ID du calendrier à consulter.
  * @returns {Array} Une liste d'événements du calendrier, ou un tableau vide en cas d'erreur.
  */
-function obtenirEvenementsCalendrierPourPeriode(dateDebut, dateFin) {
+function obtenirEvenementsCalendrierPourPeriode(dateDebut, dateFin, calendarId) {
   try {
-    const evenements = Calendar.Events.list(ID_CALENDRIER, {
+    const evenements = Calendar.Events.list(calendarId, {
       timeMin: dateDebut.toISOString(),
       timeMax: dateFin.toISOString(),
       singleEvents: true,
@@ -30,22 +31,23 @@ function obtenirEvenementsCalendrierPourPeriode(dateDebut, dateFin) {
  * Calcule les créneaux horaires disponibles pour une date et une durée spécifiques.
  * @param {string} dateString La date au format "YYYY-MM-DD".
  * @param {number} duree La durée de la course en minutes.
+ * @param {object} config L'objet de configuration global de l'application.
  * @param {string|null} idEvenementAIgnorer L'ID d'un événement à ignorer (pour la modification).
  * @param {Array|null} evenementsPrecharges Une liste d'événements déjà chargés pour optimiser.
  * @param {Array} autresCoursesPanier Les autres courses dans le panier de l'utilisateur.
  * @returns {Array<string>} Une liste de créneaux disponibles au format "HHhMM".
  */
-function obtenirCreneauxDisponiblesPourDate(dateString, duree, idEvenementAIgnorer = null, evenementsPrecharges = null, autresCoursesPanier = []) {
+function obtenirCreneauxDisponiblesPourDate(dateString, duree, config, idEvenementAIgnorer = null, evenementsPrecharges = null, autresCoursesPanier = []) {
   try {
     const [annee, mois, jour] = dateString.split('-').map(Number);
 
-    const [heureDebut, minuteDebut] = HEURE_DEBUT_SERVICE.split(':').map(Number);
-    const [heureFin, minuteFin] = HEURE_FIN_SERVICE.split(':').map(Number);
+    const [heureDebut, minuteDebut] = config.HEURE_DEBUT_SERVICE.split(':').map(Number);
+    const [heureFin, minuteFin] = config.HEURE_FIN_SERVICE.split(':').map(Number);
     const debutJournee = new Date(annee, mois - 1, jour, heureDebut, minuteDebut);
     const finJournee = new Date(annee, mois - 1, jour, heureFin, minuteFin);
 
     const maintenant = new Date();
-    const estAdmin = (Session.getActiveUser().getEmail().toLowerCase() === ADMIN_EMAIL.toLowerCase());
+    const estAdmin = (Session.getActiveUser().getEmail().toLowerCase() === config.ADMIN_EMAIL.toLowerCase());
 
     // CORRECTION : Pour les non-admins, on bloque les jours passés. Pour les admins, on ne bloque JAMAIS.
     if (!estAdmin && new Date(dateString + "T23:59:59") < maintenant) {
@@ -54,7 +56,7 @@ function obtenirCreneauxDisponiblesPourDate(dateString, duree, idEvenementAIgnor
 
     const evenementsCalendrier = evenementsPrecharges
         ? evenementsPrecharges.filter(e => formaterDateEnYYYYMMDD(new Date(e.start.dateTime || e.start.date)) === dateString)
-        : obtenirEvenementsCalendrierPourPeriode(debutJournee, finJournee);
+        : obtenirEvenementsCalendrierPourPeriode(debutJournee, finJournee, config.ID_CALENDRIER);
 
     const plagesManuellementBloquees = obtenirPlagesBloqueesPourDate(debutJournee);
 
@@ -82,9 +84,9 @@ function obtenirCreneauxDisponiblesPourDate(dateString, duree, idEvenementAIgnor
     if (!estAdmin && formaterDateEnYYYYMMDD(debutJournee) === formaterDateEnYYYYMMDD(maintenant) && heureActuelle < maintenant) {
       heureActuelle = maintenant;
       const minutes = heureActuelle.getMinutes();
-      const remainder = minutes % INTERVALLE_CRENEAUX_MINUTES;
+      const remainder = minutes % config.INTERVALLE_CRENEAUX_MINUTES;
       if (remainder !== 0) {
-        heureActuelle.setMinutes(minutes + (INTERVALLE_CRENEAUX_MINUTES - remainder));
+        heureActuelle.setMinutes(minutes + (config.INTERVALLE_CRENEAUX_MINUTES - remainder));
         heureActuelle.setSeconds(0, 0);
       }
     }
@@ -99,7 +101,7 @@ function obtenirCreneauxDisponiblesPourDate(dateString, duree, idEvenementAIgnor
       for (const indispo of indisponibilitesNormalisees) {
         if (indispo.id === idPropreAIgnorer) continue;
         const debutIndispo = indispo.start;
-        const finAvecTampon = new Date(indispo.end.getTime() + DUREE_TAMPON_MINUTES * 60000);
+        const finAvecTampon = new Date(indispo.end.getTime() + config.DUREE_TAMPON_MINUTES * 60000);
         if (debutCreneau < finAvecTampon && finCreneau > debutIndispo) {
           estLibre = false;
           break;
@@ -110,7 +112,7 @@ function obtenirCreneauxDisponiblesPourDate(dateString, duree, idEvenementAIgnor
         creneauxPotentiels.push(debutCreneau);
       }
 
-      heureActuelle.setMinutes(heureActuelle.getMinutes() + INTERVALLE_CRENEAUX_MINUTES);
+      heureActuelle.setMinutes(heureActuelle.getMinutes() + config.INTERVALLE_CRENEAUX_MINUTES);
     }
 
     return creneauxPotentiels.map(creneau => formaterDateEnHHMM(creneau));
@@ -137,6 +139,7 @@ function obtenirDonneesCalendrierPublic(mois, annee) {
   }
 
   try {
+    const config = getConfiguration();
     if (typeof mois === 'string') mois = Number(mois);
     if (typeof annee === 'string') annee = Number(annee);
     if (!mois || !annee || mois < 1 || mois > 12) {
@@ -146,11 +149,11 @@ function obtenirDonneesCalendrierPublic(mois, annee) {
     const disponibilite = {};
     const dateDebutMois = new Date(annee, mois - 1, 1);
     const dateFinMois = new Date(annee, mois, 0);
-    const evenementsDuMois = obtenirEvenementsCalendrierPourPeriode(dateDebutMois, new Date(annee, mois, 1));
+    const evenementsDuMois = obtenirEvenementsCalendrierPourPeriode(dateDebutMois, new Date(annee, mois, 1), config.ID_CALENDRIER);
 
     const maintenant = new Date();
     const dateAujourdhuiString = formaterDateEnYYYYMMDD(maintenant);
-    const [heureFin, minuteFin] = HEURE_FIN_SERVICE.split(':').map(Number);
+    const [heureFin, minuteFin] = config.HEURE_FIN_SERVICE.split(':').map(Number);
 
     for (let d = new Date(dateDebutMois); d <= dateFinMois; d.setDate(d.getDate() + 1)) {
       const dateString = formaterDateEnYYYYMMDD(d);
@@ -168,11 +171,11 @@ function obtenirDonneesCalendrierPublic(mois, annee) {
           continue;
       }
 
-      const creneaux = obtenirCreneauxDisponiblesPourDate(dateString, DUREE_BASE, null, evenementsDuMois);
+      const creneaux = obtenirCreneauxDisponiblesPourDate(dateString, config.DUREE_BASE, config, null, evenementsDuMois);
 
       const debutServiceJour = new Date(d);
-      debutServiceJour.setHours(...HEURE_DEBUT_SERVICE.split(':').map(Number));
-      const totalCreneauxPossibles = Math.floor(((finServiceJour - debutServiceJour) / 60000) / INTERVALLE_CRENEAUX_MINUTES);
+      debutServiceJour.setHours(...config.HEURE_DEBUT_SERVICE.split(':').map(Number));
+      const totalCreneauxPossibles = Math.floor(((finServiceJour - debutServiceJour) / 60000) / config.INTERVALLE_CRENEAUX_MINUTES);
 
       disponibilite[dateString] = { disponibles: creneaux.length, total: totalCreneauxPossibles > 0 ? totalCreneauxPossibles : 1 };
     }
@@ -182,7 +185,7 @@ function obtenirDonneesCalendrierPublic(mois, annee) {
 
     return resultat;
   } catch (e) {
-    Logger.log(`ERREUR dans obtenirDonneesCalendrierPublic: ${e.toString()}`);
+    Logger.log(`ERREUR dans obtenirDonneesCalendrierPublic: ${e.stack}`);
     return { disponibilite: {} };
   }
 }
@@ -195,7 +198,8 @@ function obtenirDonneesCalendrierPublic(mois, annee) {
  * @returns {boolean} Vrai s'il y a un conflit, sinon faux.
  */
 function verifierConflitModification(dateDebut, dateFin, idEvenementAIgnorer) {
-    const evenementsCalendrier = obtenirEvenementsCalendrierPourPeriode(dateDebut, dateFin);
+    const config = getConfiguration();
+    const evenementsCalendrier = obtenirEvenementsCalendrierPourPeriode(dateDebut, dateFin, config.ID_CALENDRIER);
     const plagesManuellementBloquees = obtenirPlagesBloqueesPourDate(dateDebut);
 
     const indisponibilites = [
