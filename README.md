@@ -14,7 +14,7 @@ L’outil est conçu pour garantir **zéro papier**, une traçabilité complète
 ## Fonctionnalités principales
 
 - **Réservation en ligne et gestion des tournées**  
-  Interface client, admin et livreur totalement distinctes et automatisées via Apps Script et Google Sheets.
+  Interfaces client et admin totalement distinctes et automatisées via Apps Script et Google Sheets.
 - **Automatisation Google Workspace**  
   Synchronisation native avec Agenda, Sheets, Drive, génération de factures PDF Google Docs, archivage Drive, notifications automatisées.
 - **Interface utilisateur professionnelle**  
@@ -32,8 +32,7 @@ L’outil est conçu pour garantir **zéro papier**, une traçabilité complète
 
 - **Compte Google** (Drive, Sheets, Agenda, Apps Script activés)
 - **Droits d’édition** sur le Google Sheet hôte du projet
-- **Accès à l’exécutable WebApp Apps Script**  
-  (voir : [Script Google](https://script.google.com/macros/s/AKfycbyHD5OLTbL39asKeXQJLoskkRnPCiifFk87vkSgHwMMmelhSKV1Dx_b8QptOleGFtBi/exec))
+- **Accès à l’exécutable WebApp Apps Script**
 - **Accès administrateur** pour la configuration initiale
 
 ---
@@ -62,8 +61,6 @@ L’outil est conçu pour garantir **zéro papier**, une traçabilité complète
 - `FAQ.html` — Section aide et FAQ sur le paiement, RGPD, procédure
 - `shema.gs` — Vérification et synchronisation des colonnes/onglets essentiels
 
-> L’ensemble du code suit une philosophie modulaire, à séparer si besoin en micro-services Apps Script.
-
 ---
 
 ## Sécurité & RGPD
@@ -76,12 +73,32 @@ L’outil est conçu pour garantir **zéro papier**, une traçabilité complète
 
 ## Liens utiles
 
-- [Exécutable WebApp](https://script.google.com/macros/s/AKfycbyHD5OLTbL39asKeXQJLoskkRnPCiifFk87vkSgHwMMmelhSKV1Dx_b8QptOleGFtBi/exec)
-- [Site vitrine / interface client](https://sites.google.com/view/pharmacie-livraison-ehpad/accueil)
-- [KBIS Officiel](./Kbis_EL_Service.pdf)
-- [RIB BoursoBank](./iban-boursobank%20(1).pdf)
-- [Charte couleur/logo](./els-icone.png)
-- [Dépôt GitHub](https://github.com/ELServicesToulon/Jules-Gestion-ELS)
+- **Espace client (WebApp)**  
+  [https://script.google.com/macros/s/AKfycbzRzts0VCkAMdjmBYVdWXsAU6QzfThIgoy4Uu4vzb218sFriBlbEHdnGDAfIn7vYI-N/exec?page=gestion](https://script.google.com/macros/s/AKfycbzRzts0VCkAMdjmBYVdWXsAU6QzfThIgoy4Uu4vzb218sFriBlbEHdnGDAfIn7vYI-N/exec?page=gestion)
+
+- **Espace admin (WebApp)**  
+  [https://script.google.com/macros/s/AKfycbzRzts0VCkAMdjmBYVdWXsAU6QzfThIgoy4Uu4vzb218sFriBlbEHdnGDAfIn7vYI-N/exec?page=admin](https://script.google.com/macros/s/AKfycbzRzts0VCkAMdjmBYVdWXsAU6QzfThIgoy4Uu4vzb218sFriBlbEHdnGDAfIn7vYI-N/exec?page=admin)
+
+- **Site vitrine / interface client**  
+  [https://sites.google.com/view/pharmacie-livraison-ehpad/accueil](https://sites.google.com/view/pharmacie-livraison-ehpad/accueil)
+
+- **Google Sheet hôte du projet**  
+  [https://docs.google.com/spreadsheets/d/1-i8xBlCrl_Rrjo2FgiL33pIRjD1EFqyvU7ILPud3-r4/edit?usp=sharing](https://docs.google.com/spreadsheets/d/1-i8xBlCrl_Rrjo2FgiL33pIRjD1EFqyvU7ILPud3-r4/edit?usp=sharing)
+
+- **Script Apps Script (extension du Sheet)**  
+  [https://script.google.com/home/projects/1QccdTFLil488QDBf1ooMsUuQldFiJXaWg1kKeX4_L5YfNfmcBbsByp8Z](https://script.google.com/home/projects/1QccdTFLil488QDBf1ooMsUuQldFiJXaWg1kKeX4_L5YfNfmcBbsByp8Z)
+
+- **KBIS Officiel**  
+  [Kbis_EL_Service.pdf](./Kbis_EL_Service.pdf)
+
+- **RIB BoursoBank**  
+  [iban-boursobank (1).pdf](./iban-boursobank%20(1).pdf)
+
+- **Charte couleur/logo**  
+  [els-icone.png](./els-icone.png)
+
+- **Dépôt GitHub**  
+  [https://github.com/ELServicesToulon/Jules-Gestion-ELS](https://github.com/ELServicesToulon/Jules-Gestion-ELS)
 
 ---
 
