@@ -1,0 +1,142 @@
+<script>
+/**
+ * =================================================================
+ * MODULE JAVASCRIPT - FINALISATION DE LA RÉSERVATION ET DEVIS
+ * =================================================================
+ */
+
+/**
+ * Gère la demande d'envoi de devis par email.
+ */
+function gererDemandeDevis() {
+  const { ui } = window;
+  const { panier } = window.etat;
+
+  if (panier.length === 0) {
+    afficherNotification("Votre panier est vide.", "erreur");
+    return;
+  }
+
+  let email = ui.champEmailClient?.value.trim();
+  if (!email && window.etat.clientReconnu) {
+      email = window.etat.clientReconnu.email;
+  }
+  
+  if (email) {
+    envoyerDevis(email);
+  } else {
+    const modale = document.getElementById('modale-email-devis');
+    if (modale) {
+        modale.classList.remove('hidden');
+    }
+  }
+}
+
+/**
+ * Collecte les données et appelle la fonction serveur pour envoyer le devis.
+ * @param {string} email L'adresse email du client.
+ */
+function envoyerDevis(email) {
+    const { ui } = window;
+    const { panier } = window.etat;
+
+    basculerIndicateurChargement(true);
+
+    const donneesDevis = {
+        client: {
+            email: email,
+            nom: ui.champNomClient?.value.trim() || window.etat.clientReconnu?.nom || ''
+        },
+        items: panier
+    };
+
+    google.script.run
+        .withSuccessHandler(reponse => {
+            basculerIndicateurChargement(false);
+            if (reponse.success) {
+                afficherNotification(`Un devis a été envoyé à ${email}`, "succes");
+            } else {
+                afficherErreur(reponse.error || "L'envoi du devis a échoué.");
+            }
+        })
+        .withFailureHandler(afficherErreur)
+        .envoyerDevisParEmail(donneesDevis);
+}
+
+
+/**
+ * Affiche le conteneur de finalisation et pré-remplit les champs.
+ */
+function afficherConteneurFinalisation() {
+  const { ui } = window;
+  const { clientReconnu } = window.etat;
+
+  if (clientReconnu) {
+    ui.champEmailClient.value = clientReconnu.email;
+    ui.champNomClient.value = clientReconnu.nom;
+    ui.champAdresseClient.value = clientReconnu.adresse || '';
+    ui.champSiretClient.value = clientReconnu.siret || '';
+    ui.champEmailClient.readOnly = true;
+    ui.champNomClient.readOnly = true;
+  } else {
+    if (ui.formulaireReservation) ui.formulaireReservation.reset();
+    ui.champEmailClient.readOnly = false;
+    ui.champNomClient.readOnly = false;
+  }
+  
+  ui.conteneurFinalisation.classList.remove('hidden');
+  ui.champEmailClient.focus();
+}
+
+/**
+ * Gère la soumission du formulaire de réservation final.
+ */
+function gererSoumissionReservation(e) {
+  e.preventDefault();
+  const { ui } = window;
+  const { panier } = window.etat;
+
+  if (panier.length === 0) {
+    afficherNotification("Votre panier est vide.", "erreur");
+    return;
+  }
+
+  basculerIndicateurChargement(true);
+
+  const donneesReservation = {
+    client: {
+      email: ui.champEmailClient.value.trim(),
+      nom: ui.champNomClient.value.trim(),
+      adresse: ui.champAdresseClient.value.trim(),
+      siret: ui.champSiretClient.value.trim(),
+      note: ui.champNoteReservation.value.trim()
+    },
+    items: panier
+  };
+
+  google.script.run
+    .withSuccessHandler(reponse => {
+      basculerIndicateurChargement(false);
+      if (reponse.success) {
+        afficherNotification("Réservation confirmée ! Un email vous a été envoyé.", "succes");
+        window.etat.panier = [];
+        sauvegarderPanierDansLocalStorage();
+        afficherPanier();
+        ui.conteneurFinalisation.classList.add('hidden');
+        localStorage.setItem(CLE_LOCALSTORAGE_CLIENT, JSON.stringify(donneesReservation.client));
+      } else {
+        afficherErreur(reponse.summary || "Une erreur est survenue lors de la réservation.");
+        if (reponse.failedItemIds && reponse.failedItemIds.length > 0) {
+            window.etat.panier = window.etat.panier.filter(item => !reponse.failedItemIds.includes(item.id));
+            sauvegarderPanierDansLocalStorage();
+            afficherPanier();
+        }
+      }
+    })
+    .withFailureHandler(afficherErreur)
+    .reserverPanier(donneesReservation);
+}
+</script>
+
+
+

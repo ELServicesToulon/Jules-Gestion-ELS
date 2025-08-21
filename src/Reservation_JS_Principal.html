@@ -1,0 +1,142 @@
+<script>
+/**
+ * =================================================================
+ * MODULE JAVASCRIPT - PRINCIPAL
+ * =================================================================
+ * Description: Point d'entrée principal du script côté client.
+ * Initialise l'état de l'application, configure les écouteurs
+ * d'événements et lance l'affichage initial.
+ */
+
+// État global de l'application côté client
+window.etat = {
+  dateActuelle: new Date(),
+  panier: [],
+  tourneeEnCours: {}, // Sera peuplé lors de la configuration
+  clientReconnu: null
+};
+
+/**
+ * Gère la demande de créneaux après configuration.
+ */
+function gererDemandeCreneaux(e) {
+  e.preventDefault();
+  basculerIndicateurChargement(true);
+  const { tourneeEnCours } = window.etat;
+  const infosTournee = calculerInfosTourneeClient(tourneeEnCours.totalStops, tourneeEnCours.returnToPharmacy, tourneeEnCours.date, '12h00');
+  tourneeEnCours.duree = infosTournee.duree;
+  const autresCoursesPanier = window.etat.panier
+    .filter(item => item.date === tourneeEnCours.date)
+    .map(item => ({ startTime: item.startTime, duree: item.duree }));
+  google.script.run
+    .withSuccessHandler(creneaux => {
+      basculerIndicateurChargement(false);
+      afficherSelectionCreneaux(creneaux);
+    })
+    .withFailureHandler(afficherErreur)
+    .obtenirCreneauxDisponiblesPourDate(tourneeEnCours.date, tourneeEnCours.duree, null, null, autresCoursesPanier);
+}
+
+/**
+ * Configure tous les écouteurs d'événements de l'application.
+ */
+function configurerEcouteursEvenements() {
+  const { ui } = window;
+
+  // Gère les clics sur les jours du calendrier.
+  ui.grilleCalendrier?.addEventListener('click', (e) => {
+    const jourClique = e.target.closest('.jour-calendrier');
+    if (jourClique && !jourClique.classList.contains('desactive')) {
+      const dateString = jourClique.dataset.date;
+      if(dateString) {
+        ouvrirConfigurationTournee(dateString);
+      }
+    }
+  });
+
+  // Navigation du calendrier
+  ui.btnMoisPrecedent?.addEventListener('click', () => changerMois(-1));
+  ui.btnMoisSuivant?.addEventListener('click', () => changerMois(1));
+
+  // Écouteur pour le formulaire de configuration de tournée
+  ui.formulaireConfigTournee?.addEventListener('submit', gererDemandeCreneaux);
+
+  // Actions de la modale de configuration (Modale 1)
+  ui.btnFermerConfigTournee?.addEventListener('click', () => ui.modaleConfigTournee.classList.add('hidden'));
+  ui.btnAjouterArret?.addEventListener('click', () => {
+    ui.valeurArretsSup.textContent = parseInt(ui.valeurArretsSup.textContent) + 1;
+    mettreAJourResumeTournee();
+  });
+  ui.btnRetirerArret?.addEventListener('click', () => {
+    const valeur = parseInt(ui.valeurArretsSup.textContent);
+    if (valeur > 1) {
+      ui.valeurArretsSup.textContent = valeur - 1;
+      mettreAJourResumeTournee();
+    }
+  });
+  ui.interrupteurRetour?.addEventListener('change', mettreAJourResumeTournee);
+
+  // Actions de la modale de sélection de créneau (Modale 2)
+  ui.btnFermerSelectionCreneau?.addEventListener('click', () => ui.modaleSelectionCreneau.classList.add('hidden'));
+  ui.btnAjouterAuPanier?.addEventListener('click', gererAjoutAuPanier);
+  ui.btnModifierTournee?.addEventListener('click', retourVersConfiguration);
+
+  // Écouteurs pour la modale de confirmation de récurrence (Modale 3)
+  const modaleRecurrence = document.getElementById('modale-confirmation-recurrence');
+  document.getElementById('btn-confirmer-recurrence')?.addEventListener('click', confirmerEtAjouterRecurrenceAuPanier);
+  document.getElementById('btn-fermer-confirmation-recurrence')?.addEventListener('click', () => modaleRecurrence.classList.add('hidden'));
+  document.getElementById('btn-annuler-recurrence')?.addEventListener('click', () => modaleRecurrence.classList.add('hidden'));
+
+  // Actions du panier et de la finalisation
+  ui.btnValiderPanier?.addEventListener('click', afficherConteneurFinalisation);
+  document.getElementById('btn-envoyer-devis')?.addEventListener('click', gererDemandeDevis);
+  ui.formulaireReservation?.addEventListener('submit', gererSoumissionReservation);
+  ui.btnAnnulerReservation?.addEventListener('click', () => ui.conteneurFinalisation.classList.add('hidden'));
+  ui.listePanier?.addEventListener('click', gererActionsPanier);
+
+  // Écouteurs pour la modale de demande d'email pour le devis
+  const modaleEmailDevis = document.getElementById('modale-email-devis');
+  document.getElementById('formulaire-email-devis')?.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const emailInput = document.getElementById('email-pour-devis');
+      if (emailInput && emailInput.value) {
+          envoyerDevis(emailInput.value.trim());
+          modaleEmailDevis.classList.add('hidden');
+          emailInput.value = '';
+      }
+  });
+  document.getElementById('btn-fermer-email-devis')?.addEventListener('click', () => {
+      modaleEmailDevis.classList.add('hidden');
+  });
+
+  // Gestion du client
+  ui.champEmailClient?.addEventListener('blur', (e) => {
+      if(e.target.value) {
+          preRemplirInfosClient(e.target.value);
+      }
+  });
+  ui.btnChangerClient?.addEventListener('click', reinitialiserClient);
+}
+
+/**
+ * Point d'entrée principal, exécuté après le chargement du DOM.
+ */
+document.addEventListener('DOMContentLoaded', () => {
+  chargerPanierDepuisLocalStorage(); 
+  verifierSessionClient(); 
+  afficherCalendrier(window.etat.dateActuelle.getMonth() + 1, window.etat.dateActuelle.getFullYear());
+  configurerEcouteursEvenements();
+});
+
+/**
+ * Change le mois affiché dans le calendrier.
+ * @param {number} delta - Le changement de mois (-1 pour précédent, 1 pour suivant).
+ */
+function changerMois(delta) {
+    window.etat.dateActuelle.setMonth(window.etat.dateActuelle.getMonth() + delta);
+    afficherCalendrier(window.etat.dateActuelle.getMonth() + 1, window.etat.dateActuelle.getFullYear());
+}
+</script>
+
+
+

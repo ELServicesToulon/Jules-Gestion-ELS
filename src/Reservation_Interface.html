@@ -8,7 +8,11 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
+feat/organize-source-files
   <?!= include('Style'); ?>
+
+  <?!= include('Reservation_CSS'); ?>
+ main
   <style>
     .page-container {
       max-width: 950px;
@@ -205,7 +209,18 @@
 
   <div id="conteneur-notifications" role="alert" aria-live="assertive"></div>
 
+ feat/organize-source-files
   <?!= include('Reservation_JS'); ?>
+
+  <?!= include('Reservation_JS_UI'); ?>
+  <?!= include('Reservation_JS_UI_Elements'); ?>
+  <?!= include('Reservation_JS_Calendrier'); ?>
+  <?!= include('Reservation_JS_Panier'); ?>
+  <?!= include('Reservation_JS_Client'); ?>
+  <?!= include('Reservation_JS_Tournee'); ?>
+  <?!= include('Reservation_JS_Reservation'); ?>
+  <?!= include('Reservation_JS_Principal'); ?>
+ main
 
 </body>
 </html>

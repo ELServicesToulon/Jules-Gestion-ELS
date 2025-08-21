@@ -1,0 +1,250 @@
+<script>
+/**
+ * =================================================================
+ * MODULE JAVASCRIPT - GESTION DE LA TOURNÉE
+ * =================================================================
+ */
+
+/**
+ * Copie client de la logique de tarification.
+ */
+function calculerInfosTourneeClient(totalStops, returnToPharmacy, dateString, startTime) {
+  // Vérification de la disponibilité de la configuration serveur
+  if (!configServeur || !configServeur.TARIFS || !configServeur.TARIFS.Normal) {
+    console.error("Configuration du serveur non chargée. Utilisation de valeurs par défaut.");
+    return { prix: 0, duree: 0, km: 0, details: "Configuration non disponible", typeCourse: "Normal" };
+  }
+
+  const DUREE_BASE_NUM = parseInt(configServeur.DUREE_BASE, 10);
+  const DUREE_ARRET_SUP_NUM = parseInt(configServeur.DUREE_ARRET_SUP, 10);
+  const KM_BASE_NUM = parseInt(configServeur.KM_BASE, 10);
+  const KM_ARRET_SUP_NUM = parseInt(configServeur.KM_ARRET_SUP, 10);
+  const arretsSupplementaires = Math.max(0, totalStops - 1);
+  const duree = DUREE_BASE_NUM + (arretsSupplementaires * DUREE_ARRET_SUP_NUM);
+  const km = KM_BASE_NUM + (arretsSupplementaires * KM_ARRET_SUP_NUM);
+  const heureNormalisee = startTime.replace('h', ':');
+  const dateCourse = new Date(`${dateString}T${heureNormalisee}`);
+  const maintenant = new Date();
+  let typeCourse = 'Normal';
+  if ((dateCourse.getTime() - maintenant.getTime()) / 60000 < configServeur.URGENT_THRESHOLD_MINUTES) {
+    typeCourse = 'Urgent';
+  } else if (dateCourse.getDay() === 6) {
+    typeCourse = 'Samedi';
+  }
+  const reglesTarifaires = configServeur.TARIFS[typeCourse] || configServeur.TARIFS['Normal'];
+  let prixFinal = reglesTarifaires.base;
+  for (let i = 0; i < arretsSupplementaires; i++) {
+    const prixArret = reglesTarifaires.arrets[i] || reglesTarifaires.arrets[reglesTarifaires.arrets.length - 1];
+    prixFinal += prixArret;
+  }
+  if (returnToPharmacy) {
+      const dernierIndexArretSup = arretsSupplementaires;
+      const prixRetour = reglesTarifaires.arrets[dernierIndexArretSup] || reglesTarifaires.arrets[reglesTarifaires.arrets.length - 1];
+      prixFinal += prixRetour;
+  }
+  const details = `Tournée de ${duree}min (${arretsSupplementaires} arrêt(s) sup., retour: ${returnToPharmacy ? 'oui' : 'non'})`;
+  return { prix: prixFinal, duree: duree, km: km, details: details, typeCourse: typeCourse };
+}
+
+/**
+ * Ouvre la modale pour configurer une nouvelle tournée.
+ */
+function ouvrirConfigurationTournee(dateString) {
+  const { ui } = window;
+  const date = new Date(dateString + 'T00:00:00');
+  const dateFormatee = date.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
+  window.etat.tourneeEnCours = { date: dateString, totalStops: 1, returnToPharmacy: false };
+  ui.titreModaleConfig.textContent = `Configurer la tournée du ${dateFormatee}`;
+  ui.valeurArretsSup.textContent = '1';
+  ui.interrupteurRetour.checked = false;
+  mettreAJourResumeTournee();
+  ui.modaleConfigTournee.classList.remove('hidden');
+}
+
+/**
+ * Met à jour le résumé (prix, durée, km) dans la modale de configuration.
+ */
+function mettreAJourResumeTournee() {
+  const { ui } = window;
+  const totalStops = parseInt(ui.valeurArretsSup.textContent, 10);
+  const returnToPharmacy = ui.interrupteurRetour.checked;
+  window.etat.tourneeEnCours.totalStops = totalStops;
+  window.etat.tourneeEnCours.returnToPharmacy = returnToPharmacy;
+  const estimation = calculerInfosTourneeClient(totalStops, returnToPharmacy, window.etat.tourneeEnCours.date, '12h00');
+  ui.resumeConfigTournee.innerHTML = `
+    <div><span>Durée estimée</span><strong>${estimation.duree} min</strong></div>
+    <div><span>Prix estimé</span><strong>~ ${estimation.prix.toFixed(2)} €</strong></div>
+    <div><span>Distance</span><strong>~ ${estimation.km} km</strong></div>`;
+}
+
+/**
+ * Affiche la modale de sélection des créneaux.
+ */
+function afficherSelectionCreneaux(creneaux) {
+  const { ui } = window;
+  const { tourneeEnCours } = window.etat;
+  ui.modaleConfigTournee.classList.add('hidden');
+  ui.titreModaleSelection.textContent = `Créneaux pour le ${new Date(tourneeEnCours.date + 'T00:00:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })}`;
+  if (!creneaux || creneaux.length === 0) {
+    ui.grilleSelectionCreneau.innerHTML = '<p class="panier-vide">Aucun créneau disponible pour cette configuration.</p>';
+  } else {
+    ui.grilleSelectionCreneau.innerHTML = creneaux.map(creneau => {
+      const estimation = calculerInfosTourneeClient(tourneeEnCours.totalStops, tourneeEnCours.returnToPharmacy, tourneeEnCours.date, creneau);
+      const estUrgent = estimation.typeCourse === 'Urgent';
+      return `<button class="slot-btn ${estUrgent ? 'urgent' : 'standard'}" data-creneau="${creneau}" data-prix="${estimation.prix}" data-tarif="${estimation.typeCourse}"><span class="slot-time">${creneau}</span><span class="slot-rate-label">${estimation.typeCourse}</span></button>`;
+    }).join('');
+  }
+  reinitialiserRecapCreneau();
+  if(ui.btnAjouterAuPanier) ui.btnAjouterAuPanier.disabled = true;
+  ui.modaleSelectionCreneau.classList.remove('hidden');
+  ui.grilleSelectionCreneau.onclick = function(e) {
+    const target = e.target.closest('.slot-btn');
+    if (target) {
+      if (ui.grilleSelectionCreneau) {
+        ui.grilleSelectionCreneau.querySelectorAll('.slot-btn').forEach(btn => btn.classList.remove('selected'));
+      }
+      target.classList.add('selected');
+      if (ui.recapCreneauHeure) ui.recapCreneauHeure.textContent = target.dataset.creneau;
+      if (ui.recapCreneauTarif) ui.recapCreneauTarif.textContent = target.dataset.tarif;
+      if (ui.recapCreneauPrix) ui.recapCreneauPrix.textContent = `${parseFloat(target.dataset.prix).toFixed(2)} €`;
+      if (ui.btnAjouterAuPanier) ui.btnAjouterAuPanier.disabled = false;
+    }
+  };
+}
+
+/**
+ * Réinitialise l'affichage du récapitulatif dans la modale de sélection.
+ */
+function reinitialiserRecapCreneau() {
+    const { ui } = window;
+    if (ui.recapCreneauHeure) ui.recapCreneauHeure.textContent = '--:--';
+    if (ui.recapCreneauTarif) ui.recapCreneauTarif.textContent = '--';
+    if (ui.recapCreneauPrix) ui.recapCreneauPrix.textContent = '--.-- €';
+}
+
+/**
+ * Gère le retour à la modale de configuration.
+ */
+function retourVersConfiguration() {
+    const { ui } = window;
+    ui.modaleSelectionCreneau.classList.add('hidden');
+    ui.modaleConfigTournee.classList.remove('hidden');
+}
+
+/**
+ * Gère le clic sur "Ajouter au panier".
+ */
+function gererAjoutAuPanier() {
+  const { ui } = window;
+  const creneauSelectionneBtn = ui.grilleSelectionCreneau.querySelector('.slot-btn.selected');
+  const estRecurrent = document.getElementById('interrupteur-recurrence').checked;
+  if (!creneauSelectionneBtn) {
+    afficherNotification("Veuillez sélectionner un créneau.", "erreur");
+    return;
+  }
+  if (estRecurrent) {
+    verifierEtAfficherConfirmationRecurrence();
+  } else {
+    ajouterTourneeAuPanier(false);
+  }
+}
+
+/**
+ * Appelle le serveur pour vérifier les conflits et affiche la modale de confirmation.
+ */
+function verifierEtAfficherConfirmationRecurrence() {
+  basculerIndicateurChargement(true);
+  const { tourneeEnCours } = window.etat;
+  const creneauSelectionneBtn = document.querySelector('#grille-selection-creneau .slot-btn.selected');
+  const itemDeBase = {
+    date: tourneeEnCours.date,
+    startTime: creneauSelectionneBtn.dataset.creneau,
+    duree: tourneeEnCours.duree
+  };
+  google.script.run
+    .withSuccessHandler(resultats => {
+      basculerIndicateurChargement(false);
+      if (resultats && resultats.length > 0) {
+        afficherModaleConfirmationRecurrence(resultats);
+      } else {
+        afficherErreur("Aucune date future n'a été trouvée pour cette récurrence.");
+      }
+    })
+    .withFailureHandler(afficherErreur)
+    .verifierDisponibiliteRecurrence(itemDeBase);
+}
+
+/**
+ * Affiche la 3ème modale avec le résumé des dates et des conflits.
+ */
+function afficherModaleConfirmationRecurrence(resultats) {
+  const modale = document.getElementById('modale-confirmation-recurrence');
+  const listeUI = document.getElementById('liste-recurrence-details');
+  modale.dataset.recurrenceData = JSON.stringify(resultats);
+  listeUI.innerHTML = resultats.map(res => {
+    let content = '';
+    if (res.status === 'OK') {
+      content = `<strong>${res.dateFormatee}</strong> à ${res.creneau} <span class="status-ok">✔ Disponible</span>`;
+    } else {
+      content = `<strong>${res.dateFormatee}</strong> - <span class="status-conflict">⚠ Conflit</span><br>
+                 Créneau initial ${res.original} indisponible. Alternative proposée : <strong>${res.creneau || 'Aucune'}</strong>`;
+    }
+    return `<li class="${res.status === 'OK' ? '' : 'conflit'}">${content}</li>`;
+  }).join('');
+  modale.classList.remove('hidden');
+}
+
+/**
+ * Ajoute les tournées récurrentes au panier après confirmation.
+ */
+function confirmerEtAjouterRecurrenceAuPanier() {
+    const modale = document.getElementById('modale-confirmation-recurrence');
+    const resultats = JSON.parse(modale.dataset.recurrenceData || '[]');
+    resultats.forEach(res => {
+        if (res.creneau) {
+            ajouterTourneeAuPanier(true, res);
+        }
+    });
+    modale.classList.add('hidden');
+    afficherNotification("Tournées récurrentes ajoutées au panier.", "succes");
+}
+
+/**
+ * Ajoute une tournée au panier.
+ */
+function ajouterTourneeAuPanier(isRecurrentItem = false, recurrenceData = null) {
+  const { tourneeEnCours } = window.etat;
+  const creneauSelectionneBtn = document.querySelector('#grille-selection-creneau .slot-btn.selected');
+  let date, startTime, prix;
+  if (isRecurrentItem && recurrenceData) {
+    date = recurrenceData.dateISO;
+    startTime = recurrenceData.creneau;
+    const infos = calculerInfosTourneeClient(tourneeEnCours.totalStops, tourneeEnCours.returnToPharmacy, date, startTime);
+    prix = infos.prix;
+  } else {
+    date = tourneeEnCours.date;
+    startTime = creneauSelectionneBtn.dataset.creneau;
+    prix = parseFloat(creneauSelectionneBtn.dataset.prix);
+  }
+  const nouvelleTournee = {
+    id: 'tournee-' + Date.now() + Math.random(),
+    date: date,
+    startTime: startTime,
+    totalStops: tourneeEnCours.totalStops,
+    returnToPharmacy: tourneeEnCours.returnToPharmacy,
+    prix: prix,
+    duree: tourneeEnCours.duree,
+    details: `Tournée de ${tourneeEnCours.duree}min (${Math.max(0, tourneeEnCours.totalStops - 1)} arrêt(s) sup., retour: ${tourneeEnCours.returnToPharmacy ? 'oui' : 'non'})`,
+    isRecurrent: isRecurrentItem
+  };
+  window.etat.panier.push(nouvelleTournee);
+  afficherPanier();
+  sauvegarderPanierDansLocalStorage();
+  if (!isRecurrentItem) {
+      document.getElementById('modale-selection-creneau').classList.add('hidden');
+      afficherNotification("Tournée ajoutée au panier !", "succes");
+  }
+}
+</script>
+
+
