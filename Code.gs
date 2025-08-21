@@ -161,6 +161,12 @@ function renderClientPage(e) {
       }
     }
 
+    // Si on n'a toujours pas d'email, on vérifie l'utilisateur connecté à Google.
+    // C'est le cas pour la page 'gestion' accédée directement par un admin/utilisateur loggué.
+    if (!email && Session.getActiveUser()) {
+        email = Session.getActiveUser().getEmail();
+    }
+
     var base = (getConfiguration().WEBAPP_URL || ScriptApp.getService().getUrl() || '').trim();
     base = base.split('#')[0].split('?')[0];
 
