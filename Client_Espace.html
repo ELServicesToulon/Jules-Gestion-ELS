@@ -15,15 +15,6 @@
 </head>
 <body>
 
-  <div id="view-login">
-    <div class="carte" style="margin: 20px auto; max-width: 400px; padding: 20px;">
-        <h2>Connexion sans mot de passe</h2>
-        <p>Entrez votre e-mail pour recevoir un lien d’accès.</p>
-        <input type="email" data-email placeholder="votre@email" class="champ-formulaire" style="width: 100%; margin-top: 10px;">
-        <button onclick="ELS_requestLink()" class="btn btn-primaire" style="margin-top: 15px; width: 100%;">Recevoir le lien</button>
-    </div>
-  </div>
-
   <div id="view-app">
     <div id="indicateur-chargement" class="indicateur-chargement-overlay">
       <div class="spinner"></div>
@@ -71,6 +62,6 @@
     <div id="conteneur-notifications"></div>
   </div>
 
-  <?!= include('Client_JS'); ?>
+  <?!= include('Client_Data_JS'); ?>
 </body>
 </html>
