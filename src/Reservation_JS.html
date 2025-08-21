@@ -1,0 +1,802 @@
+<script>
+// =================================================================
+// FICHIER JAVASCRIPT CONSOLIDÉ POUR L'INTERFACE DE RÉSERVATION
+// =================================================================
+// Ce fichier est une compilation de plusieurs modules JS.
+// L'ordre de chargement est important pour la gestion des dépendances.
+// =================================================================
+
+
+// =================================================================
+// MODULE: Reservation_JS_UI.html
+// =================================================================
+/**
+ * Description: Gère les composants d'interface utilisateur génériques
+ * comme les notifications, les messages d'erreur et
+ * l'indicateur de chargement.
+ */
+
+/**
+ * Affiche une notification animée à l'écran.
+ * @param {string} message Le message à afficher.
+ * @param {string} [type="info"] Le type de notification ('info', 'succes', 'erreur').
+ */
+function afficherNotification(message, type = "info") {
+  const conteneur = document.getElementById('conteneur-notifications');
+  if (!conteneur) {
+    console.error("Le conteneur de notifications est introuvable.");
+    return;
+  }
+  const notification = document.createElement('div');
+  notification.className = `notification ${type}`;
+  notification.textContent = message;
+  conteneur.appendChild(notification);
+
+  // La notification disparaît automatiquement après 5 secondes.
+  setTimeout(() => {
+    notification.remove();
+  }, 5000);
+}
+
+/**
+ * Affiche ou masque l'indicateur de chargement global (spinner).
+ * @param {boolean} afficher True pour afficher, false pour masquer.
+ */
+function basculerIndicateurChargement(afficher) {
+  const indicateur = document.getElementById('indicateur-chargement');
+  if (indicateur) {
+    indicateur.classList.toggle('hidden', !afficher);
+  } else {
+    console.warn("L'élément 'indicateur-chargement' est introuvable dans le DOM.");
+  }
+}
+
+/**
+ * Gère l'affichage d'une erreur à l'utilisateur et dans la console.
+ * @param {Object|string} erreur L'objet d'erreur ou le message à afficher.
+ */
+function afficherErreur(erreur) {
+  basculerIndicateurChargement(false); // Toujours masquer le chargement en cas d'erreur.
+  const messageErreur = typeof erreur === 'object' && erreur.message ? erreur.message : String(erreur);
+  afficherNotification(`Erreur : ${messageErreur}`, "erreur");
+  console.error(erreur);
+}
+
+
+// =================================================================
+// MODULE: Reservation_JS_UI_Elements.html
+// =================================================================
+/**
+ * Description: Centralise toutes les références aux éléments du DOM
+ * dans un objet global `window.ui` pour un accès facile et propre.
+ * Ce script doit être chargé avant tous les autres scripts de logique.
+ */
+
+document.addEventListener('DOMContentLoaded', () => {
+  window.ui = {
+    // Indicateur de chargement
+    indicateurChargement: document.getElementById('indicateur-chargement'),
+
+    // Calendrier
+    grilleCalendrier: document.getElementById('grille-calendrier'),
+    titreCalendrier: document.getElementById('titre-calendrier'),
+    btnMoisPrecedent: document.getElementById('btn-mois-precedent'),
+    btnMoisSuivant: document.getElementById('btn-mois-suivant'),
+
+    // Panier
+    listePanier: document.getElementById('liste-panier'),
+    panierPiedDePage: document.getElementById('panier-pied-de-page'),
+    panierTotalValeur: document.getElementById('panier-total-valeur'),
+    btnValiderPanier: document.getElementById('btn-valider-panier'),
+
+    // Modale 1: Configuration de la tournée
+    modaleConfigTournee: document.getElementById('modale-config-tournee'),
+    titreModaleConfig: document.getElementById('modale-config-titre'),
+    formulaireConfigTournee: document.getElementById('formulaire-config-tournee'),
+    btnFermerConfigTournee: document.getElementById('btn-fermer-config-tournee'),
+    btnAjouterArret: document.getElementById('btn-ajouter-arret'),
+    btnRetirerArret: document.getElementById('btn-retirer-arret'),
+    valeurArretsSup: document.getElementById('valeur-arrets-sup'),
+    interrupteurRetour: document.getElementById('interrupteur-retour'),
+    resumeConfigTournee: document.getElementById('resume-config-tournee'),
+
+    // Modale 2: Sélection du créneau
+    modaleSelectionCreneau: document.getElementById('modale-selection-creneau'),
+    titreModaleSelection: document.getElementById('modale-selection-titre'),
+    btnFermerSelectionCreneau: document.getElementById('btn-fermer-selection-creneau'),
+    grilleSelectionCreneau: document.getElementById('grille-selection-creneau'),
+    btnAjouterAuPanier: document.getElementById('btn-ajouter-au-panier'),
+    btnModifierTournee: document.getElementById('btn-modifier-tournee'),
+
+    // Récapitulatif dans la modale de sélection
+    recapCreneauHeure: document.getElementById('recap-creneau-heure'),
+    recapCreneauTarif: document.getElementById('recap-creneau-tarif'),
+    recapCreneauPrix: document.getElementById('recap-creneau-prix'),
+
+    // Conteneur de finalisation
+    conteneurFinalisation: document.getElementById('conteneur-finalisation'),
+    formulaireReservation: document.getElementById('formulaire-reservation'),
+    btnAnnulerReservation: document.getElementById('btn-annuler-reservation'),
+
+    // Champs Client
+    champEmailClient: document.getElementById('client-email'),
+    champNomClient: document.getElementById('client-nom'),
+    champAdresseClient: document.getElementById('client-adresse'),
+    champSiretClient: document.getElementById('client-siret'),
+    champNoteReservation: document.getElementById('note-reservation'),
+    banniereClientReconnu: document.getElementById('banniere-client-reconnu'),
+    nomClientReconnu: document.getElementById('nom-client-reconnu'),
+    btnChangerClient: document.getElementById('btn-changer-client')
+  };
+});
+
+
+// =================================================================
+// MODULE: Reservation_JS_Calendrier.html
+// =================================================================
+/**
+ * Description: Gère l'affichage, la mise à jour et la navigation
+ * du calendrier principal de réservation.
+ */
+
+function afficherCalendrier(mois, annee) {
+  basculerIndicateurChargement(true);
+
+  google.script.run
+    .withSuccessHandler(donnees => {
+      const { grilleCalendrier, titreCalendrier } = window.ui;
+
+      if (donnees && donnees.disponibilite && grilleCalendrier && titreCalendrier) {
+        window.etat.donneesCalendrier = donnees.disponibilite;
+        grilleCalendrier.innerHTML = '';
+
+        titreCalendrier.textContent = new Date(annee, mois - 1).toLocaleString('fr-FR', { month: 'long', year: 'numeric' });
+
+        const premierJourDuMois = new Date(annee, mois - 1, 1).getDay();
+        const joursDansLeMois = new Date(annee, mois, 0).getDate();
+        const aujourdhui = new Date();
+        aujourdhui.setHours(0, 0, 0, 0);
+
+        // Ajoute des cellules vides pour le décalage du premier jour.
+        for (let i = 0; i < (premierJourDuMois === 0 ? 6 : premierJourDuMois - 1); i++) {
+          grilleCalendrier.appendChild(document.createElement('div'));
+        }
+
+        for (let jour = 1; jour <= joursDansLeMois; jour++) {
+          const celluleJour = document.createElement('div');
+          const date = new Date(annee, mois - 1, jour);
+          const dateString = `${annee}-${String(mois).padStart(2, '0')}-${String(jour).padStart(2, '0')}`;
+          const disponibilite = window.etat.donneesCalendrier[dateString] || { disponibles: 0, total: 0 };
+
+          celluleJour.className = 'jour-calendrier';
+          celluleJour.innerHTML = `<span>${jour}</span>`;
+
+          const estPasse = date < aujourdhui;
+          const estDimanche = date.getDay() === 0;
+          const estComplet = disponibilite.disponibles === 0;
+
+          if (estPasse || estDimanche || estComplet) {
+            celluleJour.classList.add('desactive');
+          } else {
+            celluleJour.dataset.date = dateString;
+            celluleJour.setAttribute('aria-label', `${disponibilite.disponibles} créneaux disponibles`);
+            celluleJour.innerHTML += `
+              <div class="barre-disponibilite">
+                <div style="width:${(disponibilite.disponibles / disponibilite.total) * 100}%"></div>
+              </div>
+            `;
+          }
+          grilleCalendrier.appendChild(celluleJour);
+        }
+      } else {
+        afficherErreur("Les données du calendrier n'ont pas pu être chargées.");
+      }
+      basculerIndicateurChargement(false);
+    })
+    .withFailureHandler(afficherErreur)
+    .obtenirDonneesCalendrierPublic(mois, annee);
+}
+
+
+// =================================================================
+// MODULE: Reservation_JS_Panier.html
+// =================================================================
+/**
+ * Description: Gère l'ajout, la suppression et l'affichage des
+ * tournées dans le panier du client.
+ */
+
+function ajouterTourneeAuPanier() {
+  const { ui } = window;
+  const { tourneeEnCours } = window.etat;
+  const creneauSelectionneBtn = ui.grilleSelectionCreneau.querySelector('.slot-btn.selected');
+  const estRecurrent = document.getElementById('interrupteur-recurrence').checked;
+
+  if (!creneauSelectionneBtn) {
+    afficherNotification("Veuillez sélectionner un créneau.", "erreur");
+    return;
+  }
+
+  const nouvelleTournee = {
+    id: 'tournee-' + Date.now(),
+    date: tourneeEnCours.date,
+    startTime: creneauSelectionneBtn.dataset.creneau,
+    totalStops: tourneeEnCours.totalStops,
+    returnToPharmacy: tourneeEnCours.returnToPharmacy,
+    prix: parseFloat(creneauSelectionneBtn.dataset.prix),
+    duree: tourneeEnCours.duree,
+    details: `Tournée de ${tourneeEnCours.duree}min (${Math.max(0, tourneeEnCours.totalStops - 1)} arrêt(s) sup., retour: ${tourneeEnCours.returnToPharmacy ? 'oui' : 'non'})`,
+    isRecurrent: estRecurrent
+  };
+
+  window.etat.panier.push(nouvelleTournee);
+
+  afficherPanier();
+  sauvegarderPanierDansLocalStorage();
+
+  ui.modaleSelectionCreneau.classList.add('hidden');
+  afficherNotification("Tournée ajoutée au panier !", "succes");
+}
+
+function afficherPanier() {
+  const { ui } = window;
+  const { panier } = window.etat;
+
+  if (panier.length === 0) {
+    ui.listePanier.innerHTML = '<p class="panier-vide">Votre panier est vide.</p>';
+    ui.panierPiedDePage.classList.add('hidden');
+    return;
+  }
+
+  ui.listePanier.innerHTML = panier.map(item => {
+    const date = new Date(item.date + 'T00:00:00');
+    const dateFormatee = date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' });
+    const recurrenceInfo = item.isRecurrent ? '<small style="color: #6a0dad; display: block;">(Récurrence mensuelle)</small>' : '';
+
+    return `
+      <li class="item-panier" data-id-item="${item.id}">
+        <div class="item-panier-infos">
+          <strong>Le ${dateFormatee} à ${item.startTime}</strong>
+          ${recurrenceInfo}
+          <small>${item.details}</small>
+        </div>
+        <div class="item-panier-actions">
+            <span class="item-panier-prix">${item.prix.toFixed(2)} €</span>
+            <button class="item-panier-supprimer" aria-label="Supprimer cet article">&times;</button>
+        </div>
+      </li>
+    `;
+  }).join('');
+
+  const total = panier.reduce((acc, item) => acc + item.prix, 0);
+  ui.panierTotalValeur.textContent = `~ ${total.toFixed(2)} €`;
+  ui.panierPiedDePage.classList.remove('hidden');
+}
+
+function gererActionsPanier(e) {
+  if (e.target.classList.contains('item-panier-supprimer')) {
+    const itemId = e.target.closest('.item-panier').dataset.idItem;
+    window.etat.panier = window.etat.panier.filter(item => item.id !== itemId);
+    afficherPanier();
+    sauvegarderPanierDansLocalStorage();
+    afficherNotification("Tournée retirée du panier.", "info");
+  }
+}
+
+function sauvegarderPanierDansLocalStorage() {
+  localStorage.setItem('panierReservationELS', JSON.stringify(window.etat.panier));
+}
+
+function chargerPanierDepuisLocalStorage() {
+  const panierSauvegarde = localStorage.getItem('panierReservationELS');
+  if (panierSauvegarde) {
+    window.etat.panier = JSON.parse(panierSauvegarde);
+    afficherPanier();
+  }
+}
+
+
+// =================================================================
+// MODULE: Reservation_JS_Client.html
+// =================================================================
+/**
+ * Description: Gère la session client (localStorage) pour pré-remplir
+ * les informations et personnaliser l'accueil.
+ */
+
+const CLE_LOCALSTORAGE_CLIENT = 'sessionClientELServices';
+
+function verifierSessionClient() {
+  const sessionSauvegardee = localStorage.getItem(CLE_LOCALSTORAGE_CLIENT);
+  if (sessionSauvegardee) {
+    const session = JSON.parse(sessionSauvegardee);
+    window.etat.clientReconnu = session;
+    preRemplirInfosClient(session.email);
+  }
+}
+
+function preRemplirInfosClient(email) {
+    if(!email) return;
+
+    const banniere = document.getElementById('banniere-client-reconnu');
+    const nomClientEl = document.getElementById('nom-client-reconnu');
+
+    basculerIndicateurChargement(true);
+    google.script.run
+        .withSuccessHandler(client => {
+            basculerIndicateurChargement(false);
+            if (client && window.ui) {
+                if(window.ui.champEmailClient) window.ui.champEmailClient.value = client.email || '';
+                if(window.ui.champNomClient) window.ui.champNomClient.value = client.nom || '';
+                if(window.ui.champAdresseClient) window.ui.champAdresseClient.value = client.adresse || '';
+                if(window.ui.champSiretClient) window.ui.champSiretClient.value = client.siret || '';
+
+                if(nomClientEl) nomClientEl.textContent = client.nom;
+                if(banniere) banniere.classList.remove('hidden');
+            }
+        })
+        .withFailureHandler(afficherErreur)
+        .rechercherClientParEmail(email);
+}
+
+function reinitialiserClient() {
+    localStorage.removeItem(CLE_LOCALSTORAGE_CLIENT);
+    window.etat.clientReconnu = null;
+    if (window.ui && window.ui.formulaireReservation) {
+        window.ui.formulaireReservation.reset();
+    }
+    const banniere = document.getElementById('banniere-client-reconnu');
+    if (banniere) {
+        banniere.classList.add('hidden');
+    }
+}
+
+
+// =================================================================
+// MODULE: Reservation_JS_Tournee.html
+// =================================================================
+
+function calculerInfosTourneeClient(totalStops, returnToPharmacy, dateString, startTime) {
+  if (!configServeur || !configServeur.TARIFS || !configServeur.TARIFS.Normal) {
+    console.error("Configuration du serveur non chargée. Utilisation de valeurs par défaut.");
+    return { prix: 0, duree: 0, km: 0, details: "Configuration non disponible", typeCourse: "Normal" };
+  }
+
+  const DUREE_BASE_NUM = parseInt(configServeur.DUREE_BASE, 10);
+  const DUREE_ARRET_SUP_NUM = parseInt(configServeur.DUREE_ARRET_SUP, 10);
+  const KM_BASE_NUM = parseInt(configServeur.KM_BASE, 10);
+  const KM_ARRET_SUP_NUM = parseInt(configServeur.KM_ARRET_SUP, 10);
+  const arretsSupplementaires = Math.max(0, totalStops - 1);
+  const duree = DUREE_BASE_NUM + (arretsSupplementaires * DUREE_ARRET_SUP_NUM);
+  const km = KM_BASE_NUM + (arretsSupplementaires * KM_ARRET_SUP_NUM);
+  const heureNormalisee = startTime.replace('h', ':');
+  const dateCourse = new Date(`${dateString}T${heureNormalisee}`);
+  const maintenant = new Date();
+  let typeCourse = 'Normal';
+  if ((dateCourse.getTime() - maintenant.getTime()) / 60000 < configServeur.URGENT_THRESHOLD_MINUTES) {
+    typeCourse = 'Urgent';
+  } else if (dateCourse.getDay() === 6) {
+    typeCourse = 'Samedi';
+  }
+  const reglesTarifaires = configServeur.TARIFS[typeCourse] || configServeur.TARIFS['Normal'];
+  let prixFinal = reglesTarifaires.base;
+  for (let i = 0; i < arretsSupplementaires; i++) {
+    const prixArret = reglesTarifaires.arrets[i] || reglesTarifaires.arrets[reglesTarifaires.arrets.length - 1];
+    prixFinal += prixArret;
+  }
+  if (returnToPharmacy) {
+      const dernierIndexArretSup = arretsSupplementaires;
+      const prixRetour = reglesTarifaires.arrets[dernierIndexArretSup] || reglesTarifaires.arrets[reglesTarifaires.arrets.length - 1];
+      prixFinal += prixRetour;
+  }
+  const details = `Tournée de ${duree}min (${arretsSupplementaires} arrêt(s) sup., retour: ${returnToPharmacy ? 'oui' : 'non'})`;
+  return { prix: prixFinal, duree: duree, km: km, details: details, typeCourse: typeCourse };
+}
+
+function ouvrirConfigurationTournee(dateString) {
+  const { ui } = window;
+  const date = new Date(dateString + 'T00:00:00');
+  const dateFormatee = date.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
+  window.etat.tourneeEnCours = { date: dateString, totalStops: 1, returnToPharmacy: false };
+  ui.titreModaleConfig.textContent = `Configurer la tournée du ${dateFormatee}`;
+  ui.valeurArretsSup.textContent = '1';
+  ui.interrupteurRetour.checked = false;
+  mettreAJourResumeTournee();
+  ui.modaleConfigTournee.classList.remove('hidden');
+}
+
+function mettreAJourResumeTournee() {
+  const { ui } = window;
+  const totalStops = parseInt(ui.valeurArretsSup.textContent, 10);
+  const returnToPharmacy = ui.interrupteurRetour.checked;
+  window.etat.tourneeEnCours.totalStops = totalStops;
+  window.etat.tourneeEnCours.returnToPharmacy = returnToPharmacy;
+  const estimation = calculerInfosTourneeClient(totalStops, returnToPharmacy, window.etat.tourneeEnCours.date, '12h00');
+  ui.resumeConfigTournee.innerHTML = `
+    <div><span>Durée estimée</span><strong>${estimation.duree} min</strong></div>
+    <div><span>Prix estimé</span><strong>~ ${estimation.prix.toFixed(2)} €</strong></div>
+    <div><span>Distance</span><strong>~ ${estimation.km} km</strong></div>`;
+}
+
+function afficherSelectionCreneaux(creneaux) {
+  const { ui } = window;
+  const { tourneeEnCours } = window.etat;
+  ui.modaleConfigTournee.classList.add('hidden');
+  ui.titreModaleSelection.textContent = `Créneaux pour le ${new Date(tourneeEnCours.date + 'T00:00:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })}`;
+  if (!creneaux || creneaux.length === 0) {
+    ui.grilleSelectionCreneau.innerHTML = '<p class="panier-vide">Aucun créneau disponible pour cette configuration.</p>';
+  } else {
+    ui.grilleSelectionCreneau.innerHTML = creneaux.map(creneau => {
+      const estimation = calculerInfosTourneeClient(tourneeEnCours.totalStops, tourneeEnCours.returnToPharmacy, tourneeEnCours.date, creneau);
+      const estUrgent = estimation.typeCourse === 'Urgent';
+      return `<button class="slot-btn ${estUrgent ? 'urgent' : 'standard'}" data-creneau="${creneau}" data-prix="${estimation.prix}" data-tarif="${estimation.typeCourse}"><span class="slot-time">${creneau}</span><span class="slot-rate-label">${estimation.typeCourse}</span></button>`;
+    }).join('');
+  }
+  reinitialiserRecapCreneau();
+  if(ui.btnAjouterAuPanier) ui.btnAjouterAuPanier.disabled = true;
+  ui.modaleSelectionCreneau.classList.remove('hidden');
+  ui.grilleSelectionCreneau.onclick = function(e) {
+    const target = e.target.closest('.slot-btn');
+    if (target) {
+      if (ui.grilleSelectionCreneau) {
+        ui.grilleSelectionCreneau.querySelectorAll('.slot-btn').forEach(btn => btn.classList.remove('selected'));
+      }
+      target.classList.add('selected');
+      if (ui.recapCreneauHeure) ui.recapCreneauHeure.textContent = target.dataset.creneau;
+      if (ui.recapCreneauTarif) ui.recapCreneauTarif.textContent = target.dataset.tarif;
+      if (ui.recapCreneauPrix) ui.recapCreneauPrix.textContent = `${parseFloat(target.dataset.prix).toFixed(2)} €`;
+      if (ui.btnAjouterAuPanier) ui.btnAjouterAuPanier.disabled = false;
+    }
+  };
+}
+
+function reinitialiserRecapCreneau() {
+    const { ui } = window;
+    if (ui.recapCreneauHeure) ui.recapCreneauHeure.textContent = '--:--';
+    if (ui.recapCreneauTarif) ui.recapCreneauTarif.textContent = '--';
+    if (ui.recapCreneauPrix) ui.recapCreneauPrix.textContent = '--.-- €';
+}
+
+function retourVersConfiguration() {
+    const { ui } = window;
+    ui.modaleSelectionCreneau.classList.add('hidden');
+    ui.modaleConfigTournee.classList.remove('hidden');
+}
+
+function gererAjoutAuPanier() {
+  const { ui } = window;
+  const creneauSelectionneBtn = ui.grilleSelectionCreneau.querySelector('.slot-btn.selected');
+  const estRecurrent = document.getElementById('interrupteur-recurrence').checked;
+  if (!creneauSelectionneBtn) {
+    afficherNotification("Veuillez sélectionner un créneau.", "erreur");
+    return;
+  }
+  if (estRecurrent) {
+    verifierEtAfficherConfirmationRecurrence();
+  } else {
+    ajouterTourneeAuPanier(false);
+  }
+}
+
+function verifierEtAfficherConfirmationRecurrence() {
+  basculerIndicateurChargement(true);
+  const { tourneeEnCours } = window.etat;
+  const creneauSelectionneBtn = document.querySelector('#grille-selection-creneau .slot-btn.selected');
+  const itemDeBase = {
+    date: tourneeEnCours.date,
+    startTime: creneauSelectionneBtn.dataset.creneau,
+    duree: tourneeEnCours.duree
+  };
+  google.script.run
+    .withSuccessHandler(resultats => {
+      basculerIndicateurChargement(false);
+      if (resultats && resultats.length > 0) {
+        afficherModaleConfirmationRecurrence(resultats);
+      } else {
+        afficherErreur("Aucune date future n'a été trouvée pour cette récurrence.");
+      }
+    })
+    .withFailureHandler(afficherErreur)
+    .verifierDisponibiliteRecurrence(itemDeBase);
+}
+
+function afficherModaleConfirmationRecurrence(resultats) {
+  const modale = document.getElementById('modale-confirmation-recurrence');
+  const listeUI = document.getElementById('liste-recurrence-details');
+  modale.dataset.recurrenceData = JSON.stringify(resultats);
+  listeUI.innerHTML = resultats.map(res => {
+    let content = '';
+    if (res.status === 'OK') {
+      content = `<strong>${res.dateFormatee}</strong> à ${res.creneau} <span class="status-ok">✔ Disponible</span>`;
+    } else {
+      content = `<strong>${res.dateFormatee}</strong> - <span class="status-conflict">⚠ Conflit</span><br>
+                 Créneau initial ${res.original} indisponible. Alternative proposée : <strong>${res.creneau || 'Aucune'}</strong>`;
+    }
+    return `<li class="${res.status === 'OK' ? '' : 'conflit'}">${content}</li>`;
+  }).join('');
+  modale.classList.remove('hidden');
+}
+
+function confirmerEtAjouterRecurrenceAuPanier() {
+    const modale = document.getElementById('modale-confirmation-recurrence');
+    const resultats = JSON.parse(modale.dataset.recurrenceData || '[]');
+    resultats.forEach(res => {
+        if (res.creneau) {
+            ajouterTourneeAuPanier(true, res);
+        }
+    });
+    modale.classList.add('hidden');
+    afficherNotification("Tournées récurrentes ajoutées au panier.", "succes");
+}
+
+function ajouterTourneeAuPanier(isRecurrentItem = false, recurrenceData = null) {
+  const { tourneeEnCours } = window.etat;
+  const creneauSelectionneBtn = document.querySelector('#grille-selection-creneau .slot-btn.selected');
+  let date, startTime, prix;
+  if (isRecurrentItem && recurrenceData) {
+    date = recurrenceData.dateISO;
+    startTime = recurrenceData.creneau;
+    const infos = calculerInfosTourneeClient(tourneeEnCours.totalStops, tourneeEnCours.returnToPharmacy, date, startTime);
+    prix = infos.prix;
+  } else {
+    date = tourneeEnCours.date;
+    startTime = creneauSelectionneBtn.dataset.creneau;
+    prix = parseFloat(creneauSelectionneBtn.dataset.prix);
+  }
+  const nouvelleTournee = {
+    id: 'tournee-' + Date.now() + Math.random(),
+    date: date,
+    startTime: startTime,
+    totalStops: tourneeEnCours.totalStops,
+    returnToPharmacy: tourneeEnCours.returnToPharmacy,
+    prix: prix,
+    duree: tourneeEnCours.duree,
+    details: `Tournée de ${tourneeEnCours.duree}min (${Math.max(0, tourneeEnCours.totalStops - 1)} arrêt(s) sup., retour: ${tourneeEnCours.returnToPharmacy ? 'oui' : 'non'})`,
+    isRecurrent: isRecurrentItem
+  };
+  window.etat.panier.push(nouvelleTournee);
+  afficherPanier();
+  sauvegarderPanierDansLocalStorage();
+  if (!isRecurrentItem) {
+      document.getElementById('modale-selection-creneau').classList.add('hidden');
+      afficherNotification("Tournée ajoutée au panier !", "succes");
+  }
+}
+
+
+// =================================================================
+// MODULE: Reservation_JS_Reservation.html
+// =================================================================
+
+function gererDemandeDevis() {
+  const { ui } = window;
+  const { panier } = window.etat;
+
+  if (panier.length === 0) {
+    afficherNotification("Votre panier est vide.", "erreur");
+    return;
+  }
+
+  let email = ui.champEmailClient?.value.trim();
+  if (!email && window.etat.clientReconnu) {
+      email = window.etat.clientReconnu.email;
+  }
+
+  if (email) {
+    envoyerDevis(email);
+  } else {
+    const modale = document.getElementById('modale-email-devis');
+    if (modale) {
+        modale.classList.remove('hidden');
+    }
+  }
+}
+
+function envoyerDevis(email) {
+    const { ui } = window;
+    const { panier } = window.etat;
+
+    basculerIndicateurChargement(true);
+
+    const donneesDevis = {
+        client: {
+            email: email,
+            nom: ui.champNomClient?.value.trim() || window.etat.clientReconnu?.nom || ''
+        },
+        items: panier
+    };
+
+    google.script.run
+        .withSuccessHandler(reponse => {
+            basculerIndicateurChargement(false);
+            if (reponse.success) {
+                afficherNotification(`Un devis a été envoyé à ${email}`, "succes");
+            } else {
+                afficherErreur(reponse.error || "L'envoi du devis a échoué.");
+            }
+        })
+        .withFailureHandler(afficherErreur)
+        .envoyerDevisParEmail(donneesDevis);
+}
+
+function afficherConteneurFinalisation() {
+  const { ui } = window;
+  const { clientReconnu } = window.etat;
+
+  if (clientReconnu) {
+    ui.champEmailClient.value = clientReconnu.email;
+    ui.champNomClient.value = clientReconnu.nom;
+    ui.champAdresseClient.value = clientReconnu.adresse || '';
+    ui.champSiretClient.value = clientReconnu.siret || '';
+    ui.champEmailClient.readOnly = true;
+    ui.champNomClient.readOnly = true;
+  } else {
+    if (ui.formulaireReservation) ui.formulaireReservation.reset();
+    ui.champEmailClient.readOnly = false;
+    ui.champNomClient.readOnly = false;
+  }
+
+  ui.conteneurFinalisation.classList.remove('hidden');
+  ui.champEmailClient.focus();
+}
+
+function gererSoumissionReservation(e) {
+  e.preventDefault();
+  const { ui } = window;
+  const { panier } = window.etat;
+
+  if (panier.length === 0) {
+    afficherNotification("Votre panier est vide.", "erreur");
+    return;
+  }
+
+  basculerIndicateurChargement(true);
+
+  const donneesReservation = {
+    client: {
+      email: ui.champEmailClient.value.trim(),
+      nom: ui.champNomClient.value.trim(),
+      adresse: ui.champAdresseClient.value.trim(),
+      siret: ui.champSiretClient.value.trim(),
+      note: ui.champNoteReservation.value.trim()
+    },
+    items: panier
+  };
+
+  google.script.run
+    .withSuccessHandler(reponse => {
+      basculerIndicateurChargement(false);
+      if (reponse.success) {
+        afficherNotification("Réservation confirmée ! Un email vous a été envoyé.", "succes");
+        window.etat.panier = [];
+        sauvegarderPanierDansLocalStorage();
+        afficherPanier();
+        ui.conteneurFinalisation.classList.add('hidden');
+        localStorage.setItem(CLE_LOCALSTORAGE_CLIENT, JSON.stringify(donneesReservation.client));
+      } else {
+        afficherErreur(reponse.summary || "Une erreur est survenue lors de la réservation.");
+        if (reponse.failedItemIds && reponse.failedItemIds.length > 0) {
+            window.etat.panier = window.etat.panier.filter(item => !reponse.failedItemIds.includes(item.id));
+            sauvegarderPanierDansLocalStorage();
+            afficherPanier();
+        }
+      }
+    })
+    .withFailureHandler(afficherErreur)
+    .reserverPanier(donneesReservation);
+}
+
+
+// =================================================================
+// MODULE: Reservation_JS_Principal.html
+// =================================================================
+/**
+ * Description: Point d'entrée principal du script côté client.
+ * Initialise l'état de l'application, configure les écouteurs
+ * d'événements et lance l'affichage initial.
+ */
+
+window.etat = {
+  dateActuelle: new Date(),
+  panier: [],
+  tourneeEnCours: {},
+  clientReconnu: null
+};
+
+function gererDemandeCreneaux(e) {
+  e.preventDefault();
+  basculerIndicateurChargement(true);
+  const { tourneeEnCours } = window.etat;
+  const infosTournee = calculerInfosTourneeClient(tourneeEnCours.totalStops, tourneeEnCours.returnToPharmacy, tourneeEnCours.date, '12h00');
+  tourneeEnCours.duree = infosTournee.duree;
+  const autresCoursesPanier = window.etat.panier
+    .filter(item => item.date === tourneeEnCours.date)
+    .map(item => ({ startTime: item.startTime, duree: item.duree }));
+  google.script.run
+    .withSuccessHandler(creneaux => {
+      basculerIndicateurChargement(false);
+      afficherSelectionCreneaux(creneaux);
+    })
+    .withFailureHandler(afficherErreur)
+    .obtenirCreneauxDisponiblesPourDate(tourneeEnCours.date, tourneeEnCours.duree, null, null, autresCoursesPanier);
+}
+
+function configurerEcouteursEvenements() {
+  const { ui } = window;
+
+  ui.grilleCalendrier?.addEventListener('click', (e) => {
+    const jourClique = e.target.closest('.jour-calendrier');
+    if (jourClique && !jourClique.classList.contains('desactive')) {
+      const dateString = jourClique.dataset.date;
+      if(dateString) {
+        ouvrirConfigurationTournee(dateString);
+      }
+    }
+  });
+
+  ui.btnMoisPrecedent?.addEventListener('click', () => changerMois(-1));
+  ui.btnMoisSuivant?.addEventListener('click', () => changerMois(1));
+  ui.formulaireConfigTournee?.addEventListener('submit', gererDemandeCreneaux);
+  ui.btnFermerConfigTournee?.addEventListener('click', () => ui.modaleConfigTournee.classList.add('hidden'));
+  ui.btnAjouterArret?.addEventListener('click', () => {
+    ui.valeurArretsSup.textContent = parseInt(ui.valeurArretsSup.textContent) + 1;
+    mettreAJourResumeTournee();
+  });
+  ui.btnRetirerArret?.addEventListener('click', () => {
+    const valeur = parseInt(ui.valeurArretsSup.textContent);
+    if (valeur > 1) {
+      ui.valeurArretsSup.textContent = valeur - 1;
+      mettreAJourResumeTournee();
+    }
+  });
+  ui.interrupteurRetour?.addEventListener('change', mettreAJourResumeTournee);
+  ui.btnFermerSelectionCreneau?.addEventListener('click', () => ui.modaleSelectionCreneau.classList.add('hidden'));
+  ui.btnAjouterAuPanier?.addEventListener('click', gererAjoutAuPanier);
+  ui.btnModifierTournee?.addEventListener('click', retourVersConfiguration);
+
+  const modaleRecurrence = document.getElementById('modale-confirmation-recurrence');
+  document.getElementById('btn-confirmer-recurrence')?.addEventListener('click', confirmerEtAjouterRecurrenceAuPanier);
+  document.getElementById('btn-fermer-confirmation-recurrence')?.addEventListener('click', () => modaleRecurrence.classList.add('hidden'));
+  document.getElementById('btn-annuler-recurrence')?.addEventListener('click', () => modaleRecurrence.classList.add('hidden'));
+
+  ui.btnValiderPanier?.addEventListener('click', afficherConteneurFinalisation);
+  document.getElementById('btn-envoyer-devis')?.addEventListener('click', gererDemandeDevis);
+  ui.formulaireReservation?.addEventListener('submit', gererSoumissionReservation);
+  ui.btnAnnulerReservation?.addEventListener('click', () => ui.conteneurFinalisation.classList.add('hidden'));
+  ui.listePanier?.addEventListener('click', gererActionsPanier);
+
+  const modaleEmailDevis = document.getElementById('modale-email-devis');
+  document.getElementById('formulaire-email-devis')?.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const emailInput = document.getElementById('email-pour-devis');
+      if (emailInput && emailInput.value) {
+          envoyerDevis(emailInput.value.trim());
+          modaleEmailDevis.classList.add('hidden');
+          emailInput.value = '';
+      }
+  });
+  document.getElementById('btn-fermer-email-devis')?.addEventListener('click', () => {
+      modaleEmailDevis.classList.add('hidden');
+  });
+
+  ui.champEmailClient?.addEventListener('blur', (e) => {
+      if(e.target.value) {
+          preRemplirInfosClient(e.target.value);
+      }
+  });
+  ui.btnChangerClient?.addEventListener('click', reinitialiserClient);
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  chargerPanierDepuisLocalStorage();
+  verifierSessionClient();
+  afficherCalendrier(window.etat.dateActuelle.getMonth() + 1, window.etat.dateActuelle.getFullYear());
+  configurerEcouteursEvenements();
+});
+
+function changerMois(delta) {
+    window.etat.dateActuelle.setMonth(window.etat.dateActuelle.getMonth() + delta);
+    afficherCalendrier(window.etat.dateActuelle.getMonth() + 1, window.etat.dateActuelle.getFullYear());
+}
+
+</script>
