@@ -257,3 +257,36 @@ function obtenirDetailsReservationsParIds(ids) {
 
   return reservationsTrouvees;
 }
+
+/**
+ * Récupère toutes les réservations d'un client par son e-mail.
+ * @param {string} email L'e-mail du client.
+ * @returns {Array<Array>} Un tableau de lignes de réservation.
+ */
+function obtenirReservationsPourClient(email) {
+  try {
+    if (!email) return [];
+    const feuilleFacturation = SpreadsheetApp.openById(ID_FEUILLE_CALCUL).getSheetByName("Facturation");
+    if (!feuilleFacturation) {
+      throw new Error("La feuille 'Facturation' est introuvable.");
+    }
+
+    const enTetes = feuilleFacturation.getRange(1, 1, 1, feuilleFacturation.getLastColumn()).getValues()[0];
+    const emailColumnIndex = enTetes.indexOf("Client (Email)");
+
+    if (emailColumnIndex === -1) {
+      throw new Error("La colonne 'Client (Email)' est introuvable dans l'onglet 'Facturation'.");
+    }
+
+    const donnees = feuilleFacturation.getDataRange().getValues();
+    const reservationsClient = donnees.slice(1).filter(ligne => {
+      return String(ligne[emailColumnIndex]).toLowerCase() === email.toLowerCase();
+    });
+
+    return reservationsClient;
+  } catch (e) {
+    Logger.log(`Erreur dans obtenirReservationsPourClient : ${e.stack}`);
+    // En cas d'erreur, retourner un tableau vide pour éviter de bloquer le client.
+    return [];
+  }
+}
