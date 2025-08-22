@@ -197,7 +197,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <div class="groupe-formulaire hidden" id="conteneur-nb-tournees-offertes"><label for="nb-tournees-offertes">Nombre Tournées Offertes</label><input type="number" id="nb-tournees-offertes" class="champ-formulaire" min="0" step="1"></div>
             </div>
             <div class="groupe-formulaire"><label for="champ-date-ajout">Date de la course</label><input type="date" id="champ-date-ajout" class="champ-formulaire" value="${champDate ? champDate.value : ''}"></div>
-            <div class="groupe-formulaire"><label>Arrêts supplémentaires :</label><div style="display: flex; align-items: center; gap: 20px;"><div class="champ-compteur"><button type="button" class="btn-compteur btn-retirer">-</button><span class="valeur-compteur">0</span><button type="button" class="btn-compteur btn-ajouter">+</button></div><label><input type="checkbox" id="check-retour"> Retour pharmacie</label></div></div>
+            <div class="groupe-formulaire"><label>Nombre total d’arrêts <span style="color:#8e44ad;" title="Le retour pharmacie compte comme 1 arrêt">🅸</span> :</label><div class="champ-compteur"><button type="button" class="btn-compteur btn-retirer">-</button><span class="valeur-compteur">1</span><button type="button" class="btn-compteur btn-ajouter">+</button></div></div>
             <div id="conteneur-creneaux-ajout" class="hidden"><label>Créneau disponible</label><div id="grille-creneaux-ajout"></div></div>
             <div class="modale-pied-de-page"><label><input type="checkbox" id="check-notifier"> Avertir le client</label><button type="button" id="btn-confirmer-ajout" class="btn btn-primaire" disabled>Ajouter la course</button></div>`;
         if (modale) modale.classList.remove('hidden');
@@ -207,19 +207,23 @@ document.addEventListener('DOMContentLoaded', () => {
         const reservation = toutesLesReservationsAffichees.find(r => r.id === idReservation);
         if (!reservation) return afficherErreur("Réservation introuvable.");
         const match = reservation.details.match(/(\d+)\s*arrêt\(s\)\s*sup/);
-        const arretsActuels = match ? parseInt(match[1], 10) : 0;
+        const arretsSupplementaires = match ? parseInt(match[1], 10) : 0;
+        const retour = reservation.details.includes('retour: oui');
+        // Le nombre total d'arrêts est la base (1) + les arrêts supplémentaires + le retour (qui compte comme 1 arrêt sup).
+        const totalStopsActuel = 1 + arretsSupplementaires + (retour ? 1 : 0);
+
         if (!contenuModale) return;
         contenuModale.innerHTML = `
             <h3 id="modale-titre">Modifier les arrêts</h3><p><strong>Client :</strong> ${reservation.clientName}</p>
-            <div class="groupe-formulaire"><label>Nombre d'arrêts supplémentaires :</label><div class="champ-compteur"><button type="button" class="btn-compteur btn-retirer">-</button><span class="valeur-compteur">${arretsActuels}</span><button type="button" class="btn-compteur btn-ajouter">+</button></div></div>
+            <div class="groupe-formulaire"><label>Nombre total d’arrêts :</label><div class="champ-compteur"><button type="button" class="btn-compteur btn-retirer">-</button><span class="valeur-compteur">${totalStopsActuel}</span><button type="button" class="btn-compteur btn-ajouter">+</button></div></div>
             <div class="modale-pied-de-page"><button type="button" id="btn-confirmer-maj" class="btn btn-primaire">Valider la modification</button></div>`;
         if (modale) modale.classList.remove('hidden');
         const valeurCompteur = contenuModale.querySelector('.valeur-compteur');
         if (valeurCompteur) {
             contenuModale.querySelector('.btn-ajouter')?.addEventListener('click', () => { valeurCompteur.textContent = parseInt(valeurCompteur.textContent, 10) + 1; });
-            contenuModale.querySelector('.btn-retirer')?.addEventListener('click', () => { let val = parseInt(valeurCompteur.textContent, 10); if (val > 0) valeurCompteur.textContent = val - 1; });
+            contenuModale.querySelector('.btn-retirer')?.addEventListener('click', () => { let val = parseInt(valeurCompteur.textContent, 10); if (val > 1) valeurCompteur.textContent = val - 1; });
         }
-        contenuModale.querySelector('#btn-confirmer-maj')?.addEventListener('click', () => { gererSoumissionMiseAJour(idReservation, parseInt(valeurCompteur?.textContent || '0', 10)); });
+        contenuModale.querySelector('#btn-confirmer-maj')?.addEventListener('click', () => { gererSoumissionMiseAJour(idReservation, parseInt(valeurCompteur?.textContent || '1', 10)); });
     }
     function ouvrirModaleReplanifier(idReservation) {
         const reservation = toutesLesReservationsAffichees.find(r => r.id === idReservation);
@@ -368,7 +372,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const conteneurNbTourneesOffertes = document.getElementById('conteneur-nb-tournees-offertes');
         const champDateAjout = document.getElementById('champ-date-ajout');
         const valeurCompteur = modale.querySelector('.valeur-compteur');
-        const checkRetour = document.getElementById('check-retour');
         const conteneurCreneaux = document.getElementById('conteneur-creneaux-ajout');
         const grilleCreneaux = document.getElementById('grille-creneaux-ajout');
         const btnConfirmer = document.getElementById('btn-confirmer-ajout');
@@ -405,15 +408,13 @@ document.addEventListener('DOMContentLoaded', () => {
         selectClient?.addEventListener('change', () => { const selectedEmail = selectClient.value; remplirChampsClient(selectedEmail === 'new' ? null : tousLesClients.find(c => c.email === selectedEmail)); });
         champsClient.typeRemise?.addEventListener('change', majAffichageRemise);
         modale.querySelector('.btn-ajouter')?.addEventListener('click', () => { if(valeurCompteur) valeurCompteur.textContent = parseInt(valeurCompteur.textContent, 10) + 1; mettreAJourCreneauxDisponibles(); });
-        modale.querySelector('.btn-retirer')?.addEventListener('click', () => { if(valeurCompteur) { let arrets = parseInt(valeurCompteur.textContent, 10); if(arrets > 0) valeurCompteur.textContent = arrets - 1; mettreAJourCreneauxDisponibles(); } });
+        modale.querySelector('.btn-retirer')?.addEventListener('click', () => { if(valeurCompteur) { let arrets = parseInt(valeurCompteur.textContent, 10); if(arrets > 1) valeurCompteur.textContent = arrets - 1; mettreAJourCreneauxDisponibles(); } });
         champDateAjout?.addEventListener('change', mettreAJourCreneauxDisponibles);
-        checkRetour?.addEventListener('change', mettreAJourCreneauxDisponibles);
         function mettreAJourCreneauxDisponibles() {
-            const arretsSupplementaires = parseInt(valeurCompteur?.textContent || '0', 10);
-            const retour = checkRetour?.checked || false;
+            const totalStops = parseInt(valeurCompteur?.textContent || '1', 10);
             const date = champDateAjout?.value;
             const DUREE_BASE = 30; const DUREE_ARRET_SUP = 15;
-            const duree = DUREE_BASE + (arretsSupplementaires + (retour ? 1 : 0)) * DUREE_ARRET_SUP;
+            const duree = DUREE_BASE + (totalStops - 1) * DUREE_ARRET_SUP;
             if (!date) return;
             conteneurCreneaux?.classList.remove('hidden');
             if (grilleCreneaux) grilleCreneaux.innerHTML = '<i>Chargement...</i>';
@@ -439,7 +440,7 @@ document.addEventListener('DOMContentLoaded', () => {
             };
             const data = {
                 client: clientData, date: champDateAjout?.value, startTime: creneauSelectionne,
-                additionalStops: parseInt(valeurCompteur?.textContent || '0', 10), returnToPharmacy: checkRetour?.checked || false,
+                totalStops: parseInt(valeurCompteur?.textContent || '1', 10),
                 notifyClient: document.getElementById('check-notifier')?.checked || false
             };
             gererSoumissionCreation(data);

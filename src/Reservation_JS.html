@@ -851,11 +851,13 @@ function selectDay(jour) {
 // --- Met à jour le récapitulatif ---
 function updateRecap() {
   const jour = document.getElementById('jourSelected').value;
-  const arrets = document.getElementById('arrets').value;
+  const arrets = parseInt(document.getElementById('arrets').value);
   const samedi = document.querySelector('input[name="samedi"]').checked;
   const urgence = document.querySelector('input[name="urgence"]').checked;
-  let total = 15; // base
-  if(arrets) total += [0,5,9,12,16][parseInt(arrets)];
+  let total = 15; // Base (1 arrêt inclus)
+  if(arrets > 1) {
+    total += 5 + (arrets-2)*4; // 2e arrêt +5€, puis +4€ chaque arrêt suivant
+  }
   if(samedi) total += 25;
   if(urgence) total += 20;
   let txt = `Total estimé : <b>${total} € net</b>`;

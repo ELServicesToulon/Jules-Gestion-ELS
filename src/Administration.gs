@@ -308,7 +308,12 @@ function creerReservationAdmin(data) {
 
     const clientPourCalcul = obtenirInfosClientParEmail(data.client.email);
 
-    const { prix, duree, tourneeOfferteAppliquee } = calculerPrixEtDureeServeur(data.additionalStops + 1, data.returnToPharmacy, data.date, data.startTime, clientPourCalcul);
+    const totalStops = data.totalStops;
+    const additionalStops = Math.max(0, totalStops - 2);
+    const returnToPharmacy = totalStops > 1;
+    const nbDeliveries = 1 + additionalStops;
+
+    const { prix, duree, tourneeOfferteAppliquee } = calculerPrixEtDureeServeur(nbDeliveries, returnToPharmacy, data.date, data.startTime, clientPourCalcul);
     const creneauxDisponibles = obtenirCreneauxDisponiblesPourDate(data.date, duree);
     if (!creneauxDisponibles.includes(data.startTime)) {
       return { success: false, error: `Le créneau ${data.startTime} n'est plus disponible.` };
@@ -322,12 +327,12 @@ function creerReservationAdmin(data) {
     const typeCourse = new Date(data.date + 'T00:00:00').getDay() === 6 ? 'Samedi' : 'Normal';
 
     const titreEvenement = `Réservation ${NOM_ENTREPRISE} - ${data.client.nom}`;
-    const descriptionEvenement = `Client: ${data.client.nom} (${data.client.email})\nType: ${typeCourse}\nID Réservation: ${idReservation}\nArrêts suppl: ${data.additionalStops}, Retour: ${data.returnToPharmacy ? 'Oui' : 'Non'}\nTotal: ${prix.toFixed(2)} €\nNote: Ajouté par admin.`;
+    const descriptionEvenement = `Client: ${data.client.nom} (${data.client.email})\nType: ${typeCourse}\nID Réservation: ${idReservation}\nArrêts suppl: ${additionalStops}, Retour: ${returnToPharmacy ? 'Oui' : 'Non'}\nTotal: ${prix.toFixed(2)} €\nNote: Ajouté par admin.`;
 
     const evenement = CalendarApp.getCalendarById(ID_CALENDRIER).createEvent(titreEvenement, dateDebut, dateFin, { description: descriptionEvenement });
 
     if (evenement) {
-      const detailsFacturation = `Tournée de ${duree}min (${data.additionalStops} arrêt(s) sup., retour: ${data.returnToPharmacy ? 'oui' : 'non'})`;
+      const detailsFacturation = `Tournée de ${duree}min (${additionalStops} arrêt(s) sup., retour: ${returnToPharmacy ? 'oui' : 'non'})`;
       enregistrerReservationPourFacturation(dateDebut, data.client.nom, data.client.email, typeCourse, detailsFacturation, prix, evenement.getId(), idReservation, "Ajouté par admin", tourneeOfferteAppliquee, clientPourCalcul.typeRemise, clientPourCalcul.valeurRemise);
       logActivity(idReservation, data.client.email, `Réservation manuelle par admin`, prix, "Succès");
 
