@@ -216,6 +216,11 @@
       style="position:absolute;top:18px;right:18px;background:transparent;border:none;font-size:2em;line-height:1;color:#8e44ad;cursor:pointer;z-index:3;">×</button>
     <h2 style="margin:0 0 0.3em 0;font-size:1.55em;font-weight:700;color:#8e44ad;">Réserver votre livraison</h2>
 
+    <p id="tarif-error" class="hidden" style="color:red; text-align:center;">Erreur : Tarifs non chargés.</p>
+    <div class="badges" style="display:flex; gap: 0.5em; justify-content:center; margin-bottom:1em;">
+      <span id="badge-tarif-base" style="background: #eee; padding: 0.2em 0.5em; border-radius: 0.5em;"></span>
+      <span id="badge-tarif-5" style="background: #eee; padding: 0.2em 0.5em; border-radius: 0.5em;"></span>
+    </div>
     <form id="formReservation" autocomplete="off">
       <!-- Sélecteur de jour (exemple dynamique à remplacer par ta liste JS si besoin) -->
       <label for="jour" style="font-weight:500;">Sélectionnez votre jour :</label>
@@ -226,21 +231,21 @@
         <button type="button" class="jour-gelule" data-jour="2025-08-26">26</button>
         <!-- Ajoute dynamiquement les autres jours via JS selon les dispos -->
       </div>
-      <input type="hidden" name="jour" id="jourSelected" required>
+      <input type="hidden" name="date-choisie" id="jourSelected" required>
 
       <!-- Arrêts totaux -->
-      <label for="arrets" style="font-weight:500;">Nombre total d’arrêts <span style="color:#8e44ad;" title="Inclut le retour pharmacie">🅸</span> :</label>
-      <select name="arrets" id="arrets" style="font-size:1em;width:100%;margin-bottom:1em;">
-        <option value="1">1 arrêt (livraison simple)</option>
-        <option value="2">2 arrêts (ex : livraison + retour pharmacie)</option>
-        <option value="3">3 arrêts</option>
-        <option value="4">4 arrêts</option>
-        <option value="5">5 arrêts</option>
+      <label for="select-nb-arrets" style="font-weight:500;">Nombre total d’arrêts :</label>
+      <select name="arrets" id="select-nb-arrets" style="font-size:1em;width:100%;margin-bottom:1em;">
+        <!-- Options will be populated by JS -->
       </select>
 
+      <div style="display:flex; gap: 1em; margin-bottom: 1em;">
+        <label style="font-weight:500;"><input type="checkbox" id="chk-retour" /> Retour pharmacie</label>
+        <label style="font-weight:500;"><input type="checkbox" id="chk-urgence" /> Urgence</label>
+      </div>
 
       <!-- Récap et soumission -->
-      <div id="recap" style="font-size:0.98em;color:#555;margin-bottom:0.9em;min-height:1.3em;"></div>
+      <div id="total-panier" style="font-size:1.2em;color:#333;margin-bottom:0.9em;min-height:1.3em; text-align:center; font-weight:bold;"></div>
       <button type="submit" style="width:100%;border:none;border-radius:999px;background:linear-gradient(90deg,#8e44ad 10%,#3498db 90%);box-shadow:0 2px 8px 0 #5dade2cc;font-weight:600;font-family:'Montserrat';font-size:1.18em;color:#fff;padding:0.75em 0;transition:filter .15s;cursor:pointer;">Valider ma réservation</button>
     </form>
     <div id="feedback" style="font-size:1.08em;color:#3498db;text-align:center;margin-top:0.8em;"></div>

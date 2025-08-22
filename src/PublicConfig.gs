@@ -64,3 +64,12 @@ function logPublicConfig(){
   Logger.log(JSON.stringify(data, null, 2));
   return data;
 }
+
+/** === API publique (front) — ne rien mettre de sensible ici === **/
+function getConfigPublic() {
+  return {
+    tarifs: TARIFS,
+    regles: REGLES,
+    meta: META
+  };
+}

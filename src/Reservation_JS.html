@@ -840,6 +840,101 @@ function changerMois(delta) {
 
 
 // =================================================================
+// MODULE: NOUVELLE LOGIQUE TARIFAIRE (Fourni par l'utilisateur)
+// =================================================================
+let CONFIG = null;
+
+function showTarifError(msg = 'Erreur : Tarifs non chargés.') {
+  const el = document.querySelector('#tarif-error');
+  if (el) { el.textContent = msg; el.classList.remove('hidden'); }
+}
+
+function hideTarifError() {
+  const el = document.querySelector('#tarif-error');
+  if (el) el.classList.add('hidden');
+}
+
+function euros(n) {
+  return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(n || 0);
+}
+
+/** Prix total selon nbArrêts (retour compte comme +1 si activé) */
+function calculePrixFront(nbArrets, dateChoisie, opts = { retour: false, urgence: false }) {
+  if (!CONFIG) return 0;
+  const t = CONFIG.tarifs;
+  const r = CONFIG.regles;
+
+  const nbNormalise = Number(nbArrets) + (opts.retour && t.RETOUR_EQUIV_ARRET ? 1 : 0);
+
+  const palier = Math.max(0, Math.min(4, nbNormalise));
+  const restants = Math.max(0, nbNormalise - 4);
+  let total = palier * Number(t.BASE_PAR_ARRET) + restants * Number(t.A_PARTIR_DU_5EME);
+
+  // Samedi
+  if (t.SAMEDI?.ACTIVE && new Date(dateChoisie).getDay() === 6) {
+    total += Number(t.SAMEDI.SURCHARGE_FIXE || 0);
+  }
+  // Urgence
+  if (opts.urgence && t.URGENCE?.ACTIVE) {
+    total += Number(t.URGENCE.SURCHARGE || 0);
+  }
+  return total;
+}
+
+/** Alimente les badges tarifaires dans la modale */
+function updateTarifBadges() {
+  if (!CONFIG) return;
+  const t = CONFIG.tarifs;
+  const base = document.querySelector('#badge-tarif-base');
+  const apd5 = document.querySelector('#badge-tarif-5');
+  if (base) base.textContent = `${euros(t.BASE_PAR_ARRET)}/arrêt`;
+  if (apd5) apd5.textContent = `à partir du 5ᵉ : ${euros(t.A_PARTIR_DU_5EME)}/arrêt`;
+}
+
+/** Active/masque les jours d’aujourd’hui selon la règle SAME_DAY */
+function applySameDayRule() {
+  if (!CONFIG) return;
+  const r = CONFIG.regles;
+  const now = new Date();
+  if (!r.ALLOW_SAME_DAY || now.getHours() >= Number(r.SAME_DAY_CUTOFF_HOUR || 0)) {
+    // Désactiver le bouton “Aujourd’hui” / le jour courant dans la grille
+    document.querySelectorAll('[data-day="today"]').forEach(b => b.setAttribute('disabled','disabled'));
+  }
+}
+
+/** Bootstrap : charge la config depuis Apps Script */
+function bootConfig() {
+  // Méthode fiable en WebApp GAS :
+  google.script.run
+    .withSuccessHandler(cfg => {
+      CONFIG = cfg;
+      hideTarifError();
+      updateTarifBadges();
+      applySameDayRule();
+      // ici tu peux (re)générer la liste déroulante “1 arrêt … 6+”
+      const max = Number(CONFIG.regles.MAX_ARRETS_VISIBLE || 12);
+      const select = document.querySelector('#select-nb-arrets');
+      if (select) {
+        select.innerHTML = '';
+        for (let i = 1; i <= Math.min(6, max); i++) {
+          const opt = document.createElement('option');
+          opt.value = String(i);
+          opt.textContent = (i === 1) ? '1 arrêt (livraison simple)' : `${i} arrêts`;
+          select.appendChild(opt);
+        }
+        if (max > 6) {
+          const opt = document.createElement('option');
+          opt.value = '7';
+          opt.textContent = '6 arrêts et +';
+          select.appendChild(opt);
+        }
+      }
+    })
+    .withFailureHandler(() => showTarifError())
+    .getConfigPublic();
+}
+
+// =================================================================
 // MODULE: MODALE DE RÉSERVATION (Fourni par l'utilisateur)
 // =================================================================
 
@@ -1018,6 +1113,24 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Initialisation de la modale de réservation (partie 2)
     setupModalEventListeners();
+
+    // NOUVEAU: Initialisation de la config et des tarifs
+    bootConfig();
+
+    /** Au changement d'une option, calcul live du panier */
+    document.addEventListener('change', (e) => {
+      if (!CONFIG) return;
+      if (e.target && (e.target.id === 'select-nb-arrets' || e.target.id === 'chk-retour' || e.target.id === 'chk-urgence' || e.target.name === 'date-choisie')) {
+        const nb = Number(document.querySelector('#select-nb-arrets')?.value || 1);
+        // Note: The hidden input for the date is `jourSelected`, which now has `name="date-choisie"`
+        const dateStr = (document.querySelector('[name="date-choisie"]')?.value) || new Date().toISOString().split('T')[0];
+        const retour = !!document.querySelector('#chk-retour')?.checked;
+        const urgence = !!document.querySelector('#chk-urgence')?.checked;
+        const total = calculePrixFront(nb, dateStr, { retour, urgence });
+        const el = document.querySelector('#total-panier');
+        if (el) el.textContent = euros(total);
+      }
+    });
 });
 
 </script>

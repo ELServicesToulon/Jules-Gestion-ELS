@@ -61,6 +61,11 @@ function doGet(e) {
 
   // Routeur pour les actions API
   if (e && e.parameter && e.parameter.action) {
+    if (e.parameter.action === 'config') {
+      return ContentService
+        .createTextOutput(JSON.stringify({ ok: true, config: getConfigPublic() }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
     if (e.parameter.action === "slots") {
       try {
         const day = e.parameter.day;

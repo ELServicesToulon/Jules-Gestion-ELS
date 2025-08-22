@@ -178,3 +178,14 @@ function genererContenuICS(evenements) {
   return icsString.join('\r\n');
 }
 
+/**
+ * Compare deux dates pour voir si elles tombent le même jour (année, mois, jour).
+ * @param {Date} a La première date.
+ * @param {Date} b La seconde date.
+ * @returns {boolean} True si les dates sont le même jour.
+ */
+function isSameDay_(a, b) {
+  return a.getFullYear() === b.getFullYear()
+      && a.getMonth() === b.getMonth()
+      && a.getDate() === b.getDate();
+}
