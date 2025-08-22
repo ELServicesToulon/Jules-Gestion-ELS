@@ -43,31 +43,31 @@ const KM_BASE = 9;
 const KM_ARRET_SUP = 3;
 
 // =================================================================
-// SYSTÈME DE TARIFICATION FLEXIBLE - SOURCE UNIQUE DE VÉRITÉ
+//                      TARIFS & REGLES
 // =================================================================
-// Pilotez tous les tarifs depuis cet objet.
-// 'base': Prix pour le premier arrêt (la prise en charge).
-// 'arrets': Un tableau des prix pour les arrêts suivants.
-//           Le dernier prix s'applique à tous les arrêts au-delà.
-// Grille tarifaire (Normal): 1=15€, 2=20€, 3=23€, 4=27€, 5=32€, 6 et + = 37€
+/** ===== CONFIG.gs — Source de vérité ===== **/
+/** Tout pricing/règles DOIVENT venir d'ici. Aucune autre source. **/
+
+/** Tarifs HT — exemples, à adapter **/
 const TARIFS = {
-  // NOTE: This object is the single source of truth for all pricing.
-  'Normal': {
-    base: 15,
-    arrets: [5, 4, 3, 4, 5] // Prix pour Arrêt 2, 3, 4, 5, et 6+
-  },
-  'Samedi': {
-    base: 25,
-    arrets: [5, 4, 3, 4, 5]
-  },
-  'Urgent': {
-    base: 20,
-    arrets: [5, 4, 3, 4, 5]
-  },
-  'Special': { // Vous pouvez ajouter autant de types que vous voulez
-    base: 10,
-    arrets: [2, 1, 2, 3, 3]
-  }
+  BASE_PAR_ARRET: 10,          // € par arrêt (1→4)
+  A_PARTIR_DU_5EME: 8,        // € par arrêt (5+)
+  RETOUR_EQUIV_ARRET: true,   // "retour pharmacie" = +1 arrêt
+  SAMEDI: { ACTIVE: true, SURCHARGE_FIXE: 10 },  // € par tournée le samedi
+  URGENCE: { ACTIVE: true, SURCHARGE: 5, CUT_OFF_MINUTES: 90 } // délai mini
+};
+
+/** Règles de planning **/
+const REGLES = {
+  ALLOW_SAME_DAY: true,       // autoriser la résa pour aujourd'hui
+  SAME_DAY_CUTOFF_HOUR: 12,   // butoir heure locale (0–23)
+  MAX_ARRETS_VISIBLE: 12      // l’UI affiche “6+” au-delà de 6
+};
+
+/** Divers **/
+const META = {
+  DEVISE: 'EUR',
+  ZONES: ['Tamaris','Mar Vivo','Six-Fours-les-Plages','Sanary','Portissol','Bandol']
 };
 // =================================================================
 
@@ -88,12 +88,6 @@ const SESSION_TTL_HOURS = 24;
  * @returns {object}
  */
 function getConfiguration() {
-  // On s'assure que les objets existent pour éviter les erreurs
-  const normalRates = TARIFS['Normal'] || {};
-  const normalStops = normalRates.arrets || [];
-  const saturdayRates = TARIFS['Samedi'] || {};
-  const urgentRates = TARIFS['Urgent'] || {};
-
   return {
     // --- Informations sur l'entreprise ---
     NOM_ENTREPRISE: NOM_ENTREPRISE,
@@ -115,21 +109,23 @@ function getConfiguration() {
 
     // --- Système de tarification & options ---
     TARIFS: TARIFS,
+    REGLES: REGLES,
+    META: META,
     APP_URL: ScriptApp.getService().getUrl(),
 
     // --- Clés pour PublicConfig.gs (compatibilité ascendante) ---
     // Ces clés permettent à normaliseTarifs_ de fonctionner même avec l'ancienne structure de constantes.
-    TARIF_BASE: normalRates.base,
+    TARIF_BASE: TARIFS.BASE_PAR_ARRET,
     KM_INCLUS: KM_BASE,
     DUREE_BASE_MIN: DUREE_BASE,
     PREMIER_ARRET_INCLUS: true,
-    PRIX_ARRET_2: normalStops[0],
-    PRIX_ARRET_3: normalStops[1],
-    PRIX_ARRET_4: normalStops[2],
-    PRIX_ARRET_5P: normalStops[3],
-    SAMEDI_MIN: saturdayRates.base,
-    URGENT_PRIX_MIN: urgentRates.base,
-    URGENT_DELAI_MIN: URGENT_THRESHOLD_MINUTES,
+    PRIX_ARRET_2: TARIFS.BASE_PAR_ARRET,
+    PRIX_ARRET_3: TARIFS.BASE_PAR_ARRET,
+    PRIX_ARRET_4: TARIFS.BASE_PAR_ARRET,
+    PRIX_ARRET_5P: TARIFS.A_PARTIR_DU_5EME,
+    SAMEDI_MIN: TARIFS.SAMEDI.SURCHARGE_FIXE,
+    URGENT_PRIX_MIN: TARIFS.URGENCE.SURCHARGE,
+    URGENT_DELAI_MIN: TARIFS.URGENCE.CUT_OFF_MINUTES,
     URGENT_SELON_DISPO: true,
 
     // --- Authentification & Sessions (inchangé) ---

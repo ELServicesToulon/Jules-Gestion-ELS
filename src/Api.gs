@@ -115,13 +115,16 @@ function getPlanningDuJour_(day) {
  * @returns {Array} Liste des créneaux { timeRange: "HH:mm-HH:mm", start: Date, end: Date }
  */
 function genererCreneauxPourJour_(day, config, nbArrets) {
-  const duree = parseInt(config.DUREE_BASE, 10) + nbArrets * parseInt(config.DUREE_ARRET_SUP, 10);
+  const [year, month, dayNum] = day.split('-').map(Number);
+  const aDate = new Date(year, month - 1, dayNum);
+  if (config.REGLES && !isSameDayAllowed_(aDate, config.REGLES)) return [];
+
+  const duree = parseInt(config.DUREE_BASE, 10) + (nbArrets - 1) * parseInt(config.DUREE_ARRET_SUP, 10);
   const tampon = parseInt(config.DUREE_TAMPON_MINUTES, 10);
   const debut = config.HEURE_DEBUT_SERVICE || "08:30";
   const fin = config.HEURE_FIN_SERVICE || "18:30";
   const intervalle = parseInt(config.INTERVALLE_CRENEAUX_MINUTES, 10) || 15;
 
-  const [year, month, dayNum] = day.split('-').map(Number);
   const timeZone = Session.getScriptTimeZone();
 
   let dStart = new Date(year, month - 1, dayNum, ...debut.split(':').map(Number));
@@ -218,4 +221,17 @@ function calculePrixBase_(config, nbArrets) {
     prix += arrets[Math.min(i, arrets.length - 1)];
   }
   return prix;
+}
+
+/**
+ * Vérifie si une réservation est autorisée pour le jour même en fonction des règles.
+ * @param {Date} date La date de la réservation.
+ * @param {Object} regles L'objet REGLES de la configuration.
+ * @returns {boolean} True si la réservation est autorisée.
+ */
+function isSameDayAllowed_(date, regles) {
+  if (!regles.ALLOW_SAME_DAY) return false;
+  const now = new Date();
+  if (!isSameDay_(date, now)) return true; // autre jour → OK
+  return now.getHours() < Number(regles.SAME_DAY_CUTOFF_HOUR || 0);
 }
