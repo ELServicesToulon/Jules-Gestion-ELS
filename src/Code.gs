@@ -124,24 +124,27 @@ function doGet(e) {
 
     // Page par défaut : Interface de réservation
     const template = HtmlService.createTemplateFromFile('Reservation_Interface');
+    const config = getConfiguration();
+    const publicConfig = getPublicConfig();
+
     template.appUrl = ScriptApp.getService().getUrl();
-    template.nomService = NOM_ENTREPRISE;
-    template.TARIFS_JSON = JSON.stringify(TARIFS);
-    template.DUREE_BASE = DUREE_BASE;
-    template.DUREE_ARRET_SUP = DUREE_ARRET_SUP;
-    template.KM_BASE = KM_BASE;
-    template.KM_ARRET_SUP = KM_ARRET_SUP;
-    template.URGENT_THRESHOLD_MINUTES = URGENT_THRESHOLD_MINUTES;
+    template.nomService = publicConfig.meta.nomService;
+    // On utilise les tarifs normalisés de getPublicConfig pour être cohérent avec le reste de l'app
+    template.TARIFS_JSON = JSON.stringify(publicConfig.tarifs);
+    template.DUREE_BASE = config.DUREE_BASE_MIN || 30;
+    template.DUREE_ARRET_SUP = config.DUREE_PAR_ARRET_SUP || 15;
+    template.KM_BASE = config.KM_INCLUS || 9;
+    template.KM_ARRET_SUP = config.KM_PAR_ARRET_SUP || 5;
+    template.URGENT_THRESHOLD_MINUTES = config.URGENT_DELAI_MIN || 45;
     template.dateDuJour = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd");
 
     // NOUVEAU : Ajout des variables pour la bannière d'information
-    template.heureDebut = HEURE_DEBUT_SERVICE;
-    template.heureFin = HEURE_FIN_SERVICE;
-    template.prixBase = TARIFS['Normal'].base;
-
+    template.heureDebut = config.HEURE_DEBUT_SERVICE;
+    template.heureFin = config.HEURE_FIN_SERVICE;
+    template.prixBase = (publicConfig.tarifs.base && publicConfig.tarifs.base.prix) ? publicConfig.tarifs.base.prix : (config.TARIF_BASE || 15);
 
     return template.evaluate()
-        .setTitle(NOM_ENTREPRISE + " | Réservation")
+        .setTitle(publicConfig.meta.nomService + " | Réservation")
         .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 
   } catch (error) {
