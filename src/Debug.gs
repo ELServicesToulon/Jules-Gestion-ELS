@@ -102,13 +102,15 @@ function testerFeuilleCalcul() {
 
 function testerCalendrier() {
   Logger.log("\n--- Test de Calendrier.gs ---");
+  const config = getConfiguration();
   const demain = new Date();
   demain.setDate(demain.getDate() + 1);
   const dateTest = formaterDateEnYYYYMMDD(demain);
 
-  const creneaux = obtenirCreneauxDisponiblesPourDate(dateTest, 30);
+  const creneaux = obtenirCreneauxDisponiblesPourDate(dateTest, 30, config);
   if (Array.isArray(creneaux)) {
-    Logger.log(`SUCCESS: obtenirCreneauxDisponiblesPourDate() a retourné ${creneaux.length} créneaux pour demain.`);
+    // Le test vérifie juste si la fonction crashe. Le nombre de créneaux peut être 0.
+    Logger.log(`SUCCESS: obtenirCreneauxDisponiblesPourDate() s'est exécutée sans erreur.`);
   } else {
     Logger.log("FAILURE: obtenirCreneauxDisponiblesPourDate() n'a pas retourné un tableau.");
   }
@@ -138,10 +140,12 @@ function testerGetAvailableSlots() {
   } while ((testDate.getDay() === 6 || testDate.getDay() === 0) && attempts < 8);
   const dateTestNormal = formatDateForCompare_(testDate);
 
-  const slotsNormal = getAvailableSlots(dateTestNormal, 1); // Appel corrigé
+  // arretsSupplementaires = 1, donc 2 arrêts au total.
+  const slotsNormal = getAvailableSlots(dateTestNormal, 1);
   if (slotsNormal && slotsNormal.length > 0) {
     const premierSlot = slotsNormal[0];
-    const prixAttendu = config.TARIFS.Normal.base + config.TARIFS.Normal.arrets[0];
+    // Prix = 2 arrêts * BASE_PAR_ARRET
+    const prixAttendu = 2 * config.TARIFS.BASE_PAR_ARRET;
     if (premierSlot.basePrice.toFixed(2) === prixAttendu.toFixed(2)) {
       Logger.log(`SUCCESS: getAvailableSlots() - Jour Normal. Prix: ${premierSlot.basePrice}€, attendu: ${prixAttendu}€.`);
     } else {
@@ -166,16 +170,12 @@ function testerGetAvailableSlots() {
 
   if (testDateSamedi.getDay() === 6) {
     const dateTestSamediStr = formatDateForCompare_(testDateSamedi);
-    const slotsSamedi = getAvailableSlots(dateTestSamediStr, 3); // Appel corrigé
+    // arretsSupplementaires = 3, donc 4 arrêts au total
+    const slotsSamedi = getAvailableSlots(dateTestSamediStr, 3);
      if (slotsSamedi && slotsSamedi.length > 0) {
       const premierSlot = slotsSamedi[0];
-      const tarifNormal = config.TARIFS.Normal;
-      const surchargeSamedi = config.TARIFS.Samedi.base - tarifNormal.base;
-      // Calcul du prix attendu correct
-      let prixAttendu = tarifNormal.base + surchargeSamedi;
-      for (let i = 0; i < 3; i++) {
-          prixAttendu += tarifNormal.arrets[Math.min(i, tarifNormal.arrets.length - 1)];
-      }
+      // Prix = 4 arrêts * BASE_PAR_ARRET + SURCHARGE_SAMEDI
+      const prixAttendu = (4 * config.TARIFS.BASE_PAR_ARRET) + config.TARIFS.SAMEDI.SURCHARGE_FIXE;
 
        if (premierSlot.basePrice.toFixed(2) === prixAttendu.toFixed(2)) {
         Logger.log(`SUCCESS: getAvailableSlots() - Samedi 3 arrêts. Prix: ${premierSlot.basePrice}€, attendu: ${prixAttendu}€.`);
@@ -196,13 +196,13 @@ function testerGetAvailableSlots() {
 
   // --- Scénario 3: Urgence (aujourd'hui), 0 arrêt supplémentaire ---
   const dateAujourdhui = formatDateForCompare_(new Date());
+  // arretsSupplementaires = 0, donc 1 arrêt au total (prise en charge)
   const slotsUrgence = getAvailableSlots(dateAujourdhui, 0);
   if (slotsUrgence && slotsUrgence.length > 0) {
     const premierSlot = slotsUrgence[0];
     if (premierSlot.tags.includes("urgence")) {
-      const tarifNormal = config.TARIFS.Normal;
-      const surchargeUrgence = config.TARIFS.Urgent.base - tarifNormal.base;
-      const prixAttendu = tarifNormal.base + surchargeUrgence;
+      // Prix = 1 arrêt * BASE_PAR_ARRET + SURCHARGE_URGENCE
+      const prixAttendu = config.TARIFS.BASE_PAR_ARRET + config.TARIFS.URGENCE.SURCHARGE;
       if (premierSlot.basePrice.toFixed(2) === prixAttendu.toFixed(2)) {
          Logger.log(`SUCCESS: getAvailableSlots() - Urgence. Prix et tag corrects. Prix: ${premierSlot.basePrice}€, attendu: ${prixAttendu}€.`);
       } else {
