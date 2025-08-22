@@ -51,6 +51,7 @@ const KM_ARRET_SUP = 3;
 //           Le dernier prix s'applique à tous les arrêts au-delà.
 // Grille tarifaire (Normal): 1=15€, 2=20€, 3=23€, 4=27€, 5=32€, 6 et + = 37€
 const TARIFS = {
+  // NOTE: This object is the single source of truth for all pricing.
   'Normal': {
     base: 15,
     arrets: [5, 4, 3, 4, 5] // Prix pour Arrêt 2, 3, 4, 5, et 6+
