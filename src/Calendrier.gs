@@ -7,96 +7,86 @@
 
 // --- NOUVEAUX HELPERS POUR L'API TARIFAIRE ---
 
-function normaliseTarifs_(CFG){
-  const T = CFG.TARIFS;
-  return {
-    unitPriceFor: (arretIndex) => (arretIndex >= 5 ? T.A_PARTIR_DU_5EME : T.BASE_PAR_ARRET),
-    saturdaySurcharge: (date) => (isSaturday_(date) && T.SAMEDI?.ACTIVE ? (T.SAMEDI.SURCHARGE_FIXE||0) : 0),
-    urgentSurcharge: (date, slotStart) => {
-      if (!T.URGENCE?.ACTIVE) return 0;
-      const now = new Date();
-      const sameDay = (now.toDateString() === date.toDateString());
-      if (!sameDay) return 0;
-      const diffMin = Math.round((slotStart - now)/60000);
-      return (diffMin >= 0 && diffMin <= (T.URGENCE.CUT_OFF_MINUTES||0)) ? (T.URGENCE.SURCHARGE||0) : 0;
-    },
-    retourAsExtraStop: !!T.RETOUR_EQUIV_ARRET
-  };
-}
-
 /**
  * Construit un objet Date à partir d'une date (YYYY-MM-DD) et d'une heure (HHhMM).
  * @private
+ * @param {string} dayString La date au format 'YYYY-MM-DD'.
+ * @param {string} timeString L'heure au format 'HHhMM'.
+ * @returns {Date} L'objet Date construit.
  */
 function buildDateFromDayAndTime_(dayString, timeString) {
   const [year, month, day] = dayString.split('-').map(Number);
   const [hour, minute] = timeString.replace('h', ':').split(':').map(Number);
+  // Le mois est 0-indexé en JS, donc on fait month - 1
   return new Date(year, month - 1, day, hour, minute);
 }
 
 /**
  * Vérifie si une date donnée est un samedi.
  * @private
+ * @param {Date} date L'objet Date à vérifier.
+ * @returns {boolean} Vrai si la date est un samedi, sinon faux.
  */
 function isSaturday_(date) {
   return date.getDay() === 6;
 }
 
 /**
+ * Vérifie si un créneau est considéré comme "urgent".
+ * @private
+ * @param {Date} slotDate La date et l'heure du créneau.
+ * @param {object} config L'objet de configuration de l'application.
+ * @returns {boolean} Vrai si le créneau est urgent, sinon faux.
+ */
+function isUrgence_(slotDate, config) {
+  const now = new Date();
+  // Ne peut pas être urgent si le créneau est déjà passé
+  if (slotDate < now) return false;
+
+  // Le créneau est urgent si la différence en minutes est inférieure au seuil défini
+  const diffMinutes = (slotDate.getTime() - now.getTime()) / 60000;
+  return diffMinutes < (config.URGENT_DELAI_MIN || 30);
+}
+
+/**
  * API – Retourne les créneaux compatibles pour un jour et un nombre d'arrêts donnés,
  * avec la tarification dynamique calculée côté serveur.
- * @param {string} dayISO La date de la recherche au format "YYYY-MM-DD".
- * @param {number} nbArretsFront Le nombre d'arrêts sélectionné dans l'UI.
- * @param {boolean} retour Indique si le retour pharmacie est coché.
+ * Cette fonction est exposée au client via google.script.run.
+ *
+ * @param {string} day La date de la recherche au format "YYYY-MM-DD".
+ * @param {number} nbArrets Le nombre total d'arrêts pour la tournée (1 = prise en charge seule).
  * @returns {Array<Object>} Une liste d'objets créneau, chacun avec son tarif et ses détails.
  */
 function getAvailableSlots(dayISO, nbArretsFront, retour, autresCoursesPanier = []){
-  try {
-    const CFG = getConfiguration();
-    const P = normaliseTarifs_(CFG);
-    const day = new Date(dayISO+'T00:00:00');
+  const CFG = getConfiguration();
+  const day = new Date(dayISO + 'T00:00:00');
 
-    const nbArrets = parseInt(nbArretsFront, 10) + (retour && P.retourAsExtraStop ? 1 : 0);
-    const arretsSupplementaires = Math.max(0, nbArrets - 1);
-    const duree = (CFG.DUREE_BASE || 30) + (arretsSupplementaires * (CFG.DUREE_ARRET_SUP || 15));
+  // We must calculate the duration based on the total number of stops
+  const P = _resolvePricingShape_(CFG); // from pricing.gs
+  let n = Number(nbArretsFront || 1);
+  if (retour && P.retourAsStop) n += 1;
 
-    const creneauxDisponibles = obtenirCreneauxDisponiblesPourDate(dayISO, duree, CFG, null, null, autresCoursesPanier);
+  const arretsSupplementaires = Math.max(0, n - 1);
+  const duree = (CFG.DUREE_BASE || 30) + (arretsSupplementaires * (CFG.DUREE_ARRET_SUP || 15));
 
-    if (!creneauxDisponibles || creneauxDisponibles.length === 0) {
-      return [];
-    }
+  const slots = obtenirCreneauxDisponiblesPourDate(dayISO, duree, CFG, null, null, autresCoursesPanier);
 
-    return creneauxDisponibles.map(timeRange => {
-      const tags = [];
-      let total = 0;
-
-      for (let i=1;i<=nbArrets;i++) {
-        total += P.unitPriceFor(i);
-      }
-
+  return (slots || []).map(timeRange => {
       const start = buildDateFromDayAndTime_(dayISO, timeRange);
+      const calc = calculePrixBase_(CFG, Number(nbArretsFront||1), {
+        date: day, slotStart: start, retour: !!retour
+      });
+      const tags = [];
+      if (_isSaturday_(day)) tags.push('samedi');
+      if (calc.regime === 'Urgent') tags.push('urgent');
 
-      total += P.saturdaySurcharge(day);
-      const urg = P.urgentSurcharge(day, start);
-
-      if (urg > 0) tags.push('urgent');
-      if (isSaturday_(day)) tags.push('samedi');
-
+      // Return a format compatible with the existing front-end `afficherSelectionCreneaux` function
       return {
-        timeRange: timeRange,
-        basePrice: total + urg,
-        tags: tags,
-        details: {
-          samedi: P.saturdaySurcharge(day),
-          urgence: urg,
-          arretSup: arretsSupplementaires
-        }
+          timeRange: timeRange,
+          basePrice: calc.totalHT,
+          tags: tags
       };
     });
-  } catch (e) {
-    Logger.log(`Erreur critique dans getAvailableSlots pour le jour ${dayISO} avec ${nbArretsFront} arrêts: ${e.stack}`);
-    return [];
-  }
 }
 
 
