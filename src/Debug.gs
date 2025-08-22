@@ -125,56 +125,95 @@ function testerCalendrier() {
 }
 
 function testerGetAvailableSlots() {
-  Logger.log("\n--- NOUVEAU TEST: Test de getAvailableSlots() ---");
+  Logger.log("\n--- TEST: Test de l'API getAvailableSlots() ---");
   const config = getConfiguration();
 
-  // Scénario 1: Jour normal, 1 arrêt
+  // --- Scénario 1: Jour normal, 1 arrêt supplémentaire ---
   let testDate = new Date();
   let attempts = 0;
+  // Trouve un jour de semaine qui n'est pas aujourd'hui
   do {
     testDate.setDate(testDate.getDate() + 1);
     attempts++;
-  } while ((testDate.getDay() === 6 || testDate.getDay() === 0) && attempts < 8); // Ni samedi, ni dimanche
-  const dateTestNormal = formaterDateEnYYYYMMDD(testDate);
+  } while ((testDate.getDay() === 6 || testDate.getDay() === 0) && attempts < 8);
+  const dateTestNormal = formatDateForCompare_(testDate);
 
-  const slotsNormal = getAvailableSlots(dateTestNormal, 1, []);
+  const slotsNormal = getAvailableSlots(dateTestNormal, 1); // Appel corrigé
   if (slotsNormal && slotsNormal.length > 0) {
     const premierSlot = slotsNormal[0];
-    const prixAttendu = config.TARIFS.Normal.base;
-    if (premierSlot.basePrice === prixAttendu) {
+    const prixAttendu = config.TARIFS.Normal.base + config.TARIFS.Normal.arrets[0];
+    if (premierSlot.basePrice.toFixed(2) === prixAttendu.toFixed(2)) {
       Logger.log(`SUCCESS: getAvailableSlots() - Jour Normal. Prix: ${premierSlot.basePrice}€, attendu: ${prixAttendu}€.`);
     } else {
       Logger.log(`FAILURE: getAvailableSlots() - Jour Normal. Prix: ${premierSlot.basePrice}€, attendu: ${prixAttendu}€.`);
+    }
+    if (premierSlot.tags.length === 0) {
+       Logger.log(`SUCCESS: getAvailableSlots() - Jour Normal. Tags vides comme attendu.`);
+    } else {
+       Logger.log(`FAILURE: getAvailableSlots() - Jour Normal. Tags non vides: ${premierSlot.tags.join(', ')}.`);
     }
   } else {
     Logger.log(`INFO: getAvailableSlots() - Jour Normal. Aucun créneau trouvé pour ${dateTestNormal}, test de prix sauté.`);
   }
 
-  // Scénario 2: Un samedi, 3 arrêts
+  // --- Scénario 2: Un samedi, 3 arrêts supplémentaires ---
   let testDateSamedi = new Date();
   attempts = 0;
   do {
     testDateSamedi.setDate(testDateSamedi.getDate() + 1);
     attempts++;
-  } while (testDateSamedi.getDay() !== 6 && attempts < 8); // Trouver le prochain samedi
+  } while (testDateSamedi.getDay() !== 6 && attempts < 8);
 
   if (testDateSamedi.getDay() === 6) {
-    const dateTestSamediStr = formaterDateEnYYYYMMDD(testDateSamedi);
-    const slotsSamedi = getAvailableSlots(dateTestSamediStr, 3, []);
+    const dateTestSamediStr = formatDateForCompare_(testDateSamedi);
+    const slotsSamedi = getAvailableSlots(dateTestSamediStr, 3); // Appel corrigé
      if (slotsSamedi && slotsSamedi.length > 0) {
       const premierSlot = slotsSamedi[0];
-      const tarifSamedi = config.TARIFS.Samedi;
-      const prixAttendu = tarifSamedi.base + tarifSamedi.arrets[0] + tarifSamedi.arrets[1];
-       if (premierSlot.basePrice === prixAttendu) {
+      const tarifNormal = config.TARIFS.Normal;
+      const surchargeSamedi = config.TARIFS.Samedi.base - tarifNormal.base;
+      // Calcul du prix attendu correct
+      let prixAttendu = tarifNormal.base + surchargeSamedi;
+      for (let i = 0; i < 3; i++) {
+          prixAttendu += tarifNormal.arrets[Math.min(i, tarifNormal.arrets.length - 1)];
+      }
+
+       if (premierSlot.basePrice.toFixed(2) === prixAttendu.toFixed(2)) {
         Logger.log(`SUCCESS: getAvailableSlots() - Samedi 3 arrêts. Prix: ${premierSlot.basePrice}€, attendu: ${prixAttendu}€.`);
       } else {
         Logger.log(`FAILURE: getAvailableSlots() - Samedi 3 arrêts. Prix: ${premierSlot.basePrice}€, attendu: ${prixAttendu}€.`);
+      }
+      if (premierSlot.tags.includes("samedi")) {
+         Logger.log(`SUCCESS: getAvailableSlots() - Samedi. Tag 'samedi' présent.`);
+      } else {
+         Logger.log(`FAILURE: getAvailableSlots() - Samedi. Tag 'samedi' manquant.`);
       }
     } else {
       Logger.log(`INFO: getAvailableSlots() - Samedi. Aucun créneau trouvé pour ${dateTestSamediStr}, test de prix sauté.`);
     }
   } else {
       Logger.log(`INFO: getAvailableSlots() - Samedi. Aucun samedi trouvé dans les 7 prochains jours, test sauté.`);
+  }
+
+  // --- Scénario 3: Urgence (aujourd'hui), 0 arrêt supplémentaire ---
+  const dateAujourdhui = formatDateForCompare_(new Date());
+  const slotsUrgence = getAvailableSlots(dateAujourdhui, 0);
+  if (slotsUrgence && slotsUrgence.length > 0) {
+    const premierSlot = slotsUrgence[0];
+    if (premierSlot.tags.includes("urgence")) {
+      const tarifNormal = config.TARIFS.Normal;
+      const surchargeUrgence = config.TARIFS.Urgent.base - tarifNormal.base;
+      const prixAttendu = tarifNormal.base + surchargeUrgence;
+      if (premierSlot.basePrice.toFixed(2) === prixAttendu.toFixed(2)) {
+         Logger.log(`SUCCESS: getAvailableSlots() - Urgence. Prix et tag corrects. Prix: ${premierSlot.basePrice}€, attendu: ${prixAttendu}€.`);
+      } else {
+         Logger.log(`FAILURE: getAvailableSlots() - Urgence. Mauvais prix. Prix: ${premierSlot.basePrice}€, attendu: ${prixAttendu}€.`);
+      }
+    } else {
+      // Pas forcément une failure, peut-être qu'il n'y a pas de créneaux urgents disponibles.
+      Logger.log("INFO: getAvailableSlots() - Urgence. Aucun créneau urgent trouvé, test de prix sauté.");
+    }
+  } else {
+    Logger.log("INFO: getAvailableSlots() - Urgence. Aucun créneau trouvé pour aujourd'hui.");
   }
 }
 

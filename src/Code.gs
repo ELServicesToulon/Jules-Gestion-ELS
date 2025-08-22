@@ -58,6 +58,31 @@ function doGet(e) {
     return ContentService.createTextOutput(JSON.stringify(payload))
       .setMimeType(ContentService.MimeType.JSON);
   }
+
+  // Routeur pour les actions API
+  if (e && e.parameter && e.parameter.action) {
+    if (e.parameter.action === "slots") {
+      try {
+        const day = e.parameter.day;
+        const nbArrets = parseInt(e.parameter.nbArrets, 10);
+
+        // Validation simple des paramètres
+        if (!day || isNaN(nbArrets)) {
+          throw new Error("Les paramètres 'day' et 'nbArrets' sont requis.");
+        }
+
+        const result = getAvailableSlots(day, nbArrets);
+        return ContentService.createTextOutput(JSON.stringify(result))
+                             .setMimeType(ContentService.MimeType.JSON);
+      } catch (err) {
+        const errorPayload = { error: true, message: err.message };
+        return ContentService.createTextOutput(JSON.stringify(errorPayload))
+                             .setMimeType(ContentService.MimeType.JSON);
+      }
+    }
+    // Ajoutez d'autres actions API ici si nécessaire
+  }
+
   try {
     // validerConfiguration(); // Assurez-vous que cette fonction existe ou commentez-la si non utilisée
 

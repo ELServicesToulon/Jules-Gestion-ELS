@@ -73,6 +73,18 @@ const TARIFS = {
 
 ---
 
+## API de Réservation
+
+*   **`getAvailableSlots(day, nbArrets)`** = C'est la fonction clé de l'API qui retourne au front-end *uniquement* les créneaux adaptés à la demande du client (jour, nombre d’arrêts).
+*   **Tarification 100% Dynamique** : Tous les tarifs, surcharges et exceptions sont issus de `Configuration.gs`:
+    *   **Samedi** : La surcharge est calculée à partir du tarif de base `Samedi`.
+    *   **Urgence** : La surcharge est calculée à partir du tarif de base `Urgent` et est déclenchée si la réservation est dans la "fenêtre d'urgence" définie dans la configuration.
+    *   **Arrêt supplémentaire** : Le prix total évolue en fonction du nombre d’arrêts.
+*   **Zéro Logique Côté Client** : Il n'y a **aucune case à cocher “samedi” ou “urgence”** dans l’interface utilisateur. Tout est déterminé côté serveur et renvoyé comme information au client (via les "tags").
+*   **Anti-Conflit** : L’API refuse toute création de réservation qui entrerait en conflit avec le planning existant. Seuls les créneaux réellement disponibles sont proposés.
+
+---
+
 ## Prérequis techniques
 
 - **Compte Google** (Drive, Sheets, Agenda, Apps Script activés)
