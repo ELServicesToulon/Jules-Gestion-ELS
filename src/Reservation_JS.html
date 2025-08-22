@@ -828,59 +828,56 @@ function closeReservationModal() {
 }
 
 // --- Sélection de jour "gélule" ---
-document.querySelectorAll('.jour-gelule').forEach(btn => {
-  btn.onclick = function() {
-    if(this.disabled) return;
-    document.querySelectorAll('.jour-gelule').forEach(b => b.classList.remove('selected'));
-    this.classList.add('selected');
-    document.getElementById('jourSelected').value = this.dataset.jour;
-    updateRecap();
-  }
-});
 function selectDay(jour) {
   let found = false;
   document.querySelectorAll('.jour-gelule').forEach(btn => {
     if(btn.dataset.jour == jour) {
-      btn.click(); found = true;
+      btn.click();
+      found = true;
     }
   });
-  if(!found) document.getElementById('jourSelected').value = '';
+  if(!found && document.getElementById('jourSelected')) {
+    document.getElementById('jourSelected').value = '';
+  }
   updateRecap();
 }
 
 // --- Met à jour le récapitulatif ---
 function updateRecap() {
-  // Assurer que la config est chargée
+  const recapEl = document.getElementById('recap');
+  if (!recapEl) return;
+
   if (!window.configServeur || !window.configServeur.TARIFS) {
-    document.getElementById('recap').innerHTML = "Erreur: Tarifs non chargés.";
+    recapEl.innerHTML = "Erreur: Tarifs non chargés.";
     return;
   }
 
-  const arrets = parseInt(document.getElementById('arrets').value || 1, 10);
-  const samedi = document.querySelector('input[name="samedi"]').checked;
-  const urgence = document.querySelector('input[name="urgence"]').checked;
-  const jour = document.getElementById('jourSelected').value;
+  const arretsEl = document.getElementById('arrets');
+  const samediEl = document.querySelector('input[name="samedi"]');
+  const urgenceEl = document.querySelector('input[name="urgence"]');
+  const jourEl = document.getElementById('jourSelected');
+
+  const arrets = arretsEl ? parseInt(arretsEl.value || 1, 10) : 1;
+  const samedi = samediEl ? samediEl.checked : false;
+  const urgence = urgenceEl ? urgenceEl.checked : false;
+  const jour = jourEl ? jourEl.value : '';
 
   const tarifsNormal = window.configServeur.TARIFS.Normal;
   let total = tarifsNormal.base;
 
-  // Calcul du coût des arrêts supplémentaires
   if (arrets > 1) {
     for (let i = 1; i < arrets; i++) {
-      // On utilise le prix de l'arrêt i-1 du tableau (qui correspond au i-ème arrêt sup)
-      // Si l'index est hors limites, on prend le dernier tarif défini.
       const tarifArret = tarifsNormal.arrets[i - 1] || tarifsNormal.arrets[tarifsNormal.arrets.length - 1];
       total += tarifArret;
     }
   }
 
-  // Ajout des suppléments
   if (samedi) total += window.configServeur.TARIFS.Samedi.base;
   if (urgence) total += window.configServeur.TARIFS.Urgent.base;
 
   let txt = `Total estimé : <b>${total} € net</b>`;
   if (jour) txt += ` • Jour choisi : <b>${jour.split('-').reverse().join('/')}</b>`;
-  document.getElementById('recap').innerHTML = txt;
+  recapEl.innerHTML = txt;
 }
 
 // --- Met à jour les labels du sélecteur d'arrêts avec les prix ---
@@ -891,15 +888,12 @@ function updateArretLabels() {
 
     const tarifsNormal = window.configServeur.TARIFS.Normal;
 
-    // Gérer le premier arrêt
     if (select.options.length > 0) {
         select.options[0].textContent = `1 arrêt (livraison simple)`;
     }
 
     let supplementTotal = 0;
-    // Commencer à partir de la deuxième option (2 arrêts)
     for (let i = 1; i < select.options.length; i++) {
-        // Le supplément pour cet arrêt est à l'index i-1 du tableau `arrets`
         const tarifArret = tarifsNormal.arrets[i - 1] || tarifsNormal.arrets[tarifsNormal.arrets.length - 1];
         supplementTotal += tarifArret;
         const nbArrets = i + 1;
@@ -907,41 +901,75 @@ function updateArretLabels() {
     }
 }
 
-
-// --- Pour fermer en cliquant hors de la boîte ---
-document.getElementById('reservation-modal').onclick = function(e) {
-  if(e.target === this) closeReservationModal();
-};
-
-// --- Connecte le bouton Réserver principal ---
-document.getElementById('btn-reserver').onclick = function() {
-  openReservationModal();
-};
-
-// --- Réinitialise recap au début ---
-document.addEventListener('DOMContentLoaded', () => {
+// --- Attache tous les écouteurs d'événements pour la modale ---
+function setupModalEventListeners() {
     // We need to wait for the DOM to be loaded to attach these events
-    if(document.getElementById('arrets')) {
-        updateArretLabels(); // NOUVEAU: Met à jour les labels au chargement
-        updateRecap(); // Initial call
-        document.getElementById('arrets').onchange = updateRecap;
-        document.querySelector('input[name="samedi"]').onchange = updateRecap;
-        document.querySelector('input[name="urgence"]').onchange = updateRecap;
+    const reservationModal = document.getElementById('reservation-modal');
+    if (reservationModal) {
+        reservationModal.onclick = function(e) {
+            if (e.target === this) closeReservationModal();
+        };
     }
 
+    const btnReserver = document.getElementById('btn-reserver');
+    if (btnReserver) {
+        btnReserver.onclick = function() {
+            openReservationModal();
+        };
+    }
+
+    document.querySelectorAll('.jour-gelule').forEach(btn => {
+        btn.onclick = function() {
+            if(this.disabled) return;
+            document.querySelectorAll('.jour-gelule').forEach(b => b.classList.remove('selected'));
+            this.classList.add('selected');
+            const jourSelected = document.getElementById('jourSelected');
+            if (jourSelected) {
+                jourSelected.value = this.dataset.jour;
+            }
+            updateRecap();
+        }
+    });
+
+    const arretsSelect = document.getElementById('arrets');
+    if (arretsSelect) {
+        updateArretLabels();
+        updateRecap();
+        arretsSelect.onchange = updateRecap;
+    }
+
+    const samediCheck = document.querySelector('input[name="samedi"]');
+    if (samediCheck) samediCheck.onchange = updateRecap;
+
+    const urgenceCheck = document.querySelector('input[name="urgence"]');
+    if (urgenceCheck) urgenceCheck.onchange = updateRecap;
+
     const formReservation = document.getElementById('formReservation');
-    if(formReservation) {
+    if (formReservation) {
         formReservation.onsubmit = function(e) {
             e.preventDefault();
-            const formData = new FormData(this);
-            document.getElementById('feedback').innerHTML = "<span style='color:#8e44ad;'>Envoi de la réservation...</span>";
-            // --- Simule la requête (remplace ici par fetch vers Apps Script si besoin) ---
-            setTimeout(()=>{
-                document.getElementById('feedback').innerHTML = "✅ Réservation enregistrée ! <br>Un email de confirmation vous sera envoyé.";
+            const feedbackEl = document.getElementById('feedback');
+            if(feedbackEl) feedbackEl.innerHTML = "<span style='color:#8e44ad;'>Envoi de la réservation...</span>";
+
+            setTimeout(() => {
+                if(feedbackEl) feedbackEl.innerHTML = "✅ Réservation enregistrée ! <br>Un email de confirmation vous sera envoyé.";
                 setTimeout(closeReservationModal, 2100);
             }, 1400);
         };
     }
+}
+
+// --- Fusion des initialisations ---
+// Il y avait plusieurs 'DOMContentLoaded', je les fusionne en un seul pour plus de clarté.
+document.addEventListener('DOMContentLoaded', () => {
+    // Initialisation principale de l'application (partie 1)
+    chargerPanierDepuisLocalStorage();
+    verifierSessionClient();
+    afficherCalendrier(window.etat.dateActuelle.getMonth() + 1, window.etat.dateActuelle.getFullYear());
+    configurerEcouteursEvenements();
+
+    // Initialisation de la modale de réservation (partie 2)
+    setupModalEventListeners();
 });
 
 </script>
