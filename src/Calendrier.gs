@@ -84,20 +84,25 @@ function getAvailableSlots(day, nbArrets, autresCoursesPanier = []) {
       // L'urgence n'est possible que pour des créneaux dans le futur proche le jour même
       const urgence = isToday && isUrgence_(slotDate, config);
 
-      // Déterminer le profil tarifaire à appliquer (Urgence prime sur Samedi)
-      let profilTarif = 'Normal';
-      if (samedi) profilTarif = 'Samedi';
-      if (urgence) profilTarif = 'Urgent';
+      // Calcul du prix de base en fonction du nombre d'arrêts
+      let prix = 0;
+      const nbTotalArrets = arretsSupplementaires + 1; // +1 pour la prise en charge initiale
+      for (let i = 0; i < nbTotalArrets; i++) {
+        // Le prix par arrêt change à partir du 5ème
+        prix += (i < 4) ? config.TARIFS.BASE_PAR_ARRET : config.TARIFS.A_PARTIR_DU_5EME;
+      }
 
-      const tarifProfile = config.TARIFS[profilTarif] || config.TARIFS['Normal'];
+      // Ajout des surcharges éventuelles
+      let surchargeSamedi = 0;
+      if (samedi && config.TARIFS.SAMEDI.ACTIVE) {
+        surchargeSamedi = config.TARIFS.SAMEDI.SURCHARGE_FIXE;
+        prix += surchargeSamedi;
+      }
 
-      // Calcul du prix final en suivant la logique de l'objet TARIFS
-      let prix = tarifProfile.base;
-      const arretsArray = tarifProfile.arrets || [];
-      for (let i = 0; i < arretsSupplementaires; i++) {
-        // Utilise le dernier tarif si plus d'arrêts sont demandés que définis dans le tableau
-        const prixArret = arretsArray[Math.min(i, arretsArray.length - 1)];
-        prix += prixArret;
+      let surchargeUrgence = 0;
+      if (urgence && config.TARIFS.URGENCE.ACTIVE) {
+        surchargeUrgence = config.TARIFS.URGENCE.SURCHARGE;
+        prix += surchargeUrgence;
       }
 
       // Création des tags pour affichage simple sur l'interface
@@ -112,8 +117,8 @@ function getAvailableSlots(day, nbArrets, autresCoursesPanier = []) {
         basePrice: prix,
         tags: tags,
         details: {
-          samedi: samedi ? tarifProfile.base - config.TARIFS['Normal'].base : 0,
-          urgence: urgence ? tarifProfile.base - config.TARIFS['Normal'].base : 0,
+          samedi: surchargeSamedi,
+          urgence: surchargeUrgence,
           arretSup: arretsSupplementaires
         }
       };
