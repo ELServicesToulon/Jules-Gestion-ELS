@@ -75,7 +75,7 @@
       if (google && google.script && google.script.run){
         google.script.run
           .withSuccessHandler(function(payload){
-            console.log('getPublicConfig ->', payload);
+            console.log('getTarifsPublic ->', payload);
             if (window.configServeur && payload && payload.tarifs) {
               window.configServeur.TARIFS = payload.tarifs;
             }
@@ -86,8 +86,8 @@
             }
           })
           .withFailureHandler(function(err){
-            console.error('getPublicConfig FAILED', err);
-            failTarifs('Erreur de lecture configuration (getPublicConfig). Verifie PublicConfig.gs & Configuration.gs');
+            console.error('getTarifsPublic FAILED', err);
+            failTarifs('Erreur de lecture configuration (getTarifsPublic). Verifie pricing.gs');
             if (grilleCalendrier) {
               grilleCalendrier.innerHTML = '<p style="color: red; text-align: center;">Impossible de charger la configuration des tarifs. Le calendrier est désactivé.</p>';
               grilleCalendrier.style.opacity = '1';
