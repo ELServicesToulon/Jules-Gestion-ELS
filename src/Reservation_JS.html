@@ -738,7 +738,8 @@ function configurerEcouteursEvenements() {
     if (jourClique && !jourClique.classList.contains('desactive')) {
       const dateString = jourClique.dataset.date;
       if(dateString) {
-        ouvrirConfigurationTournee(dateString);
+        // Ouvre la nouvelle modale de réservation avec la date sélectionnée
+        openReservationModal(dateString);
       }
     }
   });
@@ -807,5 +808,92 @@ function changerMois(delta) {
     window.etat.dateActuelle.setMonth(window.etat.dateActuelle.getMonth() + delta);
     afficherCalendrier(window.etat.dateActuelle.getMonth() + 1, window.etat.dateActuelle.getFullYear());
 }
+
+
+// =================================================================
+// MODULE: MODALE DE RÉSERVATION (Fourni par l'utilisateur)
+// =================================================================
+
+// --- Ouvre la modale ---
+function openReservationModal(jour) {
+  document.getElementById('reservation-modal').style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+  document.getElementById('feedback').textContent = '';
+  if(jour) selectDay(jour);
+}
+// --- Ferme la modale ---
+function closeReservationModal() {
+  document.getElementById('reservation-modal').style.display = 'none';
+  document.body.style.overflow = '';
+}
+
+// --- Sélection de jour "gélule" ---
+document.querySelectorAll('.jour-gelule').forEach(btn => {
+  btn.onclick = function() {
+    if(this.disabled) return;
+    document.querySelectorAll('.jour-gelule').forEach(b => b.classList.remove('selected'));
+    this.classList.add('selected');
+    document.getElementById('jourSelected').value = this.dataset.jour;
+    updateRecap();
+  }
+});
+function selectDay(jour) {
+  let found = false;
+  document.querySelectorAll('.jour-gelule').forEach(btn => {
+    if(btn.dataset.jour == jour) {
+      btn.click(); found = true;
+    }
+  });
+  if(!found) document.getElementById('jourSelected').value = '';
+  updateRecap();
+}
+
+// --- Met à jour le récapitulatif ---
+function updateRecap() {
+  const jour = document.getElementById('jourSelected').value;
+  const arrets = document.getElementById('arrets').value;
+  const samedi = document.querySelector('input[name="samedi"]').checked;
+  const urgence = document.querySelector('input[name="urgence"]').checked;
+  let total = 15; // base
+  if(arrets) total += [0,5,9,12,16][parseInt(arrets)];
+  if(samedi) total += 25;
+  if(urgence) total += 20;
+  let txt = `Total estimé : <b>${total} € net</b>`;
+  if(jour) txt += ` • Jour choisi : <b>${jour.split('-').reverse().join('/')}</b>`;
+  document.getElementById('recap').innerHTML = txt;
+}
+
+// --- Valide la réservation (remplace la requête par ton Apps Script fetch POST/GET) ---
+document.getElementById('formReservation').onsubmit = function(e) {
+  e.preventDefault();
+  const formData = new FormData(this);
+  document.getElementById('feedback').innerHTML = "<span style='color:#8e44ad;'>Envoi de la réservation...</span>";
+  // --- Simule la requête (remplace ici par fetch vers Apps Script si besoin) ---
+  setTimeout(()=>{
+    document.getElementById('feedback').innerHTML = "✅ Réservation enregistrée ! <br>Un email de confirmation vous sera envoyé.";
+    setTimeout(closeReservationModal, 2100);
+  }, 1400);
+};
+
+// --- Pour fermer en cliquant hors de la boîte ---
+document.getElementById('reservation-modal').onclick = function(e) {
+  if(e.target === this) closeReservationModal();
+};
+
+// --- Connecte le bouton Réserver principal ---
+document.getElementById('btn-reserver').onclick = function() {
+  openReservationModal();
+};
+
+// --- Réinitialise recap au début ---
+document.addEventListener('DOMContentLoaded', () => {
+    // We need to wait for the DOM to be loaded to attach these events
+    if(document.getElementById('arrets')) {
+        updateRecap(); // Initial call
+        document.getElementById('arrets').onchange = updateRecap;
+        document.querySelector('input[name="samedi"]').onchange = updateRecap;
+        document.querySelector('input[name="urgence"]').onchange = updateRecap;
+    }
+});
 
 </script>

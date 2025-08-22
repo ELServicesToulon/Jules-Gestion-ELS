@@ -177,6 +177,51 @@ body {
 
 
 /* =================================================================
+                      STYLES DE LA MODALE DE RÉSERVATION
+   ================================================================= */
+
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap');
+.jour-gelule {
+  font-family: 'Montserrat', sans-serif;
+  background: linear-gradient(90deg, #8e44ad 20%, #3498db 80%);
+  border: none;
+  border-radius: 999px;
+  padding: 0.48em 1.18em;
+  color: #fff;
+  font-size: 1.05em;
+  font-weight: 600;
+  margin-bottom: 0.15em;
+  box-shadow: 0 1px 7px 0 #8e44ad30;
+  cursor: pointer;
+  transition: filter .16s, background .18s;
+  outline: none;
+  margin-right: 0.1em;
+}
+.jour-gelule.selected, .jour-gelule:active {
+  filter: brightness(0.93);
+  background: linear-gradient(90deg,#5dade2 10%, #8e44ad 90%);
+}
+.jour-gelule[disabled] {
+  background: #bbb !important;
+  color: #fff;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+.option-checkbox {
+  display:flex;align-items:center;gap:0.4em;font-size:1em;font-weight:500;
+}
+#reservation-modal-content {
+  animation: popupAppear .33s cubic-bezier(.24,.98,.56,.99);
+}
+@keyframes popupAppear {
+  0% { transform: scale(0.92) translateY(60px); opacity: 0; }
+  100% { transform: scale(1) translateY(0); opacity: 1; }
+}
+
+
+ main
+
+/* =================================================================
            STYLES SPÉCIFIQUES (DEPUIS Admin_CSS.html et Client_CSS.html)
            Ces styles ne s'appliquent que si la balise body a la classe "admin-scope"
    ================================================================= */
