@@ -201,15 +201,17 @@ function obtenirCreneauxDisponiblesPourDate(dateString, duree, config, idEveneme
     let heureActuelle = new Date(debutJournee);
     const idPropreAIgnorer = idEvenementAIgnorer ? idEvenementAIgnorer.split('@')[0] : null;
 
-    // CORRECTION : Pour les non-admins, si on est aujourd'hui, on ne propose pas de créneaux déjà passés.
-    // Pour les admins, on commence toujours au début du service.
-    if (!estAdmin && formaterDateEnYYYYMMDD(debutJournee) === formaterDateEnYYYYMMDD(maintenant) && heureActuelle < maintenant) {
-      heureActuelle = maintenant;
-      const minutes = heureActuelle.getMinutes();
-      const remainder = minutes % config.INTERVALLE_CRENEAUX_MINUTES;
-      if (remainder !== 0) {
-        heureActuelle.setMinutes(minutes + (config.INTERVALLE_CRENEAUX_MINUTES - remainder));
-        heureActuelle.setSeconds(0, 0);
+    // PATCH: Pour les non-admins, si on est aujourd'hui, on ne propose que les créneaux à venir en respectant le tampon.
+    const todayString = formaterDateEnYYYYMMDD(maintenant);
+    if (!estAdmin && dateString === todayString) {
+      const heureNowEnMinutes = maintenant.getHours() * 60 + maintenant.getMinutes();
+      const debutMin = heureNowEnMinutes + (config.DUREE_TAMPON_MINUTES || 0);
+
+      // Avance l'heure de début jusqu'au premier créneau réellement disponible
+      while (heureActuelle.getHours() * 60 + heureActuelle.getMinutes() < debutMin) {
+        heureActuelle.setMinutes(heureActuelle.getMinutes() + config.INTERVALLE_CRENEAUX_MINUTES);
+        // Sécurité pour ne pas boucler indéfiniment si la journée est terminée
+        if (heureActuelle > finJournee) break;
       }
     }
 
