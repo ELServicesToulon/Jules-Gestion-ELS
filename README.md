@@ -28,6 +28,51 @@ L’outil est conçu pour garantir **zéro papier**, une traçabilité complète
 
 ---
 
+## Système de Tarification Dynamique
+
+> **TL;DR:** Toute la tarification (suppléments, arrêts, profils spéciaux) est gérée par un unique objet `TARIFS` dans `src/Configuration.gs`. L’API expose dynamiquement les créneaux et tarifs adaptés à chaque demande. Modifier les prix = modifier `TARIFS`, rien d’autre.
+
+Le système de tarification est conçu pour être 100% centralisé et flexible, permettant des ajustements en temps réel sans toucher à la logique du code.
+
+### 1. Gestion des tarifs pour l'administrateur
+
+Toute la configuration se fait dans l'objet `TARIFS` du fichier `src/Configuration.gs`.
+
+*   **Pour changer un supplément (urgence ou samedi) :**
+    → Modifier la clé `base` dans `'Urgent'` ou `'Samedi'` de `TARIFS`.
+*   **Pour changer le prix des arrêts supplémentaires :**
+    → Modifier le tableau `arrets` dans la section concernée de `TARIFS`.
+*   **Pour ajouter un type de course spécial (ex: nuit, Ehpad) :**
+    → Ajouter une nouvelle clé dans `TARIFS` en suivant le même format.
+
+**Exemple de l'objet `TARIFS` :**
+```js
+const TARIFS = {
+  'Normal': { base: 15, arrets: [5, 4, 3, 4, 5] },   // Base = 15€, Arrêt 2=5€, 3=4€, ...
+  'Samedi': { base: 25, arrets: [5, 4, 3, 4, 5] },   // Supplément samedi = 10€
+  'Urgent': { base: 20, arrets: [5, 4, 3, 4, 5] },   // Supplément urgence = 5€
+};
+```
+
+### 2. Documentation Technique
+
+*   **API Principale : `getAvailableSlots(day, nbArrets)`**
+    - C'est la fonction clé qui interroge la configuration en vigueur.
+    - Elle applique dynamiquement les bons profils tarifaires (`Normal`, `Samedi`, `Urgent`) selon la date et l'heure du créneau demandé.
+    - Elle ne retourne jamais de créneau qui entre en conflit avec le calendrier Google.
+
+*   **Logique Automatisée**
+    - Il n'y a **aucune option à cocher côté client** pour "urgence" ou "samedi". Le système détermine automatiquement le bon tarif en fonction de la date du créneau sélectionné.
+    - Toute la tarification, y compris les arrêts supplémentaires, est dynamique et gérée par l'objet `TARIFS`. Tout changement est appliqué immédiatement.
+
+*   **Flux de données**
+    1.  Le client sélectionne un jour et configure sa tournée (nombre d'arrêts).
+    2.  Le front-end appelle `google.script.run.getAvailableSlots(...)`.
+    3.  Le back-end (`Calendrier.gs`) calcule les créneaux disponibles et leur applique le prix juste en se basant sur `Configuration.gs`.
+    4.  Le front-end reçoit une liste de créneaux avec leur prix final et les affiche à l'utilisateur.
+
+---
+
 ## Prérequis techniques
 
 - **Compte Google** (Drive, Sheets, Agenda, Apps Script activés)

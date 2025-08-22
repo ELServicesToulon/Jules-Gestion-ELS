@@ -119,20 +119,80 @@ function testerCalendrier() {
   } else {
      Logger.log("FAILURE: obtenirDonneesCalendrierPublic()");
   }
+
+  // Lancement du nouveau test pour l'API de tarification
+  testerGetAvailableSlots();
+}
+
+function testerGetAvailableSlots() {
+  Logger.log("\n--- NOUVEAU TEST: Test de getAvailableSlots() ---");
+  const config = getConfiguration();
+
+  // Scénario 1: Jour normal, 1 arrêt
+  let testDate = new Date();
+  let attempts = 0;
+  do {
+    testDate.setDate(testDate.getDate() + 1);
+    attempts++;
+  } while ((testDate.getDay() === 6 || testDate.getDay() === 0) && attempts < 8); // Ni samedi, ni dimanche
+  const dateTestNormal = formaterDateEnYYYYMMDD(testDate);
+
+  const slotsNormal = getAvailableSlots(dateTestNormal, 1, []);
+  if (slotsNormal && slotsNormal.length > 0) {
+    const premierSlot = slotsNormal[0];
+    const prixAttendu = config.TARIFS.Normal.base;
+    if (premierSlot.basePrice === prixAttendu) {
+      Logger.log(`SUCCESS: getAvailableSlots() - Jour Normal. Prix: ${premierSlot.basePrice}€, attendu: ${prixAttendu}€.`);
+    } else {
+      Logger.log(`FAILURE: getAvailableSlots() - Jour Normal. Prix: ${premierSlot.basePrice}€, attendu: ${prixAttendu}€.`);
+    }
+  } else {
+    Logger.log(`INFO: getAvailableSlots() - Jour Normal. Aucun créneau trouvé pour ${dateTestNormal}, test de prix sauté.`);
+  }
+
+  // Scénario 2: Un samedi, 3 arrêts
+  let testDateSamedi = new Date();
+  attempts = 0;
+  do {
+    testDateSamedi.setDate(testDateSamedi.getDate() + 1);
+    attempts++;
+  } while (testDateSamedi.getDay() !== 6 && attempts < 8); // Trouver le prochain samedi
+
+  if (testDateSamedi.getDay() === 6) {
+    const dateTestSamediStr = formaterDateEnYYYYMMDD(testDateSamedi);
+    const slotsSamedi = getAvailableSlots(dateTestSamediStr, 3, []);
+     if (slotsSamedi && slotsSamedi.length > 0) {
+      const premierSlot = slotsSamedi[0];
+      const tarifSamedi = config.TARIFS.Samedi;
+      const prixAttendu = tarifSamedi.base + tarifSamedi.arrets[0] + tarifSamedi.arrets[1];
+       if (premierSlot.basePrice === prixAttendu) {
+        Logger.log(`SUCCESS: getAvailableSlots() - Samedi 3 arrêts. Prix: ${premierSlot.basePrice}€, attendu: ${prixAttendu}€.`);
+      } else {
+        Logger.log(`FAILURE: getAvailableSlots() - Samedi 3 arrêts. Prix: ${premierSlot.basePrice}€, attendu: ${prixAttendu}€.`);
+      }
+    } else {
+      Logger.log(`INFO: getAvailableSlots() - Samedi. Aucun créneau trouvé pour ${dateTestSamediStr}, test de prix sauté.`);
+    }
+  } else {
+      Logger.log(`INFO: getAvailableSlots() - Samedi. Aucun samedi trouvé dans les 7 prochains jours, test sauté.`);
+  }
 }
 
 function testerReservation() {
   Logger.log("\n--- Test de Reservation.gs ---");
-  const demain = new Date();
-  demain.setDate(demain.getDate() + 1);
-  const dateTest = formaterDateEnYYYYMMDD(demain);
+  // const demain = new Date();
+  // demain.setDate(demain.getDate() + 1);
+  // const dateTest = formaterDateEnYYYYMMDD(demain);
 
-  const calcul = calculerPrixEtDureeServeur(2, true, dateTest, "10h00", TEST_CLIENT);
-  if (calcul && typeof calcul.prix === 'number' && typeof calcul.duree === 'number') {
-    Logger.log(`SUCCESS: calculerPrixEtDureeServeur(). Prix calculé: ${calcul.prix.toFixed(2)}€, Durée: ${calcul.duree}min.`);
-  } else {
-    Logger.log("FAILURE: calculerPrixEtDureeServeur()");
-  }
+  // NOTE JULES: Le test pour calculerPrixEtDureeServeur() est déprécié car cette fonction
+  // est maintenant remplacée par l'API getAvailableSlots() qui est testée dans testerCalendrier().
+  // const calcul = calculerPrixEtDureeServeur(2, true, dateTest, "10h00", TEST_CLIENT);
+  // if (calcul && typeof calcul.prix === 'number' && typeof calcul.duree === 'number') {
+  //   Logger.log(`SUCCESS: calculerPrixEtDureeServeur(). Prix calculé: ${calcul.prix.toFixed(2)}€, Durée: ${calcul.duree}min.`);
+  // } else {
+  //   Logger.log("FAILURE: calculerPrixEtDureeServeur()");
+  // }
+  Logger.log("INFO: Le test de Reservation.gs est actuellement sans objet car la logique a été déplacée vers getAvailableSlots().");
 }
 
 function testerGestionClient() {
