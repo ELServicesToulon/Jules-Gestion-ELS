@@ -222,27 +222,21 @@
       <span id="badge-tarif-5" style="background: #eee; padding: 0.2em 0.5em; border-radius: 0.5em;"></span>
     </div>
     <form id="formReservation" autocomplete="off">
-      <!-- Sélecteur de jour (exemple dynamique à remplacer par ta liste JS si besoin) -->
-      <label for="jour" style="font-weight:500;">Sélectionnez votre jour :</label>
-      <div style="display:flex;gap:0.5em;flex-wrap:wrap;margin-bottom:1em;">
-        <button type="button" class="jour-gelule" data-jour="2025-08-23">23</button>
-        <button type="button" class="jour-gelule" data-jour="2025-08-24" disabled>24</button>
-        <button type="button" class="jour-gelule" data-jour="2025-08-25">25</button>
-        <button type="button" class="jour-gelule" data-jour="2025-08-26">26</button>
-        <!-- Ajoute dynamiquement les autres jours via JS selon les dispos -->
+      <div class="day-picker">
+        <div class="day-chips" id="js-day-chips" aria-label="Sélection du jour (lun→dim)"></div>
+        <small id="js-day-help" class="hint"></small>
       </div>
-      <input type="hidden" name="date-choisie" id="jourSelected" required>
 
-      <!-- Arrêts totaux -->
-      <label for="select-nb-arrets" style="font-weight:500;">Nombre total d’arrêts :</label>
-      <select name="arrets" id="select-nb-arrets" style="font-size:1em;width:100%;margin-bottom:1em;">
-        <!-- Options will be populated by JS -->
-      </select>
-
-      <div style="display:flex; gap: 1em; margin-bottom: 1em;">
-        <label style="font-weight:500;"><input type="checkbox" id="chk-retour" /> Retour pharmacie</label>
-        <label style="font-weight:500;"><input type="checkbox" id="chk-urgence" /> Urgence</label>
+      <div class="field">
+        <label for="select-arrets">Nombre total d’arrêts :</label>
+        <select id="select-arrets" aria-label="Nombre total d’arrêts"></select>
       </div>
+
+      <label class="inline">
+        <input type="checkbox" id="cb-retour"> Retour pharmacie
+      </label>
+
+      <div id="slots-container" style="margin-top: 1em; max-height: 200px; overflow-y: auto;"></div>
 
       <!-- Récap et soumission -->
       <div id="total-panier" style="font-size:1.2em;color:#333;margin-bottom:0.9em;min-height:1.3em; text-align:center; font-weight:bold;"></div>
