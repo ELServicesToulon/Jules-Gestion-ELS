@@ -166,10 +166,10 @@ function afficherCalendrier(mois, annee) {
           const celluleJour = document.createElement('div');
           const date = new Date(annee, mois - 1, jour);
           const dateString = `${annee}-${String(mois).padStart(2, '0')}-${String(jour).padStart(2, '0')}`;
-          const disponibilite = window.etat.donneesCalendrier[dateString] || { disponibles: 0, total: 0 };
+          // Utiliser un total par défaut pour la cohérence visuelle si non fourni
+          const disponibilite = window.etat.donneesCalendrier[dateString] || { disponibles: 0, total: 8 };
 
-          celluleJour.className = 'jour-calendrier';
-          celluleJour.innerHTML = `<span>${jour}</span>`;
+          celluleJour.className = 'jour-capsule'; // Nouvelle classe pour le style "gélule"
 
           const estPasse = date < aujourdhui;
           const estDimanche = date.getDay() === 0;
@@ -177,13 +177,22 @@ function afficherCalendrier(mois, annee) {
 
           if (estPasse || estDimanche || estComplet) {
             celluleJour.classList.add('desactive');
+            celluleJour.innerHTML = `<span class="jour-numero">${jour}</span><span class="jour-dispo">Indisponible</span>`;
           } else {
             celluleJour.dataset.date = dateString;
-            celluleJour.setAttribute('aria-label', `${disponibilite.disponibles} créneaux disponibles`);
-            celluleJour.innerHTML += `
-              <div class="barre-disponibilite">
-                <div style="width:${(disponibilite.disponibles / disponibilite.total) * 100}%"></div>
-              </div>
+            celluleJour.setAttribute('aria-label', `${disponibilite.disponibles} sur ${disponibilite.total} créneaux disponibles`);
+
+            const placesPrises = disponibilite.total - disponibilite.disponibles;
+            // Le taux de remplissage est le pourcentage de places PRISES
+            const tauxRemplissage = disponibilite.total > 0 ? (placesPrises / disponibilite.total) * 100 : 0;
+
+            // Appliquer le dégradé dynamique suggéré
+            const bg = `linear-gradient(to right, var(--couleur-primaire) ${tauxRemplissage}%, var(--couleur-secondaire) ${tauxRemplissage}%)`;
+            celluleJour.style.background = bg;
+
+            celluleJour.innerHTML = `
+              <span class="jour-numero">${jour}</span>
+              <span class="jour-dispo">${disponibilite.disponibles} / ${disponibilite.total}</span>
             `;
           }
           grilleCalendrier.appendChild(celluleJour);
