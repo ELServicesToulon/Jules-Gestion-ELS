@@ -850,20 +850,63 @@ function selectDay(jour) {
 
 // --- Met à jour le récapitulatif ---
 function updateRecap() {
-  const jour = document.getElementById('jourSelected').value;
-  const arrets = parseInt(document.getElementById('arrets').value);
+  // Assurer que la config est chargée
+  if (!window.configServeur || !window.configServeur.TARIFS) {
+    document.getElementById('recap').innerHTML = "Erreur: Tarifs non chargés.";
+    return;
+  }
+
+  const arrets = parseInt(document.getElementById('arrets').value || 1, 10);
   const samedi = document.querySelector('input[name="samedi"]').checked;
   const urgence = document.querySelector('input[name="urgence"]').checked;
-  let total = 15; // Base (1 arrêt inclus)
-  if(arrets > 1) {
-    total += 5 + (arrets-2)*4; // 2e arrêt +5€, puis +4€ chaque arrêt suivant
+  const jour = document.getElementById('jourSelected').value;
+
+  const tarifsNormal = window.configServeur.TARIFS.Normal;
+  let total = tarifsNormal.base;
+
+  // Calcul du coût des arrêts supplémentaires
+  if (arrets > 1) {
+    for (let i = 1; i < arrets; i++) {
+      // On utilise le prix de l'arrêt i-1 du tableau (qui correspond au i-ème arrêt sup)
+      // Si l'index est hors limites, on prend le dernier tarif défini.
+      const tarifArret = tarifsNormal.arrets[i - 1] || tarifsNormal.arrets[tarifsNormal.arrets.length - 1];
+      total += tarifArret;
+    }
   }
-  if(samedi) total += 25;
-  if(urgence) total += 20;
+
+  // Ajout des suppléments
+  if (samedi) total += window.configServeur.TARIFS.Samedi.base;
+  if (urgence) total += window.configServeur.TARIFS.Urgent.base;
+
   let txt = `Total estimé : <b>${total} € net</b>`;
-  if(jour) txt += ` • Jour choisi : <b>${jour.split('-').reverse().join('/')}</b>`;
+  if (jour) txt += ` • Jour choisi : <b>${jour.split('-').reverse().join('/')}</b>`;
   document.getElementById('recap').innerHTML = txt;
 }
+
+// --- Met à jour les labels du sélecteur d'arrêts avec les prix ---
+function updateArretLabels() {
+    if (!window.configServeur || !window.configServeur.TARIFS) return;
+    const select = document.getElementById('arrets');
+    if (!select) return;
+
+    const tarifsNormal = window.configServeur.TARIFS.Normal;
+
+    // Gérer le premier arrêt
+    if (select.options.length > 0) {
+        select.options[0].textContent = `1 arrêt (livraison simple)`;
+    }
+
+    let supplementTotal = 0;
+    // Commencer à partir de la deuxième option (2 arrêts)
+    for (let i = 1; i < select.options.length; i++) {
+        // Le supplément pour cet arrêt est à l'index i-1 du tableau `arrets`
+        const tarifArret = tarifsNormal.arrets[i - 1] || tarifsNormal.arrets[tarifsNormal.arrets.length - 1];
+        supplementTotal += tarifArret;
+        const nbArrets = i + 1;
+        select.options[i].textContent = `${nbArrets} arrêts (+${supplementTotal} €)`;
+    }
+}
+
 
 // --- Valide la réservation (remplace la requête par ton Apps Script fetch POST/GET) ---
 document.getElementById('formReservation').onsubmit = function(e) {
@@ -891,6 +934,7 @@ document.getElementById('btn-reserver').onclick = function() {
 document.addEventListener('DOMContentLoaded', () => {
     // We need to wait for the DOM to be loaded to attach these events
     if(document.getElementById('arrets')) {
+        updateArretLabels(); // NOUVEAU: Met à jour les labels au chargement
         updateRecap(); // Initial call
         document.getElementById('arrets').onchange = updateRecap;
         document.querySelector('input[name="samedi"]').onchange = updateRecap;
