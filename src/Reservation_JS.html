@@ -734,7 +734,7 @@ function configurerEcouteursEvenements() {
   const { ui } = window;
 
   ui.grilleCalendrier?.addEventListener('click', (e) => {
-    const jourClique = e.target.closest('.jour-calendrier');
+    const jourClique = e.target.closest('.jour-capsule');
     if (jourClique && !jourClique.classList.contains('desactive')) {
       const dateString = jourClique.dataset.date;
       if(dateString) {
