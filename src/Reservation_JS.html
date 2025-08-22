@@ -166,10 +166,10 @@ function afficherCalendrier(mois, annee) {
           const celluleJour = document.createElement('div');
           const date = new Date(annee, mois - 1, jour);
           const dateString = `${annee}-${String(mois).padStart(2, '0')}-${String(jour).padStart(2, '0')}`;
-          const disponibilite = window.etat.donneesCalendrier[dateString] || { disponibles: 0, total: 0 };
+          // Utiliser un total par défaut pour la cohérence visuelle si non fourni
+          const disponibilite = window.etat.donneesCalendrier[dateString] || { disponibles: 0, total: 8 };
 
-          celluleJour.className = 'jour-calendrier';
-          celluleJour.innerHTML = `<span>${jour}</span>`;
+          celluleJour.className = 'jour-capsule'; // Nouvelle classe pour le style "gélule"
 
           const estPasse = date < aujourdhui;
           const estDimanche = date.getDay() === 0;
@@ -177,13 +177,22 @@ function afficherCalendrier(mois, annee) {
 
           if (estPasse || estDimanche || estComplet) {
             celluleJour.classList.add('desactive');
+            celluleJour.innerHTML = `<span class="jour-numero">${jour}</span><span class="jour-dispo">Indisponible</span>`;
           } else {
             celluleJour.dataset.date = dateString;
-            celluleJour.setAttribute('aria-label', `${disponibilite.disponibles} créneaux disponibles`);
-            celluleJour.innerHTML += `
-              <div class="barre-disponibilite">
-                <div style="width:${(disponibilite.disponibles / disponibilite.total) * 100}%"></div>
-              </div>
+            celluleJour.setAttribute('aria-label', `${disponibilite.disponibles} sur ${disponibilite.total} créneaux disponibles`);
+
+            const placesPrises = disponibilite.total - disponibilite.disponibles;
+            // Le taux de remplissage est le pourcentage de places PRISES
+            const tauxRemplissage = disponibilite.total > 0 ? (placesPrises / disponibilite.total) * 100 : 0;
+
+            // Appliquer le dégradé dynamique suggéré
+            const bg = `linear-gradient(to right, var(--couleur-primaire) ${tauxRemplissage}%, var(--couleur-secondaire) ${tauxRemplissage}%)`;
+            celluleJour.style.background = bg;
+
+            celluleJour.innerHTML = `
+              <span class="jour-numero">${jour}</span>
+              <span class="jour-dispo">${disponibilite.disponibles} / ${disponibilite.total}</span>
             `;
           }
           grilleCalendrier.appendChild(celluleJour);
@@ -725,11 +734,12 @@ function configurerEcouteursEvenements() {
   const { ui } = window;
 
   ui.grilleCalendrier?.addEventListener('click', (e) => {
-    const jourClique = e.target.closest('.jour-calendrier');
+    const jourClique = e.target.closest('.jour-capsule');
     if (jourClique && !jourClique.classList.contains('desactive')) {
       const dateString = jourClique.dataset.date;
       if(dateString) {
-        ouvrirConfigurationTournee(dateString);
+        // Ouvre la nouvelle modale de réservation avec la date sélectionnée
+        openReservationModal(dateString);
       }
     }
   });
@@ -798,5 +808,92 @@ function changerMois(delta) {
     window.etat.dateActuelle.setMonth(window.etat.dateActuelle.getMonth() + delta);
     afficherCalendrier(window.etat.dateActuelle.getMonth() + 1, window.etat.dateActuelle.getFullYear());
 }
+
+
+// =================================================================
+// MODULE: MODALE DE RÉSERVATION (Fourni par l'utilisateur)
+// =================================================================
+
+// --- Ouvre la modale ---
+function openReservationModal(jour) {
+  document.getElementById('reservation-modal').style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+  document.getElementById('feedback').textContent = '';
+  if(jour) selectDay(jour);
+}
+// --- Ferme la modale ---
+function closeReservationModal() {
+  document.getElementById('reservation-modal').style.display = 'none';
+  document.body.style.overflow = '';
+}
+
+// --- Sélection de jour "gélule" ---
+document.querySelectorAll('.jour-gelule').forEach(btn => {
+  btn.onclick = function() {
+    if(this.disabled) return;
+    document.querySelectorAll('.jour-gelule').forEach(b => b.classList.remove('selected'));
+    this.classList.add('selected');
+    document.getElementById('jourSelected').value = this.dataset.jour;
+    updateRecap();
+  }
+});
+function selectDay(jour) {
+  let found = false;
+  document.querySelectorAll('.jour-gelule').forEach(btn => {
+    if(btn.dataset.jour == jour) {
+      btn.click(); found = true;
+    }
+  });
+  if(!found) document.getElementById('jourSelected').value = '';
+  updateRecap();
+}
+
+// --- Met à jour le récapitulatif ---
+function updateRecap() {
+  const jour = document.getElementById('jourSelected').value;
+  const arrets = document.getElementById('arrets').value;
+  const samedi = document.querySelector('input[name="samedi"]').checked;
+  const urgence = document.querySelector('input[name="urgence"]').checked;
+  let total = 15; // base
+  if(arrets) total += [0,5,9,12,16][parseInt(arrets)];
+  if(samedi) total += 25;
+  if(urgence) total += 20;
+  let txt = `Total estimé : <b>${total} € net</b>`;
+  if(jour) txt += ` • Jour choisi : <b>${jour.split('-').reverse().join('/')}</b>`;
+  document.getElementById('recap').innerHTML = txt;
+}
+
+// --- Valide la réservation (remplace la requête par ton Apps Script fetch POST/GET) ---
+document.getElementById('formReservation').onsubmit = function(e) {
+  e.preventDefault();
+  const formData = new FormData(this);
+  document.getElementById('feedback').innerHTML = "<span style='color:#8e44ad;'>Envoi de la réservation...</span>";
+  // --- Simule la requête (remplace ici par fetch vers Apps Script si besoin) ---
+  setTimeout(()=>{
+    document.getElementById('feedback').innerHTML = "✅ Réservation enregistrée ! <br>Un email de confirmation vous sera envoyé.";
+    setTimeout(closeReservationModal, 2100);
+  }, 1400);
+};
+
+// --- Pour fermer en cliquant hors de la boîte ---
+document.getElementById('reservation-modal').onclick = function(e) {
+  if(e.target === this) closeReservationModal();
+};
+
+// --- Connecte le bouton Réserver principal ---
+document.getElementById('btn-reserver').onclick = function() {
+  openReservationModal();
+};
+
+// --- Réinitialise recap au début ---
+document.addEventListener('DOMContentLoaded', () => {
+    // We need to wait for the DOM to be loaded to attach these events
+    if(document.getElementById('arrets')) {
+        updateRecap(); // Initial call
+        document.getElementById('arrets').onchange = updateRecap;
+        document.querySelector('input[name="samedi"]').onchange = updateRecap;
+        document.querySelector('input[name="urgence"]').onchange = updateRecap;
+    }
+});
 
 </script>

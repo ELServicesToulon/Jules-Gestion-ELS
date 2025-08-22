@@ -65,6 +65,7 @@
             Content de vous revoir, <strong id="nom-client-reconnu"></strong> !
             <button id="btn-changer-client" class="btn btn-sm">Changer de client</button>
         </div>
+        <button id="btn-reserver" class="btn btn-primaire">Réserver une livraison</button>
         <a href="<?= appUrl ?>?page=gestion" class="btn btn-secondaire btn-espace-client">Mon Espace Client</a>
     </header>
 
@@ -206,6 +207,57 @@
   <div id="conteneur-notifications" role="alert" aria-live="assertive"></div>
 
   <?!= include('Reservation_JS'); ?>
+
+<!-- MODALE RÉSERVATION LIVRAISON PHARMACIE -->
+<div id="reservation-modal" aria-modal="true" role="dialog" tabindex="-1"
+     style="display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:999;align-items:center;justify-content:center;background:rgba(50,40,80,0.18);backdrop-filter:blur(3px);">
+  <div id="reservation-modal-content" style="background:white;min-width:340px;max-width:96vw;width:420px;padding:2.3em 1.8em 1.8em 1.8em;border-radius:2em;box-shadow:0 6px 42px 0 #8e44ad33;position:relative;display:flex;flex-direction:column;gap:1.1em;font-family:'Montserrat',sans-serif;">
+    <button aria-label="Fermer la fenêtre" onclick="closeReservationModal()"
+      style="position:absolute;top:18px;right:18px;background:transparent;border:none;font-size:2em;line-height:1;color:#8e44ad;cursor:pointer;z-index:3;">×</button>
+    <h2 style="margin:0 0 0.3em 0;font-size:1.55em;font-weight:700;color:#8e44ad;">Réserver votre livraison</h2>
+
+    <form id="formReservation" autocomplete="off">
+      <!-- Sélecteur de jour (exemple dynamique à remplacer par ta liste JS si besoin) -->
+      <label for="jour" style="font-weight:500;">Sélectionnez votre jour :</label>
+      <div style="display:flex;gap:0.5em;flex-wrap:wrap;margin-bottom:1em;">
+        <button type="button" class="jour-gelule" data-jour="2025-08-23">23</button>
+        <button type="button" class="jour-gelule" data-jour="2025-08-24" disabled>24</button>
+        <button type="button" class="jour-gelule" data-jour="2025-08-25">25</button>
+        <button type="button" class="jour-gelule" data-jour="2025-08-26">26</button>
+        <!-- Ajoute dynamiquement les autres jours via JS selon les dispos -->
+      </div>
+      <input type="hidden" name="jour" id="jourSelected" required>
+
+      <!-- Arrêts supplémentaires -->
+      <label for="arrets" style="font-weight:500;">Arrêts supplémentaires :</label>
+      <select name="arrets" id="arrets" style="font-size:1em;width:100%;margin-bottom:1em;">
+        <option value="0">Aucun</option>
+        <option value="1">1 arrêt sup. (+5 €)</option>
+        <option value="2">2 arrêts sup. (+9 €)</option>
+        <option value="3">3 arrêts sup. (+12 €)</option>
+        <option value="4">4 arrêts sup. (+16 €)</option>
+      </select>
+
+      <!-- Options spéciales -->
+      <label style="font-weight:500;">Options :</label>
+      <div style="display:flex;gap:0.7em;margin-bottom:1.3em;">
+        <label class="option-checkbox">
+          <input type="checkbox" name="samedi" value="1">
+          <span>Samedi (+25 €)</span>
+        </label>
+        <label class="option-checkbox">
+          <input type="checkbox" name="urgence" value="1">
+          <span>Urgent (+20 €)</span>
+        </label>
+      </div>
+
+      <!-- Récap et soumission -->
+      <div id="recap" style="font-size:0.98em;color:#555;margin-bottom:0.9em;min-height:1.3em;"></div>
+      <button type="submit" style="width:100%;border:none;border-radius:999px;background:linear-gradient(90deg,#8e44ad 10%,#3498db 90%);box-shadow:0 2px 8px 0 #5dade2cc;font-weight:600;font-family:'Montserrat';font-size:1.18em;color:#fff;padding:0.75em 0;transition:filter .15s;cursor:pointer;">Valider ma réservation</button>
+    </form>
+    <div id="feedback" style="font-size:1.08em;color:#3498db;text-align:center;margin-top:0.8em;"></div>
+  </div>
+</div>
 
 </body>
 </html>
