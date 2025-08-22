@@ -57,78 +57,36 @@ function isUrgence_(slotDate, config) {
  * @param {number} nbArrets Le nombre total d'arrêts pour la tournée (1 = prise en charge seule).
  * @returns {Array<Object>} Une liste d'objets créneau, chacun avec son tarif et ses détails.
  */
-function getAvailableSlots(day, nbArrets, autresCoursesPanier = []) {
-  try {
-    const config = getConfiguration();
-    // nbArrets est le nombre total d'arrêts, incluant le premier.
-    const arretsSupplementaires = Math.max(0, parseInt(nbArrets, 10) - 1);
+function getAvailableSlots(dayISO, nbArretsFront, retour, autresCoursesPanier = []){
+  const CFG = getConfiguration();
+  const day = new Date(dayISO + 'T00:00:00');
 
-    // Calcul de la durée totale de la prestation en se basant sur la configuration
-    const duree = config.DUREE_BASE + (arretsSupplementaires * (config.DUREE_ARRET_SUP || 15));
+  // We must calculate the duration based on the total number of stops
+  const P = _resolvePricingShape_(CFG); // from pricing.gs
+  let n = Number(nbArretsFront || 1);
+  if (retour && P.retourAsStop) n += 1;
 
-    // 1. Obtenir les créneaux de base disponibles, en tenant compte du panier actuel
-    const creneauxDisponibles = obtenirCreneauxDisponiblesPourDate(day, duree, config, null, null, autresCoursesPanier);
+  const arretsSupplementaires = Math.max(0, n - 1);
+  const duree = (CFG.DUREE_BASE || 30) + (arretsSupplementaires * (CFG.DUREE_ARRET_SUP || 15));
 
-    if (!creneauxDisponibles || creneauxDisponibles.length === 0) {
-      return []; // Aucun créneau trouvé, on retourne un tableau vide
-    }
+  const slots = obtenirCreneauxDisponiblesPourDate(dayISO, duree, CFG, null, null, autresCoursesPanier);
 
-    const now = new Date();
-    // Utilise la fonction utilitaire pour la comparaison pour garantir la cohérence
-    const isToday = (formaterDateEnYYYYMMDD(now) === day);
+  return (slots || []).map(timeRange => {
+      const start = buildDateFromDayAndTime_(dayISO, timeRange);
+      const calc = calculePrixBase_(CFG, Number(nbArretsFront||1), {
+        date: day, slotStart: start, retour: !!retour
+      });
+      const tags = [];
+      if (_isSaturday_(day)) tags.push('samedi');
+      if (calc.regime === 'Urgent') tags.push('urgent');
 
-    // 2. Enrichir chaque créneau avec les informations de tarification dynamique
-    return creneauxDisponibles.map(timeRange => {
-      const slotDate = buildDateFromDayAndTime_(day, timeRange);
-      const samedi = isSaturday_(slotDate);
-      // L'urgence n'est possible que pour des créneaux dans le futur proche le jour même
-      const urgence = isToday && isUrgence_(slotDate, config);
-
-      // Calcul du prix de base en fonction du nombre d'arrêts
-      let prix = 0;
-      const nbTotalArrets = arretsSupplementaires + 1; // +1 pour la prise en charge initiale
-      for (let i = 0; i < nbTotalArrets; i++) {
-        // Le prix par arrêt change à partir du 5ème
-        prix += (i < 4) ? config.TARIFS.BASE_PAR_ARRET : config.TARIFS.A_PARTIR_DU_5EME;
-      }
-
-      // Ajout des surcharges éventuelles
-      let surchargeSamedi = 0;
-      if (samedi && config.TARIFS.SAMEDI.ACTIVE) {
-        surchargeSamedi = config.TARIFS.SAMEDI.SURCHARGE_FIXE;
-        prix += surchargeSamedi;
-      }
-
-      let surchargeUrgence = 0;
-      if (urgence && config.TARIFS.URGENCE.ACTIVE) {
-        surchargeUrgence = config.TARIFS.URGENCE.SURCHARGE;
-        prix += surchargeUrgence;
-      }
-
-      // Création des tags pour affichage simple sur l'interface
-      let tags = [];
-      if (samedi) tags.push("samedi");
-      if (urgence) tags.push("urgence");
-
-      // Construction de l'objet de retour complet pour ce créneau
+      // Return a format compatible with the existing front-end `afficherSelectionCreneaux` function
       return {
-        timeRange: timeRange,
-        dispo: true,
-        basePrice: prix,
-        tags: tags,
-        details: {
-          samedi: surchargeSamedi,
-          urgence: surchargeUrgence,
-          arretSup: arretsSupplementaires
-        }
+          timeRange: timeRange,
+          basePrice: calc.totalHT,
+          tags: tags
       };
     });
-
-  } catch (e) {
-    Logger.log(`Erreur critique dans getAvailableSlots pour le jour ${day} avec ${nbArrets} arrêts: ${e.stack}`);
-    // En cas d'erreur, retourner un tableau vide pour ne pas casser le front-end
-    return [];
-  }
 }
 
 

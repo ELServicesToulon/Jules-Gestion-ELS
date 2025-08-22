@@ -130,12 +130,12 @@ function doGet(e) {
     // Page par défaut : Interface de réservation
     const template = HtmlService.createTemplateFromFile('Reservation_Interface');
     const config = getConfiguration();
-    const publicConfig = getPublicConfig();
+    const tarifsPublics = getTarifsPublic(); // New call to pricing.gs
 
     template.appUrl = ScriptApp.getService().getUrl();
-    template.nomService = publicConfig.meta.nomService;
-    // On utilise les tarifs normalisés de getPublicConfig pour être cohérent avec le reste de l'app
-    template.TARIFS_JSON = JSON.stringify(publicConfig.tarifs);
+    template.nomService = config.NOM_ENTREPRISE || "EL Services";
+    // On utilise les tarifs publics du nouveau moteur de tarification
+    template.TARIFS_JSON = JSON.stringify(tarifsPublics);
     template.DUREE_BASE = config.DUREE_BASE_MIN || 30;
     template.DUREE_ARRET_SUP = config.DUREE_PAR_ARRET_SUP || 15;
     template.KM_BASE = config.KM_INCLUS || 9;
@@ -146,10 +146,10 @@ function doGet(e) {
     // NOUVEAU : Ajout des variables pour la bannière d'information
     template.heureDebut = config.HEURE_DEBUT_SERVICE;
     template.heureFin = config.HEURE_FIN_SERVICE;
-    template.prixBase = (publicConfig.tarifs.base && publicConfig.tarifs.base.prix) ? publicConfig.tarifs.base.prix : (config.TARIF_BASE || 15);
+    template.prixBase = (tarifsPublics.tables && tarifsPublics.tables.Normal) ? tarifsPublics.tables.Normal[0] : (config.TARIF_BASE || 15);
 
     return template.evaluate()
-        .setTitle(publicConfig.meta.nomService + " | Réservation")
+        .setTitle((config.NOM_ENTREPRISE || "EL Services") + " | Réservation")
         .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 
   } catch (error) {

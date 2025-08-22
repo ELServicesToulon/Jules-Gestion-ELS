@@ -275,12 +275,6 @@ function SCHEMA_checkAuthTokenEndpoints(){
   LOG_admin('TOKEN_ENDPOINTS_CHECK','OK', report); return report;
 }
 
-function SCHEMA_checkPublicConfig(){
-  const key = 'getPublicConfig';
-  let ok=false; try{ /* @ts-ignore */ ok = (typeof this[key] === 'function'); }catch(_){ ok=false; }
-  const rep = { getPublicConfig: ok };
-  LOG_admin('PUBLICCONFIG_CHECK','OK', rep); return rep;
-}
 
 // =================================================================
 // 7) MIGRATIONS (renommages doux)
@@ -326,7 +320,6 @@ function SCHEMA_attachMenu(){
       .addItem('📌 Vérifier endpoints Réservation','SCHEMA_checkReservationEndpoints')
       .addItem('🔑 Vérifier Token/Session','SCHEMA_checkAuthTokenEndpoints')
       .addItem('📄 Seed docs admin (KBIS/RIB)','SCHEMA_seedDocumentsAdmin_')
-      .addItem('🧪 Vérifier getPublicConfig()','SCHEMA_checkPublicConfig')
       .addToUi();
   }catch(e){}
 }
