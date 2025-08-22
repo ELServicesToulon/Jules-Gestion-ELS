@@ -840,267 +840,217 @@ function changerMois(delta) {
 
 
 // =================================================================
-// MODULE: NOUVELLE LOGIQUE TARIFAIRE (Fourni par l'utilisateur)
+// MODULE: NOUVELLE LOGIQUE POUR LA MODALE DE RÉSERVATION
 // =================================================================
-let CONFIG = null;
 
-function showTarifError(msg = 'Erreur : Tarifs non chargés.') {
-  const el = document.querySelector('#tarif-error');
-  if (el) { el.textContent = msg; el.classList.remove('hidden'); }
+let CFG = null;
+
+function showModalSkeleton() { basculerIndicateurChargement(true); }
+function hideModalSkeleton() { basculerIndicateurChargement(false); }
+function showSlotsSkeleton() { basculerIndicateurChargement(true); }
+function hideSlotsSkeleton() { basculerIndicateurChargement(false); }
+function showError(message) { afficherErreur(message); }
+
+function computeWeekFromAnchor_(iso) {
+  const anchor = iso ? new Date(iso) : new Date();
+  const day = (anchor.getDay() + 6) % 7; // 0=lundi
+  const monday = new Date(anchor); monday.setDate(anchor.getDate() - day);
+  return Array.from({length:7}, (_,i)=> {
+    const d = new Date(monday); d.setDate(monday.getDate()+i); d.setHours(0,0,0,0); return d;
+  });
 }
+function stripTime_(d){ const x=new Date(d); x.setHours(0,0,0,0); return x; }
+function isSameDay_(a,b){ return a.toDateString()===b.toDateString(); }
+function selectChip_(btn, root){ root.querySelectorAll('.chip').forEach(c=>c.classList.remove('is-active')); btn.classList.add('is-active'); }
 
-function hideTarifError() {
-  const el = document.querySelector('#tarif-error');
-  if (el) el.classList.add('hidden');
-}
 
-function euros(n) {
-  return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(n || 0);
-}
+function openReservationModal(weekAnchorDateISO) {
+  const modal = document.getElementById('reservation-modal');
+  modal.style.display = 'flex';
+  document.body.style.overflow = 'hidden';
 
-/** Prix total selon nbArrêts (retour compte comme +1 si activé) */
-function calculePrixFront(nbArrets, dateChoisie, opts = { retour: false, urgence: false }) {
-  if (!CONFIG) return 0;
-  const t = CONFIG.tarifs;
-  const r = CONFIG.regles;
+  window.closeReservationModal = function() {
+    modal.style.display = 'none';
+    document.body.style.overflow = '';
+  };
 
-  const nbNormalise = Number(nbArrets) + (opts.retour && t.RETOUR_EQUIV_ARRET ? 1 : 0);
-
-  const palier = Math.max(0, Math.min(4, nbNormalise));
-  const restants = Math.max(0, nbNormalise - 4);
-  let total = palier * Number(t.BASE_PAR_ARRET) + restants * Number(t.A_PARTIR_DU_5EME);
-
-  // Samedi
-  if (t.SAMEDI?.ACTIVE && new Date(dateChoisie).getDay() === 6) {
-    total += Number(t.SAMEDI.SURCHARGE_FIXE || 0);
-  }
-  // Urgence
-  if (opts.urgence && t.URGENCE?.ACTIVE) {
-    total += Number(t.URGENCE.SURCHARGE || 0);
-  }
-  return total;
-}
-
-/** Alimente les badges tarifaires dans la modale */
-function updateTarifBadges() {
-  if (!CONFIG) return;
-  const t = CONFIG.tarifs;
-  const base = document.querySelector('#badge-tarif-base');
-  const apd5 = document.querySelector('#badge-tarif-5');
-  if (base) base.textContent = `${euros(t.BASE_PAR_ARRET)}/arrêt`;
-  if (apd5) apd5.textContent = `à partir du 5ᵉ : ${euros(t.A_PARTIR_DU_5EME)}/arrêt`;
-}
-
-/** Active/masque les jours d’aujourd’hui selon la règle SAME_DAY */
-function applySameDayRule() {
-  if (!CONFIG) return;
-  const r = CONFIG.regles;
-  const now = new Date();
-  if (!r.ALLOW_SAME_DAY || now.getHours() >= Number(r.SAME_DAY_CUTOFF_HOUR || 0)) {
-    // Désactiver le bouton “Aujourd’hui” / le jour courant dans la grille
-    document.querySelectorAll('[data-day="today"]').forEach(b => b.setAttribute('disabled','disabled'));
-  }
-}
-
-/** Bootstrap : charge la config depuis Apps Script */
-function bootConfig() {
-  // Méthode fiable en WebApp GAS :
+  showModalSkeleton();
   google.script.run
     .withSuccessHandler(cfg => {
-      CONFIG = cfg;
-      hideTarifError();
-      updateTarifBadges();
-      applySameDayRule();
-      // ici tu peux (re)générer la liste déroulante “1 arrêt … 6+”
-      const max = Number(CONFIG.regles.MAX_ARRETS_VISIBLE || 12);
-      const select = document.querySelector('#select-nb-arrets');
-      if (select) {
-        select.innerHTML = '';
-        for (let i = 1; i <= Math.min(6, max); i++) {
-          const opt = document.createElement('option');
-          opt.value = String(i);
-          opt.textContent = (i === 1) ? '1 arrêt (livraison simple)' : `${i} arrêts`;
-          select.appendChild(opt);
-        }
-        if (max > 6) {
-          const opt = document.createElement('option');
-          opt.value = '7';
-          opt.textContent = '6 arrêts et +';
-          select.appendChild(opt);
-        }
+      CFG = cfg;
+      if (!CFG || !CFG.TARIFS) {
+        showError('Erreur : Tarifs non chargés.');
+        document.getElementById('tarif-error').classList.remove('hidden');
+        hideModalSkeleton();
+        return;
       }
+      document.getElementById('tarif-error').classList.add('hidden');
+
+      buildDayChips(weekAnchorDateISO);
+      buildArretsSelect(CFG);
+      wireModalEvents();
+      hideModalSkeleton();
+
+      // Initial load of slots for the first available day
+      refreshSlotsPreview_();
     })
-    .withFailureHandler(() => showTarifError())
-    .getConfigPublic();
+    .withFailureHandler(() => {
+        showError('Erreur : Tarifs non chargés.');
+        document.getElementById('tarif-error').classList.remove('hidden');
+    })
+    .getConfiguration();
 }
 
-// =================================================================
-// MODULE: MODALE DE RÉSERVATION (Fourni par l'utilisateur)
-// =================================================================
+function buildDayChips(weekAnchorISO) {
+  const root = document.getElementById('js-day-chips');
+  root.innerHTML = '';
+  const week = computeWeekFromAnchor_(weekAnchorISO);
+  const now = new Date();
 
-// --- Ouvre la modale ---
-function openReservationModal(jour) {
-  document.getElementById('reservation-modal').style.display = 'flex';
-  document.body.style.overflow = 'hidden';
-  document.getElementById('feedback').textContent = '';
-  if(jour) selectDay(jour);
-}
-// --- Ferme la modale ---
-function closeReservationModal() {
-  document.getElementById('reservation-modal').style.display = 'none';
-  document.body.style.overflow = '';
-}
+  const cutoff = (d) => {
+    if (!CFG.REGLES.ALLOW_SAME_DAY) return d > stripTime_(now);
+    if (isSameDay_(d, now)) return now.getHours() < CFG.REGLES.SAME_DAY_CUTOFF_HOUR;
+    return d >= stripTime_(now);
+  };
 
-// --- Sélection de jour "gélule" ---
-function selectDay(jour) {
-  let found = false;
-  document.querySelectorAll('.jour-gelule').forEach(btn => {
-    if(btn.dataset.jour == jour) {
-      btn.click();
-      found = true;
+  week.forEach(d => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'chip';
+    btn.textContent = String(d.getDate()).padStart(2, '0');
+    btn.dataset.iso = d.toISOString().slice(0,10);
+
+    if (!cutoff(d)) {
+      btn.classList.add('is-disabled');
     }
+
+    btn.onclick = () => {
+      if (btn.classList.contains('is-disabled')) return;
+      selectChip_(btn, root);
+      refreshSlotsPreview_(); // Refresh slots when day changes
+    };
+    root.appendChild(btn);
   });
-  if(!found && document.getElementById('jourSelected')) {
-    document.getElementById('jourSelected').value = '';
+
+  const first = root.querySelector('.chip:not(.is-disabled)');
+  if (first) {
+    selectChip_(first, root);
   }
-  updateRecap();
 }
 
-// --- Met à jour le récapitulatif ---
-function updateRecap() {
-  const recapEl = document.getElementById('recap');
-  if (!recapEl) return;
-
-  if (!window.configServeur || !window.configServeur.TARIFS) {
-    recapEl.innerHTML = "Erreur: Tarifs non chargés.";
-    return;
+function buildArretsSelect(cfg){
+  const sel = document.getElementById('select-arrets');
+  sel.innerHTML = '';
+  const maxUI = Math.max(6, cfg.REGLES?.MAX_ARRETS_VISIBLE || 12);
+  for (let n=1;n<=maxUI;n++){
+    const opt = document.createElement('option');
+    opt.value = String(n);
+    opt.textContent = (n<6) ? `${n} arrêt${n>1?'s':''}` : `${n}+ arrêts`;
+    sel.appendChild(opt);
   }
-
-  const arretsEl = document.getElementById('arrets');
-  const jourEl = document.getElementById('jourSelected');
-
-  const arrets = arretsEl ? parseInt(arretsEl.value || 1, 10) : 1;
-  const jour = jourEl ? jourEl.value : '';
-
-  const tarifsNormal = window.configServeur.TARIFS.Normal;
-  let total = tarifsNormal.base;
-
-  if (arrets > 1) {
-    for (let i = 1; i < arrets; i++) {
-      const tarifArret = tarifsNormal.arrets[i - 1] || tarifsNormal.arrets[tarifsNormal.arrets.length - 1];
-      total += tarifArret;
-    }
-  }
-
-  let txt = `Total estimé : <b>${total} € net</b>`;
-  if (jour) txt += ` • Jour choisi : <b>${jour.split('-').reverse().join('/')}</b>`;
-  recapEl.innerHTML = txt;
 }
 
-// --- Met à jour les labels du sélecteur d'arrêts avec les prix ---
-function updateArretLabels() {
-    if (!window.configServeur || !window.configServeur.TARIFS) return;
-    const select = document.getElementById('arrets');
-    if (!select) return;
+async function refreshSlotsPreview_(){
+  const active = document.querySelector('#js-day-chips .chip.is-active');
+  if(!active) {
+      const container = document.getElementById('slots-container');
+      if (container) container.innerHTML = '';
+      return;
+  }
 
-    const tarifsNormal = window.configServeur.TARIFS.Normal;
+  const dayISO = active.dataset.iso;
+  const nb = parseInt(document.getElementById('select-arrets').value,10);
+  const retour = document.getElementById('cb-retour').checked;
 
-    if (select.options.length > 0) {
-        select.options[0].textContent = `1 arrêt (livraison simple)`;
-    }
+  const autresCoursesPanier = window.etat.panier
+    .filter(item => item.date === dayISO)
+    .map(item => ({ startTime: item.startTime, duree: item.duree }));
 
-    let supplementTotal = 0;
-    for (let i = 1; i < select.options.length; i++) {
-        const tarifArret = tarifsNormal.arrets[i - 1] || tarifsNormal.arrets[tarifsNormal.arrets.length - 1];
-        supplementTotal += tarifArret;
-        const nbArrets = i + 1;
-        select.options[i].textContent = `${nbArrets} arrêts (+${supplementTotal} €)`;
-    }
+  showSlotsSkeleton();
+
+  google.script.run
+    .withSuccessHandler(slots => {
+        hideSlotsSkeleton();
+        renderSlots_(slots);
+    })
+    .withFailureHandler(()=> {
+        showError('Impossible de charger les créneaux');
+        hideSlotsSkeleton();
+    })
+    .getAvailableSlots(dayISO, nb, retour, autresCoursesPanier);
 }
 
-function demanderCreneauxPourReservationSimple(e) {
-    e.preventDefault();
-    const jourSelected = document.getElementById('jourSelected').value;
-    if (!jourSelected) {
-        afficherNotification("Veuillez sélectionner un jour.", "erreur");
+function renderSlots_(slots) {
+    const container = document.getElementById('slots-container');
+    if (!container) return;
+
+    container.innerHTML = '';
+
+    if (!slots || slots.length === 0) {
+        container.innerHTML = '<p style="text-align:center; margin: 1em 0;">Aucun créneau disponible pour cette configuration.</p>';
         return;
     }
 
-    basculerIndicateurChargement(true);
+    slots.forEach(slot => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.style.cssText = 'display: block; width: 100%; padding: 0.8em; margin-bottom: 0.5em; border: 1px solid #ddd; border-radius: 8px; background: #f9f9f9; text-align: left; cursor: pointer;';
 
-    const totalStops = parseInt(document.getElementById('arrets').value, 10);
+        const urgentTag = slot.tags.includes('urgent') ? '<span style="color:red;">⚡ Urgent</span>' : '';
+        const samediTag = slot.tags.includes('samedi') ? '<span style="color:purple;">🟪 Samedi</span>' : '';
 
-    const DUREE_BASE_NUM = parseInt(configServeur.DUREE_BASE, 10);
-    const DUREE_ARRET_SUP_NUM = parseInt(configServeur.DUREE_ARRET_SUP, 10);
-    const arretsSupplementaires = Math.max(0, totalStops - 1);
-    const duree = DUREE_BASE_NUM + (arretsSupplementaires * DUREE_ARRET_SUP_NUM);
+        btn.innerHTML = `
+            <div style="display:flex; justify-content: space-between; align-items: center;">
+                <span style="font-weight: 600; font-size: 1.1em;">${slot.timeRange}</span>
+                <span style="font-weight: 700; font-size: 1.1em;">${slot.basePrice.toFixed(2)} €</span>
+            </div>
+            <div style="font-size: 0.9em; margin-top: 0.3em;">${urgentTag} ${samediTag}</div>
+        `;
 
-    window.etat.tourneeEnCours = {
-        date: jourSelected,
+        btn.onclick = () => {
+            ajouterTourneeAuPanierSimple_(slot);
+            closeReservationModal();
+        };
+        container.appendChild(btn);
+    });
+}
+
+function ajouterTourneeAuPanierSimple_(slot) {
+    const dayISO = document.querySelector('#js-day-chips .chip.is-active').dataset.iso;
+    const totalStops = parseInt(document.getElementById('select-arrets').value, 10);
+    const returnToPharmacy = document.getElementById('cb-retour').checked;
+    const estimation = estimerInfosTournee(totalStops);
+
+    const nouvelleTournee = {
+        id: 'tournee-' + Date.now(),
+        date: dayISO,
+        startTime: slot.timeRange,
         totalStops: totalStops,
-        returnToPharmacy: false,
-        duree: duree
+        returnToPharmacy: returnToPharmacy,
+        prix: slot.basePrice,
+        duree: estimation.duree,
+        details: `Tournée de ${estimation.duree}min (${totalStops} arrêt(s), retour: ${returnToPharmacy ? 'oui' : 'non'})`,
+        isRecurrent: false
     };
 
-    const autresCoursesPanier = window.etat.panier
-        .filter(item => item.date === jourSelected)
-        .map(item => ({ startTime: item.startTime, duree: item.duree }));
-
-    google.script.run
-        .withSuccessHandler(slots => {
-            basculerIndicateurChargement(false);
-            closeReservationModal();
-            afficherSelectionCreneaux(slots);
-        })
-        .withFailureHandler(err => {
-            basculerIndicateurChargement(false);
-            afficherErreur(err);
-        })
-        .getAvailableSlots(jourSelected, totalStops, autresCoursesPanier);
+    window.etat.panier.push(nouvelleTournee);
+    afficherPanier();
+    sauvegarderPanierDansLocalStorage();
+    afficherNotification("Tournée ajoutée au panier !", "succes");
 }
 
+function wireModalEvents() {
+    // Add change listeners for dynamic slot refreshing
+    document.getElementById('select-arrets').addEventListener('change', refreshSlotsPreview_);
+    document.getElementById('cb-retour').addEventListener('change', refreshSlotsPreview_);
 
-// --- Attache tous les écouteurs d'événements pour la modale ---
-function setupModalEventListeners() {
-    const reservationModal = document.getElementById('reservation-modal');
-    if (reservationModal) {
-        reservationModal.onclick = function(e) {
-            if (e.target === this) closeReservationModal();
-        };
-    }
-
-    const btnReserver = document.getElementById('btn-reserver');
-    if (btnReserver) {
-        btnReserver.onclick = function() {
-            openReservationModal();
-        };
-    }
-
-    document.querySelectorAll('.jour-gelule').forEach(btn => {
-        btn.onclick = function() {
-            if(this.disabled) return;
-            document.querySelectorAll('.jour-gelule').forEach(b => b.classList.remove('selected'));
-            this.classList.add('selected');
-            const jourSelected = document.getElementById('jourSelected');
-            if (jourSelected) {
-                jourSelected.value = this.dataset.jour;
-            }
-            updateRecap();
-        }
-    });
-
-    const arretsSelect = document.getElementById('arrets');
-    if (arretsSelect) {
-        updateArretLabels();
-        updateRecap();
-        arretsSelect.onchange = updateRecap;
-    }
-
-    const formReservation = document.getElementById('formReservation');
-    if (formReservation) {
-        formReservation.onsubmit = demanderCreneauxPourReservationSimple;
+    // The submit button is now redundant, so we remove its handler to avoid confusion.
+    const form = document.getElementById('formReservation');
+    if (form) {
+        form.onsubmit = (e) => e.preventDefault();
     }
 }
+
 
 // --- Fusion des initialisations ---
 // Il y avait plusieurs 'DOMContentLoaded', je les fusionne en un seul pour plus de clarté.
@@ -1111,26 +1061,15 @@ document.addEventListener('DOMContentLoaded', () => {
     afficherCalendrier(window.etat.dateActuelle.getMonth() + 1, window.etat.dateActuelle.getFullYear());
     configurerEcouteursEvenements();
 
-    // Initialisation de la modale de réservation (partie 2)
-    setupModalEventListeners();
-
-    // NOUVEAU: Initialisation de la config et des tarifs
-    bootConfig();
-
-    /** Au changement d'une option, calcul live du panier */
-    document.addEventListener('change', (e) => {
-      if (!CONFIG) return;
-      if (e.target && (e.target.id === 'select-nb-arrets' || e.target.id === 'chk-retour' || e.target.id === 'chk-urgence' || e.target.name === 'date-choisie')) {
-        const nb = Number(document.querySelector('#select-nb-arrets')?.value || 1);
-        // Note: The hidden input for the date is `jourSelected`, which now has `name="date-choisie"`
-        const dateStr = (document.querySelector('[name="date-choisie"]')?.value) || new Date().toISOString().split('T')[0];
-        const retour = !!document.querySelector('#chk-retour')?.checked;
-        const urgence = !!document.querySelector('#chk-urgence')?.checked;
-        const total = calculePrixFront(nb, dateStr, { retour, urgence });
-        const el = document.querySelector('#total-panier');
-        if (el) el.textContent = euros(total);
-      }
-    });
+    // The button to open the modal is now handled inside configurerEcouteursEvenements
+    // Let's add it there.
+    const btnReserver = document.getElementById('btn-reserver');
+    if (btnReserver) {
+        btnReserver.onclick = function() {
+            const today = new Date().toISOString().slice(0, 10);
+            openReservationModal(today);
+        };
+    }
 });
 
 </script>
