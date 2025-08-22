@@ -882,13 +882,9 @@ function updateRecap() {
   }
 
   const arretsEl = document.getElementById('arrets');
-  const samediEl = document.querySelector('input[name="samedi"]');
-  const urgenceEl = document.querySelector('input[name="urgence"]');
   const jourEl = document.getElementById('jourSelected');
 
   const arrets = arretsEl ? parseInt(arretsEl.value || 1, 10) : 1;
-  const samedi = samediEl ? samediEl.checked : false;
-  const urgence = urgenceEl ? urgenceEl.checked : false;
   const jour = jourEl ? jourEl.value : '';
 
   const tarifsNormal = window.configServeur.TARIFS.Normal;
@@ -900,9 +896,6 @@ function updateRecap() {
       total += tarifArret;
     }
   }
-
-  if (samedi) total += window.configServeur.TARIFS.Samedi.base;
-  if (urgence) total += window.configServeur.TARIFS.Urgent.base;
 
   let txt = `Total estimé : <b>${total} € net</b>`;
   if (jour) txt += ` • Jour choisi : <b>${jour.split('-').reverse().join('/')}</b>`;
@@ -930,9 +923,50 @@ function updateArretLabels() {
     }
 }
 
+function demanderCreneauxPourReservationSimple(e) {
+    e.preventDefault();
+    const jourSelected = document.getElementById('jourSelected').value;
+    if (!jourSelected) {
+        afficherNotification("Veuillez sélectionner un jour.", "erreur");
+        return;
+    }
+
+    basculerIndicateurChargement(true);
+
+    const totalStops = parseInt(document.getElementById('arrets').value, 10);
+
+    const DUREE_BASE_NUM = parseInt(configServeur.DUREE_BASE, 10);
+    const DUREE_ARRET_SUP_NUM = parseInt(configServeur.DUREE_ARRET_SUP, 10);
+    const arretsSupplementaires = Math.max(0, totalStops - 1);
+    const duree = DUREE_BASE_NUM + (arretsSupplementaires * DUREE_ARRET_SUP_NUM);
+
+    window.etat.tourneeEnCours = {
+        date: jourSelected,
+        totalStops: totalStops,
+        returnToPharmacy: false,
+        duree: duree
+    };
+
+    const autresCoursesPanier = window.etat.panier
+        .filter(item => item.date === jourSelected)
+        .map(item => ({ startTime: item.startTime, duree: item.duree }));
+
+    google.script.run
+        .withSuccessHandler(slots => {
+            basculerIndicateurChargement(false);
+            closeReservationModal();
+            afficherSelectionCreneaux(slots);
+        })
+        .withFailureHandler(err => {
+            basculerIndicateurChargement(false);
+            afficherErreur(err);
+        })
+        .getAvailableSlots(jourSelected, totalStops, autresCoursesPanier);
+}
+
+
 // --- Attache tous les écouteurs d'événements pour la modale ---
 function setupModalEventListeners() {
-    // We need to wait for the DOM to be loaded to attach these events
     const reservationModal = document.getElementById('reservation-modal');
     if (reservationModal) {
         reservationModal.onclick = function(e) {
@@ -967,24 +1001,9 @@ function setupModalEventListeners() {
         arretsSelect.onchange = updateRecap;
     }
 
-    const samediCheck = document.querySelector('input[name="samedi"]');
-    if (samediCheck) samediCheck.onchange = updateRecap;
-
-    const urgenceCheck = document.querySelector('input[name="urgence"]');
-    if (urgenceCheck) urgenceCheck.onchange = updateRecap;
-
     const formReservation = document.getElementById('formReservation');
     if (formReservation) {
-        formReservation.onsubmit = function(e) {
-            e.preventDefault();
-            const feedbackEl = document.getElementById('feedback');
-            if(feedbackEl) feedbackEl.innerHTML = "<span style='color:#8e44ad;'>Envoi de la réservation...</span>";
-
-            setTimeout(() => {
-                if(feedbackEl) feedbackEl.innerHTML = "✅ Réservation enregistrée ! <br>Un email de confirmation vous sera envoyé.";
-                setTimeout(closeReservationModal, 2100);
-            }, 1400);
-        };
+        formReservation.onsubmit = demanderCreneauxPourReservationSimple;
     }
 }
 
