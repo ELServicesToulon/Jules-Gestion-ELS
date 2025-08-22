@@ -908,18 +908,6 @@ function updateArretLabels() {
 }
 
 
-// --- Valide la réservation (remplace la requête par ton Apps Script fetch POST/GET) ---
-document.getElementById('formReservation').onsubmit = function(e) {
-  e.preventDefault();
-  const formData = new FormData(this);
-  document.getElementById('feedback').innerHTML = "<span style='color:#8e44ad;'>Envoi de la réservation...</span>";
-  // --- Simule la requête (remplace ici par fetch vers Apps Script si besoin) ---
-  setTimeout(()=>{
-    document.getElementById('feedback').innerHTML = "✅ Réservation enregistrée ! <br>Un email de confirmation vous sera envoyé.";
-    setTimeout(closeReservationModal, 2100);
-  }, 1400);
-};
-
 // --- Pour fermer en cliquant hors de la boîte ---
 document.getElementById('reservation-modal').onclick = function(e) {
   if(e.target === this) closeReservationModal();
@@ -939,6 +927,20 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('arrets').onchange = updateRecap;
         document.querySelector('input[name="samedi"]').onchange = updateRecap;
         document.querySelector('input[name="urgence"]').onchange = updateRecap;
+    }
+
+    const formReservation = document.getElementById('formReservation');
+    if(formReservation) {
+        formReservation.onsubmit = function(e) {
+            e.preventDefault();
+            const formData = new FormData(this);
+            document.getElementById('feedback').innerHTML = "<span style='color:#8e44ad;'>Envoi de la réservation...</span>";
+            // --- Simule la requête (remplace ici par fetch vers Apps Script si besoin) ---
+            setTimeout(()=>{
+                document.getElementById('feedback').innerHTML = "✅ Réservation enregistrée ! <br>Un email de confirmation vous sera envoyé.";
+                setTimeout(closeReservationModal, 2100);
+            }, 1400);
+        };
     }
 });
 
