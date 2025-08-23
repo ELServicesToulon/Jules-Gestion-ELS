@@ -36,50 +36,61 @@ Le système de tarification est conçu pour être 100% centralisé et flexible, 
 
 ### 1. Gestion des tarifs pour l'administrateur
 
-Toute la configuration se fait dans l'objet `TARIFS` du fichier `src/Configuration.gs`.
+Toute la configuration se fait dans l'objet `TARIFS` du fichier `src/Configuration.gs`. La logique est la suivante :
+- Une course de base a un tarif fixe (`baseCourse`).
+- Des surcharges sont ajoutées si la course est le samedi (`surcSamedi`) ou en urgence (`surcUrgence`).
+- Chaque arrêt (Point de Livraison - PDL) supplémentaire a un coût qui est défini dans un tableau (`PDL_PRIX`).
 
+*   **Pour changer le tarif de base :**
+    → Modifier la valeur de `baseCourse`.
 *   **Pour changer un supplément (urgence ou samedi) :**
-    → Modifier la clé `base` dans `'Urgent'` ou `'Samedi'` de `TARIFS`.
+    → Modifier la valeur de `surcUrgence` ou `surcSamedi`.
 *   **Pour changer le prix des arrêts supplémentaires :**
-    → Modifier le tableau `arrets` dans la section concernée de `TARIFS`.
-*   **Pour ajouter un type de course spécial (ex: nuit, Ehpad) :**
-    → Ajouter une nouvelle clé dans `TARIFS` en suivant le même format.
+    → Modifier le tableau `PDL_PRIX`. Le 1er élément est le prix du 2e arrêt, le 2e pour le 3e arrêt, etc. `PDL_PRIX_FALLBACK` est utilisé pour les arrêts au-delà de la taille du tableau.
 
-**Exemple de l'objet `TARIFS` :**
+**Exemple de l'objet `TARIFS` (structure réelle dans `src/Configuration.gs`) :**
 ```js
 const TARIFS = {
-  'Normal': { base: 15, arrets: [5, 4, 3, 4, 5] },   // Base = 15€, Arrêt 2=5€, 3=4€, ...
-  'Samedi': { base: 25, arrets: [5, 4, 3, 4, 5] },   // Supplément samedi = 10€
-  'Urgent': { base: 20, arrets: [5, 4, 3, 4, 5] },   // Supplément urgence = 5€
+  baseCourse: 15,           // Prix pour 1 retrait + 1 livraison
+  surcUrgence: 5,           // Surcharge si urgent
+  surcSamedi: 10,           // Surcharge si samedi
+
+  URGENCE_FENETRE_MIN: 45,  // Délai (en min) pour considérer une course comme urgente
+
+  // Prix par arrêt supplémentaire (le 2e, 3e, etc.)
+  PDL_PRIX: [5, 4, 3, 4],    // ex: 2e arrêt = 5€, 3e = 4€
+  PDL_PRIX_FALLBACK: 5,     // Prix pour le 6e arrêt et au-delà
+
+  // ... autres paramètres de configuration (km, minutes)
 };
 ```
 
 ### 2. Documentation Technique
 
-*   **API Principale : `getAvailableSlots(day, nbArrets)`**
-    - C'est la fonction clé qui interroge la configuration en vigueur.
-    - Elle applique dynamiquement les bons profils tarifaires (`Normal`, `Samedi`, `Urgent`) selon la date et l'heure du créneau demandé.
-    - Elle ne retourne jamais de créneau qui entre en conflit avec le calendrier Google.
+*   **API Principale : `computeDevisForSlot_(dateDebut, nbPDL)`**
+    - C'est la fonction clé qui calcule le devis d'un créneau.
+    - Elle applique dynamiquement les surcharges (`surcSamedi`, `surcUrgence`) selon la date du créneau.
+    - Le coût des arrêts supplémentaires est ajouté en se basant sur `PDL_PRIX`.
 
 *   **Logique Automatisée**
     - Il n'y a **aucune option à cocher côté client** pour "urgence" ou "samedi". Le système détermine automatiquement le bon tarif en fonction de la date du créneau sélectionné.
-    - Toute la tarification, y compris les arrêts supplémentaires, est dynamique et gérée par l'objet `TARIFS`. Tout changement est appliqué immédiatement.
+    - Toute la tarification est dynamique et gérée par l'objet `TARIFS`. Tout changement est appliqué immédiatement.
 
 *   **Flux de données**
-    1.  Le client sélectionne un jour et configure sa tournée (nombre d'arrêts).
+    1.  Le client sélectionne un jour et un nombre d'arrêts.
     2.  Le front-end appelle `google.script.run.getAvailableSlots(...)`.
-    3.  Le back-end (`Calendrier.gs`) calcule les créneaux disponibles et leur applique le prix juste en se basant sur `Configuration.gs`.
-    4.  Le front-end reçoit une liste de créneaux avec leur prix final et les affiche à l'utilisateur.
+    3.  Le back-end (`Calendrier.gs`) appelle `computeDevisForSlot_` pour chaque créneau disponible afin de calculer le prix.
+    4.  Le front-end reçoit une liste de créneaux avec leur prix final et les affiche.
 
 ---
 
 ## API de Réservation
 
-*   **`getAvailableSlots(day, nbArrets)`** = C'est la fonction clé de l'API qui retourne au front-end *uniquement* les créneaux adaptés à la demande du client (jour, nombre d’arrêts).
+*   **`getAvailableSlots(day, nbArrets)`** = C'est la fonction clé de l'API qui retourne au front-end *uniquement* les créneaux disponibles avec leur tarification calculée.
 *   **Tarification 100% Dynamique** : Tous les tarifs, surcharges et exceptions sont issus de `Configuration.gs`:
-    *   **Samedi** : La surcharge est calculée à partir du tarif de base `Samedi`.
-    *   **Urgence** : La surcharge est calculée à partir du tarif de base `Urgent` et est déclenchée si la réservation est dans la "fenêtre d'urgence" définie dans la configuration.
-    *   **Arrêt supplémentaire** : Le prix total évolue en fonction du nombre d’arrêts.
+    *   **Samedi** : La surcharge `surcSamedi` est ajoutée au `baseCourse`.
+    *   **Urgence** : La surcharge `surcUrgence` est ajoutée si la réservation est dans la "fenêtre d'urgence" (`URGENCE_FENETRE_MIN`).
+    *   **Arrêt supplémentaire** : Le prix des arrêts en plus du premier est ajouté en utilisant `PDL_PRIX`.
 *   **Zéro Logique Côté Client** : Il n'y a **aucune case à cocher “samedi” ou “urgence”** dans l’interface utilisateur. Tout est déterminé côté serveur et renvoyé comme information au client (via les "tags").
 *   **Anti-Conflit** : L’API refuse toute création de réservation qui entrerait en conflit avec le planning existant. Seuls les créneaux réellement disponibles sont proposés.
 
