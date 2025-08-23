@@ -1,3 +1,4 @@
+// # sourceURL=Reservation_JS.js
 // =================================================================
 // FICHIER JAVASCRIPT CONSOLIDÉ POUR L'INTERFACE DE RÉSERVATION
 // =================================================================
@@ -71,7 +72,11 @@ function afficherErreur(erreur) {
  * Ce script doit être chargé avant tous les autres scripts de logique.
  */
 
-document.addEventListener('DOMContentLoaded', () => {
+window.ELS = window.ELS || {};
+
+window.ELS.init = function(config) {
+  window.ELS.CONFIG = config;
+
   window.ui = {
     // Indicateur de chargement
     indicateurChargement: document.getElementById('indicateur-chargement'),
@@ -127,7 +132,22 @@ document.addEventListener('DOMContentLoaded', () => {
     nomClientReconnu: document.getElementById('nom-client-reconnu'),
     btnChangerClient: document.getElementById('btn-changer-client')
   };
-});
+
+  // Initialisation principale de l'application
+  chargerPanierDepuisLocalStorage();
+  verifierSessionClient();
+  afficherCalendrier(window.etat.dateActuelle.getMonth() + 1, window.etat.dateActuelle.getFullYear());
+  configurerEcouteursEvenements();
+  chargerTarifsUI();
+
+  const btnReserver = document.getElementById('btn-reserver');
+  if (btnReserver) {
+      btnReserver.onclick = function() {
+          const today = new Date().toISOString().slice(0, 10);
+          openReservationModal(today);
+      };
+  }
+};
 
 
 // =================================================================
@@ -375,13 +395,13 @@ function reinitialiserClient() {
  * @returns {object} Un objet avec la durée et le kilométrage estimés.
  */
 function estimerInfosTournee(totalStops) {
-  if (!configServeur) {
+  if (!ELS.CONFIG) {
     return { duree: 0, km: 0 };
   }
-  const DUREE_BASE_NUM = parseInt(configServeur.DUREE_BASE, 10);
-  const DUREE_ARRET_SUP_NUM = parseInt(configServeur.DUREE_ARRET_SUP, 10);
-  const KM_BASE_NUM = parseInt(configServeur.KM_BASE, 10);
-  const KM_ARRET_SUP_NUM = parseInt(configServeur.KM_ARRET_SUP, 10);
+  const DUREE_BASE_NUM = parseInt(ELS.CONFIG.DUREE_BASE, 10);
+  const DUREE_ARRET_SUP_NUM = parseInt(ELS.CONFIG.DUREE_ARRET_SUP, 10);
+  const KM_BASE_NUM = parseInt(ELS.CONFIG.KM_BASE, 10);
+  const KM_ARRET_SUP_NUM = parseInt(ELS.CONFIG.KM_ARRET_SUP, 10);
   const arretsSupplementaires = Math.max(0, totalStops - 1);
   const duree = DUREE_BASE_NUM + (arretsSupplementaires * DUREE_ARRET_SUP_NUM);
   const km = KM_BASE_NUM + (arretsSupplementaires * KM_ARRET_SUP_NUM);
@@ -734,9 +754,9 @@ function gererDemandeCreneaux(e) {
   // Calcule et stocke la durée pour que 'ajouterTourneeAuPanier' puisse l'utiliser.
   // C'est une petite duplication de logique (le serveur le fait aussi) mais elle est
   // isolée et évite de complexifier le passage de données depuis le serveur.
-  if (window.configServeur) {
-    const DUREE_BASE_NUM = parseInt(configServeur.DUREE_BASE, 10);
-    const DUREE_ARRET_SUP_NUM = parseInt(configServeur.DUREE_ARRET_SUP, 10);
+  if (ELS.CONFIG) {
+    const DUREE_BASE_NUM = parseInt(ELS.CONFIG.DUREE_BASE, 10);
+    const DUREE_ARRET_SUP_NUM = parseInt(ELS.CONFIG.DUREE_ARRET_SUP, 10);
     const arretsSupplementaires = Math.max(0, tourneeEnCours.totalStops - 1);
     tourneeEnCours.duree = DUREE_BASE_NUM + (arretsSupplementaires * DUREE_ARRET_SUP_NUM);
   } else {
@@ -824,13 +844,6 @@ function configurerEcouteursEvenements() {
   });
   ui.btnChangerClient?.addEventListener('click', reinitialiserClient);
 }
-
-document.addEventListener('DOMContentLoaded', () => {
-  chargerPanierDepuisLocalStorage();
-  verifierSessionClient();
-  afficherCalendrier(window.etat.dateActuelle.getMonth() + 1, window.etat.dateActuelle.getFullYear());
-  configurerEcouteursEvenements();
-});
 
 function changerMois(delta) {
     window.etat.dateActuelle.setMonth(window.etat.dateActuelle.getMonth() + delta);
@@ -1080,29 +1093,6 @@ function wireModalEvents() {
         form.onsubmit = (e) => e.preventDefault();
     }
 }
-
-
-// --- Fusion des initialisations ---
-// Il y avait plusieurs 'DOMContentLoaded', je les fusionne en un seul pour plus de clarté.
-document.addEventListener('DOMContentLoaded', () => {
-    // Initialisation principale de l'application (partie 1)
-    chargerPanierDepuisLocalStorage();
-    verifierSessionClient();
-    afficherCalendrier(window.etat.dateActuelle.getMonth() + 1, window.etat.dateActuelle.getFullYear());
-    configurerEcouteursEvenements();
-
-    chargerTarifsUI(); // NOUVEL APPEL
-
-    // The button to open the modal is now handled inside configurerEcouteursEvenements
-    // Let's add it there.
-    const btnReserver = document.getElementById('btn-reserver');
-    if (btnReserver) {
-        btnReserver.onclick = function() {
-            const today = new Date().toISOString().slice(0, 10);
-            openReservationModal(today);
-        };
-    }
-});
 
 async function chargerTarifsUI(){
   try{
