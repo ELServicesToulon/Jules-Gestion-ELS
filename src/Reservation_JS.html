@@ -21,7 +21,8 @@
  * @param {string} message Le message à afficher.
  * @param {string} [type="info"] Le type de notification ('info', 'succes', 'erreur').
  */
-function afficherNotification(message, type = "info") {
+function afficherNotification(message, type) {
+  type = type || "info";
   const conteneur = document.getElementById('conteneur-notifications');
   if (!conteneur) {
     console.error("Le conteneur de notifications est introuvable.");
@@ -265,7 +266,7 @@ function buildDayChips(weekAnchorISO){
 
   const cutoff = (d) => {
     if (!R.ALLOW_SAME_DAY) return d > stripTime_(now);
-    if (isSameDay_(d, now)) return now.getHours() < (R.SAME_DAY_CUTOFF_HOUR ?? 12);
+    if (isSameDay_(d, now)) return now.getHours() < (R.SAME_DAY_CUTOFF_HOUR != null ? R.SAME_DAY_CUTOFF_HOUR : 12);
     return d >= stripTime_(now);
   };
 
@@ -297,7 +298,7 @@ function buildDayChips(weekAnchorISO){
 function buildArretsSelect(){
   const sel = document.getElementById('select-arrets'); if(!sel) return;
   const R = rules();
-  const maxUI = Math.max(6, R.MAX_ARRETS_VISIBLE ?? 12);
+  const maxUI = Math.max(6, R.MAX_ARRETS_VISIBLE != null ? R.MAX_ARRETS_VISIBLE : 12);
   sel.innerHTML = '';
   for (let n=1;n<=maxUI;n++){
     const opt = document.createElement('option');
