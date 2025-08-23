@@ -37,6 +37,7 @@
 </head>
 <body>
 
+  <script type="application/json" id="tarifs-json"><?!= TARIFS_JSON ?></script>
   <script>
     // Objet de configuration injecté par le serveur
     const configServeur = {
@@ -44,7 +45,7 @@
       nomService: "<?= nomService ?>",
       URGENT_THRESHOLD_MINUTES: <?= URGENT_THRESHOLD_MINUTES || 45 ?>,
       dateDuJour: "<?= dateDuJour ?>",
-      TARIFS: <?!= TARIFS_JSON ?>,
+      TARIFS: JSON.parse(document.getElementById('tarifs-json').textContent),
       DUREE_BASE: <?= DUREE_BASE ?>,
       DUREE_ARRET_SUP: <?= DUREE_ARRET_SUP ?>,
       KM_BASE: <?= KM_BASE ?>,
@@ -206,7 +207,7 @@
 
   <div id="conteneur-notifications" role="alert" aria-live="assertive"></div>
 
-  <?!= include('Reservation_JS'); ?>
+  <script><?!= include('Reservation_JS'); ?></script>
 
 <!-- MODALE RÉSERVATION LIVRAISON PHARMACIE -->
 <div id="reservation-modal" aria-modal="true" role="dialog" tabindex="-1"
