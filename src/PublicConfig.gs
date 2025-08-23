@@ -3,13 +3,21 @@
  * 100 % dérivée de Configuration.gs
  *******************************************************/
 
-
-/** === API publique (front) — ne rien mettre de sensible ici === **/
-function getConfigPublic() {
-  const config = getAppConfig();
+/**
+ * Fournit une configuration minimale et sûre pour l'interface utilisateur.
+ * Ne contient aucune information sensible ni de logique métier.
+ * @returns {Object} Un objet de configuration simple pour le client.
+ */
+function getPublicConfig_() {
   return {
-    tarifs: config.TARIFS,
-    regles: config.REGLES,
-    meta: config.META
+    ui: {
+      brand: "EL Services",
+      couleurs: {
+        primary: "#8e44ad",
+        action: "#3498db",
+        option: "#5dade2"
+      }
+    },
+    // Autres valeurs purement d'affichage si nécessaire
   };
 }

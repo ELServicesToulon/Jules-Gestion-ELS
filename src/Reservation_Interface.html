@@ -191,25 +191,13 @@
 
   <div id="conteneur-notifications" role="alert" aria-live="assertive"></div>
 
-  <!-- Bundle front ELS -->
-  <script>
-    /* Balise de debug pour sourcer le fichier dans DevTools */
-    //# sourceURL=ELS_BUNDLE.js
+<!-- 1) variables pour le front en JSON, safe -->
+<script>
+  window.APP_CONFIG = <?!= JSON.stringify(getPublicConfig_()); ?>;
+</script>
 
-    // 1) Config publique du serveur
-    window.ELS = window.ELS || {};
-    ELS.CONFIG = <?= JSON.stringify(getConfigPublic()) ?>;
-
-    // 2) API + UI : on injecte le JS RAW, sans échappement HTML
-    <?!= HtmlService.createHtmlOutputFromFile('Reservation_JS').getContent(); ?>
-
-    // 3) Boot
-    if (ELS && typeof ELS.init === 'function') {
-      document.addEventListener('DOMContentLoaded', () => {
-        ELS.init(ELS.CONFIG);
-      });
-    }
-  </script>
+<!-- 2) tes scripts “maison” doivent être inclus DANS des balises script -->
+<script><?!= include('Reservation_JS'); ?></script>
 
 <!-- MODALE RÉSERVATION LIVRAISON PHARMACIE -->
 <div id="reservation-modal" aria-modal="true" role="dialog" tabindex="-1"
