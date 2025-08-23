@@ -59,120 +59,58 @@
       </article>
     </div>
 
-    <div class="footer" id="tarifs-footer"></div>
+    <div class="footer" id="tarifs-footer">
+        <p id="same-day-info"></p>
+    </div>
   </div>
 </section>
 
 <script>
-  document.addEventListener('DOMContentLoaded', function(){
-    const grilleCalendrier = document.getElementById('grille-calendrier');
-    if (grilleCalendrier) {
-      grilleCalendrier.style.opacity = '0.5';
-      grilleCalendrier.style.pointerEvents = 'none';
+document.addEventListener('DOMContentLoaded', () => {
+  const cards = {
+    base: document.getElementById('card-base-content'),
+    arrets: document.getElementById('card-arrets-content'),
+    options: document.getElementById('card-options-content'),
+    reserverBtn: document.querySelector('#cta-reserver')
+  };
+
+  function showInvalid(errors) {
+    const msg = (errors && errors.length) ? errors.join(' · ') : "Config vide ou invalide";
+    [cards.base, cards.arrets, cards.options].forEach(el => { if (el) el.textContent = msg; });
+    if (cards.reserverBtn) cards.reserverBtn.disabled = true;
+  }
+
+  function renderTarifs(t) {
+    if (!t) return showInvalid();
+    if (cards.base)   cards.base.textContent =
+      `Course de base : ${t.base} ${t.devise}`;
+    if (cards.arrets) cards.arrets.textContent =
+      `Arrêts sup. 1–${t.arrets.palier_max_inclus}: +${t.arrets.prix_palier} · 5+: +${t.arrets.prix_apres} ${t.devise}`;
+    if (cards.options) cards.options.textContent =
+      `Urgence: ${t.options.urgence.actif ? "+"+t.options.urgence.surcharge+"€ (<"+t.options.urgence.delai_minutes+" min)" : "non"} · Samedi: ${t.options.samedi.actif ? "+"+t.options.samedi.surcharge+"€" : "non"}`;
+
+    if (cards.reserverBtn) {
+      cards.reserverBtn.disabled = false;
+      cards.reserverBtn.onclick = () => ouvrirModaleReservation(); // ta fonction existante
     }
-
-    try{
-      if (google && google.script && google.script.run){
-        google.script.run
-          .withSuccessHandler(function(payload){
-            console.log('getTarifsPublic ->', payload);
-            if (window.configServeur && payload && payload.tarifs) {
-              window.configServeur.TARIFS = payload.tarifs;
-            }
-            renderTarifsSection(payload);
-            if (grilleCalendrier) {
-              grilleCalendrier.style.opacity = '1';
-              grilleCalendrier.style.pointerEvents = 'auto';
-            }
-          })
-          .withFailureHandler(function(err){
-            console.error('getTarifsPublic FAILED', err);
-            failTarifs('Erreur de lecture configuration (getTarifsPublic). Verifie pricing.gs');
-            if (grilleCalendrier) {
-              grilleCalendrier.innerHTML = '<p style="color: red; text-align: center;">Impossible de charger la configuration des tarifs. Le calendrier est désactivé.</p>';
-              grilleCalendrier.style.opacity = '1';
-            }
-          })
-          .getTarifsPublic();
-      } else {
-        if (grilleCalendrier) {
-          grilleCalendrier.style.opacity = '1';
-          grilleCalendrier.style.pointerEvents = 'auto';
-        }
-        // Preview hors Apps Script
-        renderTarifsSection({
-          meta:{ nomService:"EL Services", zones:["Tamaris","Mar Vivo","Six-Fours-les-Plages","Sanary","Portissol","Bandol"], tvaApplicable:false, articleTVA:"Art. 293 B CGI", contact:"elservicestoulon@gmail.com", appUrl:"" },
-          tarifs:{ devise:"\u20AC", base:{ prix:15, kmInclus:9, dureeMin:30, premierArretInclus:true }, arrets:{ second:5, troisieme:3, quatrieme:4, aPartirDuCinquieme:5 }, options:{ samediMin:25, urgent:{ delaiMin:30, prixMin:20, selonDispo:true } } }
-        });
-      }
-    }catch(e){
-      console.error(e);
-      failTarifs('Erreur front : ' + e.message);
-    }
-  });
-
-  function formatCurrency(v, devise){
-    const n = Number(v || 0);
-    return `${n.toLocaleString('fr-FR',{maximumFractionDigits:0})} ${devise || "\u20AC"} net`;
   }
 
-  function renderTarifsSection(payload){
-    const { meta, tarifs } = payload || {};
-    if(!meta || !tarifs){ return failTarifs('Config vide ou invalide'); }
+  // Chargement tarifs
+  google.script.run
+    .withSuccessHandler((res) => {
+      if (!res || !res.ok) return showInvalid(res && res.errors);
+      renderTarifs(res.tarifs);
+    })
+    .withFailureHandler(err => showInvalid([String(err)]))
+    .getTarifsPublic();
 
-    // Titre/sous-titre
-    document.getElementById('tarifs-title').textContent =
-      `R\u00E9servez vos tourn\u00E9es pro en 1 clic sur ${meta.zones.join(', ')}`;
-    document.getElementById('tarifs-sub').textContent =
-      `Tarifs et options toujours \u00E0 jour, ajustables selon vos besoins.`;
-
-    // Base
-    const base = [
-      `\uD83D\uDCB6 ${formatCurrency(tarifs.base.prix, tarifs.devise)}`,
-      `\uD83D\uDCCD ${tarifs.base.kmInclus} km inclus`,
-      `\u23F1\uFE0F ~${tarifs.base.dureeMin} min`,
-      tarifs.base.premierArretInclus ? `\u2705 1er arr\u00EAt inclus` : `\u2795 Arr\u00EAts en option`
-    ];
-    document.getElementById('card-base-content').innerHTML = base.map(li => `<div>${li}</div>`).join('');
-
-    // Arrets
-    const a = tarifs.arrets;
-    const arretsHtml = [
-      `2\u1D49 arr\u00EAt : ${formatCurrency(a.second, tarifs.devise)}`,
-      `3\u1D49 arr\u00EAt : ${formatCurrency(a.troisieme, tarifs.devise)}`,
-      `4\u1D49 arr\u00EAt : ${formatCurrency(a.quatrieme, tarifs.devise)}`,
-      `\u00C0 partir du 5\u1D49 : ${formatCurrency(a.aPartirDuCinquieme, tarifs.devise)}/arr\u00EAt`
-    ];
-    document.getElementById('card-arrets-content').innerHTML = arretsHtml.map(li => `<div>${li}</div>`).join('');
-
-    // Options
-    const opt = tarifs.options;
-    const optHtml = [
-      `\uD83D\uDCC5 Samedi : d\u00E8s ${formatCurrency(opt.samediMin, tarifs.devise)}`,
-      `\u26A1 Urgent : d\u00E9part sous ${opt.urgent.delaiMin} min${opt.urgent.selonDispo ? " (selon dispo)" : ""}, d\u00E8s ${formatCurrency(opt.urgent.prixMin, tarifs.devise)}`
-    ];
-    document.getElementById('card-options-content').innerHTML = optHtml.map(li => `<div>${li}</div>`).join('');
-
-    // Footer
-    const tva = meta.tvaApplicable ? "TVA applicable" : `TVA non applicable (${meta.articleTVA})`;
-    document.getElementById('tarifs-footer').innerHTML =
-      `${tva} \u2014 <span class="tag">Tarifs & forfaits modifiables \u00E0 tout moment par l\u2019administrateur</span><br>
-       Tra\u00E7abilit\u00E9 & s\u00E9curit\u00E9 garanties \u2014 Confirmation et facture imm\u00E9diates<br>
-       <small>(CGV, documents officiels et conditions accessibles \u00E0 tout moment)</small><br>
-       Contact : <a href="mailto:${meta.contact}">${meta.contact}</a>`;
-
-    // CTA
-    const btn = document.getElementById('cta-reserver');
-    btn.addEventListener('click', (e) => {
-      e.preventDefault();
-      const target = meta.appUrl ? meta.appUrl : (new URL('?page=reservation', window.location.href)).toString();
-      window.location.href = target;
-    });
-  }
-
-  function failTarifs(message){
-    document.getElementById('card-base-content').innerHTML = `<small>${message}</small>`;
-    document.getElementById('card-arrets-content').innerHTML = `<small>${message}</small>`;
-    document.getElementById('card-options-content').innerHTML = `<small>${message}</small>`;
-  }
+  // Indication "jour même"
+  google.script.run
+    .withSuccessHandler((r) => {
+      const el = document.querySelector('#same-day-info');
+      if (!el || !r || !r.ok) return;
+      el.textContent = r.allowed ? "Jour même possible" : "Jour même indisponible (délai insuffisant)";
+    })
+    .canBookSameDayPublic();
+});
 </script>
