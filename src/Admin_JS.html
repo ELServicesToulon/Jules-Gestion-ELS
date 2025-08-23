@@ -468,6 +468,40 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Point de départ ---
     initialiser();
+    chargerEtAfficherTarifs(); // Appel pour charger les tarifs
+
+    /**
+     * Charge les tarifs publics et les affiche dans le panneau d'administration.
+     */
+    function chargerEtAfficherTarifs() {
+      const conteneur = document.getElementById('conteneur-tarifs-admin');
+      if (!conteneur) return;
+
+      google.script.run
+        .withSuccessHandler(tarifs => {
+          if (tarifs) {
+            let html = '<dl class="liste-definitions">';
+            html += `<dt>Course de base (1 retrait + 1 PDL)</dt><dd>${tarifs.baseCourse} €</dd>`;
+            html += `<dt>Surcharge Urgence</dt><dd>${tarifs.surcUrgence} € (fenêtre de ${tarifs.URGENCE_FENETRE_MIN} min)</dd>`;
+            html += `<dt>Surcharge Samedi</dt><dd>${tarifs.surcSamedi} €</dd>`;
+            html += '<hr>';
+            html += `<dt>Prix par PDL supplémentaire (2e, 3e, 4e, 5e)</dt><dd>${tarifs.PDL_PRIX.join('€, ')}€</dd>`;
+            html += `<dt>Prix par PDL supplémentaire (6e et +)</dt><dd>${tarifs.PDL_PRIX_FALLBACK} €</dd>`;
+            html += '<hr>';
+            html += `<dt>Minutes par PDL sup.</dt><dd>${tarifs.PDL_MIN.join('min, ')}min (puis ${tarifs.PDL_MIN_FALLBACK}min)</dd>`;
+            html += `<dt>KM par PDL sup.</dt><dd>${tarifs.PDL_KM.join('km, ')}km (puis ${tarifs.PDL_KM_FALLBACK}km)</dd>`;
+            html += '</dl>';
+            conteneur.innerHTML = html;
+          } else {
+            conteneur.innerHTML = '<p class="erreur">Impossible de charger les tarifs.</p>';
+          }
+        })
+        .withFailureHandler(err => {
+          if(conteneur) conteneur.innerHTML = `<p class="erreur">Erreur: ${err.message}</p>`;
+          console.error(err);
+        })
+        .getTarifsPublic();
+    }
 
     // --- GESTION DU SCHÉMA ---
     const btnSchemaReport = document.getElementById('btn-schema-report');

@@ -55,37 +55,72 @@ function reserverPanier(donneesReservation) {
 }
 
 /**
- * Crée une réservation unique.
+ * Crée une réservation unique en utilisant le moteur de tarification centralisé.
  * @returns {Object|null} L'objet de la réservation réussie ou null si échec.
  */
 function creerReservationUnique(item, client, clientPourCalcul) {
-    const { date, startTime, totalStops, returnToPharmacy } = item;
-    const infosTournee = calculerInfosTourneeBase(totalStops, returnToPharmacy, date, startTime);
-    const duree = infosTournee.duree;
-    const creneauxDisponibles = obtenirCreneauxDisponiblesPourDate(date, duree);
+    const { date, startTime, totalStops } = item;
+    const nbPDL = Number(totalStops || 1);
 
-    if (!creneauxDisponibles.includes(startTime)) {
-        return null; // Échec
-    }
-
+    // 1. Calculer le devis final côté serveur avec LA SEULE source de vérité
     const [heure, minute] = startTime.split('h').map(Number);
     const [annee, mois, jour] = date.split('-').map(Number);
     const dateDebut = new Date(annee, mois - 1, jour, heure, minute);
+
+    // Appel au moteur de tarification centralisé
+    const devis = computeDevisForSlot_(dateDebut, nbPDL);
+    const duree = devis.minutes;
+
+    // 2. Vérifier à nouveau la disponibilité avec la durée exacte
+    const creneauxDisponibles = obtenirCreneauxDisponiblesPourDate(date, duree);
+    if (!creneauxDisponibles.includes(startTime)) {
+        Logger.log(`CONFLIT DE DERNIÈRE MINUTE: Le créneau ${startTime} le ${date} n'est plus disponible pour une durée de ${duree} minutes.`);
+        return null; // Échec
+    }
+
+    // 3. Créer l'événement et enregistrer la réservation
     const dateFin = new Date(dateDebut.getTime() + duree * 60000);
     const idReservation = 'RESA-' + new Date().getTime() + '-' + Math.random().toString(36).substr(2, 9);
 
-    const titreEvenement = `Réservation ${NOM_ENTREPRISE} - ${client.nom}`;
-    const descriptionEvenement = `Client: ${client.nom} (${client.email})\nID Réservation: ${idReservation}\nDétails: ${infosTournee.details}\nNote: ${client.note || ''}`;
+    const titreEvenement = `Course ELS - ${client.nom}`;
+    const detailsCourse = `(${nbPDL} PDL, ${duree}min, ${devis.km}km)`;
+    const descriptionEvenement = `Client: ${client.nom} (${client.email})\nID Résa: ${idReservation}\nDétails: ${detailsCourse}\nNote: ${client.note || ''}`;
+
     const evenement = CalendarApp.getCalendarById(ID_CALENDRIER).createEvent(titreEvenement, dateDebut, dateFin, { description: descriptionEvenement });
 
     if (evenement) {
-        const infosPrixFinal = calculerPrixEtDureeServeur(totalStops, returnToPharmacy, date, startTime, clientPourCalcul);
-        enregistrerReservationPourFacturation(dateDebut, client.nom, client.email, infosTournee.typeCourse, infosTournee.details, infosPrixFinal.prix, evenement.getId(), idReservation, client.note, infosPrixFinal.tourneeOfferteAppliquee, clientPourCalcul.typeRemise, clientPourCalcul.valeurRemise);
-        if (infosPrixFinal.tourneeOfferteAppliquee) {
-          decrementerTourneesOffertesClient(client.email);
+        let prixFinal = devis.prix;
+        let tourneeOfferteAppliquee = false;
+        let typeRemise = null;
+        let valeurRemise = 0;
+
+        // 4. Appliquer les remises spécifiques au client (si applicable)
+        if (clientPourCalcul) {
+            if (clientPourCalcul.nbTourneesOffertes > 0) {
+                prixFinal = 0;
+                tourneeOfferteAppliquee = true;
+                decrementerTourneesOffertesClient(client.email);
+            } else if (clientPourCalcul.typeRemise === 'Pourcentage' && clientPourCalcul.valeurRemise > 0) {
+                prixFinal *= (1 - clientPourCalcul.valeurRemise / 100);
+                typeRemise = clientPourCalcul.typeRemise;
+                valeurRemise = clientPourCalcul.valeurRemise;
+            } else if (clientPourCalcul.typeRemise === 'Montant Fixe' && clientPourCalcul.valeurRemise > 0) {
+                prixFinal = Math.max(0, prixFinal - clientPourCalcul.valeurRemise);
+                typeRemise = clientPourCalcul.typeRemise;
+                valeurRemise = clientPourCalcul.valeurRemise;
+            }
         }
-        // On retourne la date de début en ISO pour une manipulation facile, et la durée.
-        return { dateDebutISO: dateDebut.toISOString(), time: startTime, price: infosPrixFinal.prix, duree: infosTournee.duree };
+
+        const typeCourse = devis.flags.urgent ? 'Urgent' : (devis.flags.samedi ? 'Samedi' : 'Normal');
+
+        enregistrerReservationPourFacturation(dateDebut, client.nom, client.email, typeCourse, detailsCourse, prixFinal, evenement.getId(), idReservation, client.note, tourneeOfferteAppliquee, typeRemise, valeurRemise);
+
+        return {
+            dateDebutISO: dateDebut.toISOString(),
+            time: startTime,
+            price: prixFinal,
+            duree: duree
+        };
     }
     return null;
 }
@@ -222,70 +257,9 @@ function formaterDateEnFrancais(date) {
     return `${jours[date.getDay()]} ${date.getDate()} ${mois[date.getMonth()]} ${date.getFullYear()}`;
 }
 
-/**
- * Calcule les informations de base d'une tournée.
- */
-function calculerInfosTourneeBase(totalStops, returnToPharmacy, dateString, startTime) {
-  const arretsSupplementaires = Math.max(0, totalStops - 1);
-  let duree = DUREE_BASE + (arretsSupplementaires * DUREE_ARRET_SUP);
-  const km = KM_BASE + (arretsSupplementaires * KM_ARRET_SUP);
-  const heureNormalisee = startTime.replace('h', ':');
-  const dateCourse = new Date(`${dateString}T${heureNormalisee}`);
-  const maintenant = new Date();
-  let typeCourse = 'Normal';
-
-  if ((dateCourse.getTime() - maintenant.getTime()) / 60000 < URGENT_THRESHOLD_MINUTES) {
-    typeCourse = 'Urgent';
-  } else if (dateCourse.getDay() === 6) {
-    typeCourse = 'Samedi';
-  }
-
-  const reglesTarifaires = TARIFS[typeCourse] || TARIFS['Normal'];
-  let prixFinal = reglesTarifaires.base;
-
-  for (let i = 0; i < arretsSupplementaires; i++) {
-    const prixArret = reglesTarifaires.arrets[i] || reglesTarifaires.arrets[reglesTarifaires.arrets.length - 1];
-    prixFinal += prixArret;
-  }
-
-  if (returnToPharmacy) {
-      const dernierIndexArretSup = arretsSupplementaires;
-      const prixRetour = reglesTarifaires.arrets[dernierIndexArretSup] || reglesTarifaires.arrets[reglesTarifaires.arrets.length - 1];
-      prixFinal += prixRetour;
-      duree += DUREE_ARRET_SUP; // CORRECTION: Ajoute la durée pour le trajet de retour.
-  }
-
-  const details = `Tournée de ${duree}min (${arretsSupplementaires} arrêt(s) sup., retour: ${returnToPharmacy ? 'oui' : 'non'})`;
-  return { prix: prixFinal, duree: duree, km: km, details: details, typeCourse: typeCourse };
-}
-
-/**
- * Calcule le prix final en appliquant les remises client.
- */
-function calculerPrixEtDureeServeur(totalStops, returnToPharmacy, dateString, startTime, clientInfo) {
-  const infosBase = calculerInfosTourneeBase(totalStops, returnToPharmacy, dateString, startTime);
-  let prixFinal = infosBase.prix;
-  let tourneeOfferteAppliquee = false;
-
-  if (clientInfo) {
-    if (clientInfo.nbTourneesOffertes > 0) {
-      prixFinal = 0;
-      tourneeOfferteAppliquee = true;
-    } else if (clientInfo.typeRemise === 'Pourcentage' && clientInfo.valeurRemise > 0) {
-      prixFinal *= (1 - clientInfo.valeurRemise / 100);
-    } else if (clientInfo.typeRemise === 'Montant Fixe' && clientInfo.valeurRemise > 0) {
-      prixFinal = Math.max(0, prixFinal - clientInfo.valeurRemise);
-    }
-  }
-
-  return {
-    prix: prixFinal,
-    duree: infosBase.duree,
-    details: infosBase.details,
-    typeCourse: infosBase.typeCourse,
-    tourneeOfferteAppliquee: tourneeOfferteAppliquee
-  };
-}
+// Les fonctions `calculerInfosTourneeBase` et `calculerPrixEtDureeServeur`
+// ont été supprimées car leur logique est maintenant entièrement remplacée
+// par `computeDevisForSlot_` dans `src/Configuration.gs`.
 
 /**
  * Vérifie la disponibilité pour une récurrence et propose des alternatives.
