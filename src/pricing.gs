@@ -126,21 +126,50 @@ function grilleCumulative_(grille) {
   return arr; // [1,2,3,4,5,6+]
 }
 
-/** API publique front (si nécessaire) */
+/**
+ * Retourne une vue "stable" des tarifs pour le front.
+ * Signature garantie:
+ * {
+ *   ok: true|false,
+ *   reason?: string,
+ *   retourEquivArret: boolean,
+ *   regimes: string[],                      // ex: ["Normal","Samedi","Urgent"]
+ *   tables: { Normal:number[]|null, Samedi:number[]|null, Urgent:number[]|null }, // cumul 1→6+
+ *   meta: { urgenceCutoff: number }
+ * }
+ */
 function getTarifsPublic() {
-  const CFG = (typeof getConfiguration === 'function') ? getConfiguration() : null;
-  const R = _resolvePricingShape_(CFG);
-  if (!R) return { retourEquivArret: true, regimes: ['Normal'], tables: {}, brut: {} };
+  try {
+    const CFG = (typeof getConfiguration === 'function') ? getConfiguration() : null;
+    if (!CFG || !CFG.TARIFS) {
+      return { ok:false, reason:'CFG.TARIFS introuvable', retourEquivArret:true,
+               regimes:[], tables:{Normal:null,Samedi:null,Urgent:null}, meta:{urgenceCutoff:0} };
+    }
 
-  const G = R.grilles;
-  return {
-    retourEquivArret: R.retourAsStop,
-    regimes: Object.keys(G).filter(k => !!G[k]),
-    tables: {
+    // utilise le résolveur V1↔V2 défini dans pricing.gs unifié
+    const R = (typeof _resolvePricingShape_ === 'function') ? _resolvePricingShape_(CFG) : null;
+    if (!R || !R.grilles || !R.grilles.Normal) {
+      return { ok:false, reason:'Grilles non résolues', retourEquivArret:true,
+               regimes:[], tables:{Normal:null,Samedi:null,Urgent:null}, meta:{urgenceCutoff:0} };
+    }
+
+    const G = R.grilles;
+    const tables = {
       Normal: G.Normal ? grilleCumulative_(G.Normal) : null,
       Samedi: G.Samedi ? grilleCumulative_(G.Samedi) : null,
       Urgent: G.Urgent ? grilleCumulative_(G.Urgent) : null
-    },
-    brut: G
-  };
+    };
+    const regimes = Object.keys(tables).filter(k => !!tables[k]);
+
+    return {
+      ok: true,
+      retourEquivArret: !!R.retourAsStop,
+      regimes,
+      tables,
+      meta: { urgenceCutoff: Number(R.urgenceCutoff||0) }
+    };
+  } catch (e) {
+    return { ok:false, reason:String(e && e.message || e), retourEquivArret:true,
+             regimes:[], tables:{Normal:null,Samedi:null,Urgent:null}, meta:{urgenceCutoff:0} };
+  }
 }

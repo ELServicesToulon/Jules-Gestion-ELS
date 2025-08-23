@@ -843,16 +843,15 @@ function changerMois(delta) {
 // MODULE: NOUVELLE LOGIQUE POUR LA MODALE DE RÉSERVATION
 // =================================================================
 
-let CFG = null;
+let CFG = null;            // la conf complète (doit contenir REGLES)
+let TARIFS_PUBLIC = null;  // la vue stable pour l’UI
 
 const DEF_RULES = {
   ALLOW_SAME_DAY: true,
   SAME_DAY_CUTOFF_HOUR: 12,
   MAX_ARRETS_VISIBLE: 12
 };
-function rules(){
-  return (CFG && CFG.REGLES) ? CFG.REGLES : DEF_RULES;
-}
+const rules = () => (CFG && CFG.REGLES) ? CFG.REGLES : DEF_RULES;
 
 function showModalSkeleton() { basculerIndicateurChargement(true); }
 function hideModalSkeleton() { basculerIndicateurChargement(false); }
@@ -873,7 +872,7 @@ function isSameDay_(a,b){ return a.toDateString()===b.toDateString(); }
 function selectChip_(btn, root){ root.querySelectorAll('.chip').forEach(c=>c.classList.remove('is-active')); btn.classList.add('is-active'); }
 
 
-function openReservationModal(weekAnchorDateISO) {
+function openReservationModal(anchorISO) {
   const modal = document.getElementById('reservation-modal');
   modal.style.display = 'flex';
   document.body.style.overflow = 'hidden';
@@ -888,33 +887,68 @@ function openReservationModal(weekAnchorDateISO) {
     .withSuccessHandler(cfg => {
       CFG = cfg;
       if (!CFG || !CFG.TARIFS) {
-        showError('Erreur : Tarifs non chargés.');
-        document.getElementById('tarif-error').classList.remove('hidden');
+        showError('Tarifs non chargés.');
+        hydrateTarifCards(null);
         hideModalSkeleton();
         return;
       }
-      document.getElementById('tarif-error').classList.add('hidden');
 
-      buildDayChips(weekAnchorDateISO);
-      buildArretsSelect();
-      wireModalEvents();
-      hideModalSkeleton();
+      google.script.run
+        .withSuccessHandler(tp => {
+          TARIFS_PUBLIC = tp;
+          hydrateTarifCards(tp);
 
-      // Initial load of slots for the first available day
-      refreshSlotsPreview_();
+          buildDayChips(anchorISO);
+          buildArretsSelect();
+          wireModalEvents();
+          hideModalSkeleton();
+          refreshSlotsPreview_();
+        })
+        .withFailureHandler(err => {
+            showError('Vue tarifs publics non chargée: ' + String(err));
+            hydrateTarifCards(null);
+            hideModalSkeleton();
+        })
+        .getTarifsPublic();
     })
-    .withFailureHandler(() => {
-        showError('Erreur : Tarifs non chargés.');
-        document.getElementById('tarif-error').classList.remove('hidden');
+    .withFailureHandler((err) => {
+        showError('Configuration non chargée: ' + String(err));
+        hydrateTarifCards(null);
+        hideModalSkeleton();
     })
     .getConfiguration();
+}
+
+function hydrateTarifCards(tp){
+  const boxBase   = document.getElementById('card-base');
+  const boxStops  = document.getElementById('card-stops');
+  const boxOpt    = document.getElementById('card-opts');
+  const fail = !tp || tp.ok === false || !tp.tables || !tp.tables.Normal;
+
+  if (fail){
+    setCard(boxBase,  'Config vide ou invalide');
+    setCard(boxStops, 'Config vide ou invalide');
+    setCard(boxOpt,   'Config vide ou invalide');
+    return;
+  }
+
+  const cum = tp.tables.Normal; // tableau [prix 1 arrêt, 2 arrêts, 3, 4, 5, 6+]
+  const prix1 = cum[0];
+  const inc2  = cum[1] - cum[0]; // surcoût 2e arrêt
+  const inc5  = cum[4] - cum[3]; // surcoût 5e (vaut pour 6+ si grille en paliers)
+
+  setCard(boxBase,  `${prix1.toFixed(2)} € HT la course de base`);
+  setCard(boxStops, `+${inc2.toFixed(2)} € / arrêt (2→4), puis +${inc5.toFixed(2)} € à partir du 5ᵉ`);
+  setCard(boxOpt,   tp.retourEquivArret ? `Retour pharmacie = +1 arrêt` : `Retour pharmacie inclus`);
+
+  function setCard(el, txt){ if(el) el.querySelector('.card-body').textContent = txt; }
 }
 
 function buildDayChips(weekAnchorISO){
   const root = document.getElementById('js-day-chips'); if(!root) return;
   root.innerHTML = '';
 
-  const R = rules(); // <-- ne lit plus CFG.REGLES en direct
+  const R = rules();
   const week = computeWeekFromAnchor_(weekAnchorISO);
   const now = new Date();
 
