@@ -53,12 +53,7 @@ function onOpen(e) {
  */
 function doGet(e) {
   if (e && e.parameter && e.parameter.probe === 'run-tests') {
-fix/rates-and-calendar-logic
     const log = lancerTousLesTestsEtRetournerLogs();
-
-    runAllPricingTests();
-    const log = Logger.getLog();
- main
     return ContentService.createTextOutput(log)
       .setMimeType(ContentService.MimeType.TEXT);
   }
