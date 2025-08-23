@@ -35,6 +35,17 @@
     "executeAs": "USER_DEPLOYING",
     "access": "ANYONE_ANONYMOUS"
   },
+  "triggers": [
+    {
+      "function": "runDailyHealthcheck",
+      "runAs": "USER_DEPLOYING",
+      "event": {
+        "type": "CLOCK",
+        "frequency": "DAILY",
+        "hour": "4"
+      }
+    }
+  ],
   "oauthScopes": [
     "https://www.googleapis.com/auth/drive",
     "https://www.googleapis.com/auth/script.external_request",

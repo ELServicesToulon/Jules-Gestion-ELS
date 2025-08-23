@@ -51,62 +51,95 @@ function onOpen(e) {
  * @param {Object} e L'objet d'événement de la requête.
  * @returns {HtmlOutput} Le contenu HTML à afficher.
  */
-function doGet(e) {
-  if (e && e.parameter && e.parameter.probe === 'run-tests') {
-    const log = lancerTousLesTestsEtRetournerLogs();
-    return ContentService.createTextOutput(log)
-      .setMimeType(ContentService.MimeType.TEXT);
-  }
-  if (e && e.parameter && e.parameter.probe === 'tarifs') {
-    return ContentService.createTextOutput(JSON.stringify(_probeTarifs_()))
-      .setMimeType(ContentService.MimeType.JSON);
+/**
+ * Gère les requêtes GET non-UI (API, probes, etc.).
+ * @param {Object} e L'objet d'événement de la requête.
+ * @returns {ContentService.TextOutput|null} Une réponse de données ou null.
+ */
+function handleApiRequest(e) {
+  const parameter = e.parameter;
+
+  if (parameter.probe) {
+    switch (parameter.probe) {
+      case 'run-tests':
+        const log = lancerTousLesTestsEtRetournerLogs();
+        return ContentService.createTextOutput(log)
+          .setMimeType(ContentService.MimeType.TEXT);
+      case 'tarifs':
+        return ContentService.createTextOutput(JSON.stringify(_probeTarifs_()))
+          .setMimeType(ContentService.MimeType.JSON);
+    }
   }
 
-  // Health check rapide
-  if (e && e.parameter && e.parameter.health === '1') {
-    var payload = { ok: true, ts: new Date().toISOString(), page: (e.parameter.page || 'client') };
+  if (parameter.health === '1') {
+    const payload = { ok: true, ts: new Date().toISOString(), page: (parameter.page || 'client') };
     return ContentService.createTextOutput(JSON.stringify(payload))
       .setMimeType(ContentService.MimeType.JSON);
   }
 
-  // Routeur pour les actions API
-  if (e && e.parameter && e.parameter.action) {
-    if (e.parameter.action === 'config') {
-      return ContentService
-        .createTextOutput(JSON.stringify({ ok: true, config: getConfigPublic() }))
-        .setMimeType(ContentService.MimeType.JSON);
-    }
-    if (e.parameter.action === "slots") {
-      try {
-        const day = e.parameter.day;
-        const nbArrets = parseInt(e.parameter.nbArrets, 10);
-
-        // Validation simple des paramètres
-        if (!day || isNaN(nbArrets)) {
-          throw new Error("Les paramètres 'day' et 'nbArrets' sont requis.");
+  if (parameter.action) {
+    switch (parameter.action) {
+      case 'config':
+        return ContentService
+          .createTextOutput(JSON.stringify({ ok: true, config: getPublicConfig_() }))
+          .setMimeType(ContentService.MimeType.JSON);
+      case 'slots':
+        try {
+          const day = parameter.day;
+          const nbArrets = parseInt(parameter.nbArrets, 10);
+          if (!day || isNaN(nbArrets)) {
+            throw new Error("Les paramètres 'day' et 'nbArrets' sont requis.");
+          }
+          const result = getAvailableSlots(day, nbArrets);
+          return ContentService.createTextOutput(JSON.stringify(result))
+                               .setMimeType(ContentService.MimeType.JSON);
+        } catch (err) {
+          const errorPayload = { error: true, message: err.message };
+          return ContentService.createTextOutput(JSON.stringify(errorPayload))
+                               .setMimeType(ContentService.MimeType.JSON);
         }
-
-        const result = getAvailableSlots(day, nbArrets);
-        return ContentService.createTextOutput(JSON.stringify(result))
-                             .setMimeType(ContentService.MimeType.JSON);
-      } catch (err) {
-        const errorPayload = { error: true, message: err.message };
-        return ContentService.createTextOutput(JSON.stringify(errorPayload))
-                             .setMimeType(ContentService.MimeType.JSON);
-      }
     }
-    // Ajoutez d'autres actions API ici si nécessaire
   }
 
-  try {
-    // validerConfiguration(); // Assurez-vous que cette fonction existe ou commentez-la si non utilisée
+  if (parameter.page === 'ics' && parameter.ids) {
+    const ids = parameter.ids.split(',');
+    const evenements = obtenirDetailsReservationsParIds(ids);
+    if (evenements && evenements.length > 0) {
+        const contenuIcs = genererContenuICS(evenements);
+        return ContentService.createTextOutput(contenuIcs)
+            .setMimeType(ContentService.MimeType.ICAL)
+            .downloadAsFile('reservations.ics');
+    }
+    return ContentService.createTextOutput("Aucune réservation trouvée.");
+  }
 
-    // Routeur de page
-    if (e.parameter.page) {
-        switch (e.parameter.page) {
+  return null; // Indique que ce n'était pas une requête API.
+}
+
+
+/**
+ * S'exécute lorsqu'un utilisateur accède à l'URL de l'application web.
+ * Fait office de routeur pour afficher la bonne page.
+ * @param {Object} e L'objet d'événement de la requête.
+ * @returns {HtmlOutput|ContentService.TextOutput} Le contenu à afficher.
+ */
+function doGet(e) {
+  // Délègue d'abord les requêtes de type API.
+  const apiResponse = handleApiRequest(e);
+  if (apiResponse) {
+    return apiResponse;
+  }
+
+  // Gère ensuite le rendu des pages HTML.
+  try {
+    const page = e.parameter.page;
+
+    if (page) {
+        switch (page) {
             case 'admin':
                 const adminEmail = Session.getActiveUser().getEmail();
-                if (adminEmail && adminEmail.toLowerCase() === ADMIN_EMAIL.toLowerCase()) {
+                // Remplacez ADMIN_EMAIL par une méthode de configuration plus robuste si possible.
+                if (adminEmail && getConfiguration().ADMIN_EMAIL && adminEmail.toLowerCase() === getConfiguration().ADMIN_EMAIL.toLowerCase()) {
                     const template = HtmlService.createTemplateFromFile('Admin_Interface');
                     return template.evaluate().setTitle("Tableau de Bord Administrateur").setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
                 } else {
@@ -117,46 +150,20 @@ function doGet(e) {
                 return renderClientPage(e);
             case 'debug':
                  const debugEmail = Session.getActiveUser().getEmail();
-                if (debugEmail && debugEmail.toLowerCase() === ADMIN_EMAIL.toLowerCase()) {
+                if (debugEmail && getConfiguration().ADMIN_EMAIL && debugEmail.toLowerCase() === getConfiguration().ADMIN_EMAIL.toLowerCase()) {
                     return HtmlService.createHtmlOutputFromFile('Debug_Interface').setTitle("Panneau de Débogage").setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
                 } else {
                     return HtmlService.createHtmlOutput('<h1>Accès Refusé</h1><p>Vous n\'avez pas les permissions nécessaires.</p>');
                 }
-            case 'ics':
-                if (e.parameter.ids) {
-                    const ids = e.parameter.ids.split(',');
-                    const evenements = obtenirDetailsReservationsParIds(ids);
-                    if (evenements && evenements.length > 0) {
-                        const contenuIcs = genererContenuICS(evenements);
-                        return ContentService.createTextOutput(contenuIcs)
-                            .setMimeType(ContentService.MimeType.ICAL)
-                            .downloadAsFile('reservations.ics');
-                    }
-                }
-                return ContentService.createTextOutput("Aucune réservation trouvée.");
         }
     }
 
     // Page par défaut : Interface de réservation
     const template = HtmlService.createTemplateFromFile('Reservation_Interface');
     const config = getConfiguration();
-    const tarifsPublics = getTarifsPublic(); // New call to pricing.gs
 
     template.appUrl = ScriptApp.getService().getUrl();
     template.nomService = config.NOM_ENTREPRISE || "EL Services";
-    // On utilise les tarifs publics du nouveau moteur de tarification
-    template.TARIFS_JSON = JSON.stringify(tarifsPublics);
-    template.DUREE_BASE = config.DUREE_BASE_MIN || 30;
-    template.DUREE_ARRET_SUP = config.DUREE_PAR_ARRET_SUP || 15;
-    template.KM_BASE = config.KM_INCLUS || 9;
-    template.KM_ARRET_SUP = config.KM_PAR_ARRET_SUP || 5;
-    template.URGENT_THRESHOLD_MINUTES = config.URGENT_DELAI_MIN || 45;
-    template.dateDuJour = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd");
-
-    // NOUVEAU : Ajout des variables pour la bannière d'information
-    template.heureDebut = config.HEURE_DEBUT_SERVICE;
-    template.heureFin = config.HEURE_FIN_SERVICE;
-    template.prixBase = (tarifsPublics.tables && tarifsPublics.tables.Normal) ? tarifsPublics.tables.Normal[0] : (config.TARIF_BASE || 15);
 
     return template.evaluate()
         .setTitle((config.NOM_ENTREPRISE || "EL Services") + " | Réservation")

@@ -15,6 +15,24 @@
 </head>
 <body class="admin-scope">
 
+  <div id="auth-status-overlay" class="indicateur-chargement-overlay hidden" style="z-index: 1000; display: flex; flex-direction: column; gap: 1em;">
+    <div class="auth-container" style="text-align: center; background: white; padding: 2em 3em; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1);">
+      <div id="auth-view-checking">
+        <div class="spinner"></div>
+        <h2 style="font-size: 1.2em; color: #333; margin-top: 1em;">Vérification en cours...</h2>
+      </div>
+      <div id="auth-view-success" style="display: none;">
+        <h2 style="font-size: 1.2em; color: #27ae60;">Authentification réussie !</h2>
+        <p style="color: #555;">Chargement de votre espace client...</p>
+      </div>
+      <div id="auth-view-error" style="display: none;">
+        <h2 style="font-size: 1.2em; color: #c0392b;">Lien invalide ou expiré</h2>
+        <p style="color: #555;">Ce lien n'est plus valide. Veuillez demander un nouveau lien d'accès depuis l'interface de réservation.</p>
+        <a href="<?= ScriptApp.getService().getUrl() ?>" style="margin-top: 1em; display: inline-block; text-decoration: none; padding: 0.6em 1.2em; background-color: #3498db; color: white; border-radius: 5px; font-weight: 500;">Retour à l'accueil</a>
+      </div>
+    </div>
+  </div>
+
   <div id="view-app">
     <div id="indicateur-chargement" class="indicateur-chargement-overlay">
       <div class="spinner"></div>

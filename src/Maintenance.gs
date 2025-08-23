@@ -270,48 +270,9 @@ function verifierCoherenceCalendrier() {
   logAdminAction("Vérification Cohérence Calendrier", "Démarré");
 
   try {
-    const ss = SpreadsheetApp.openById(ID_FEUILLE_CALCUL);
-    const feuille = ss.getSheetByName("Facturation");
-    if (!feuille) throw new Error("La feuille 'Facturation' est introuvable.");
-
-    const enTetesRequis = ["ID Réservation", "Event ID", "Date"];
-    const indices = obtenirIndicesEnTetes(feuille, enTetesRequis);
-    const donnees = feuille.getDataRange().getValues();
+    const incoherences = checkCalendarCoherenceNoUI();
+    const reservationsVerifiees = SpreadsheetApp.openById(ID_FEUILLE_CALCUL).getSheetByName("Facturation").getLastRow() -1;
     
-    let incoherences = [];
-    let reservationsVerifiees = 0;
-
-    for (let i = 1; i < donnees.length; i++) {
-      const ligne = donnees[i];
-      const idReservation = ligne[indices["ID Réservation"]];
-      const eventId = ligne[indices["Event ID"]];
-      const dateSheet = new Date(ligne[indices["Date"]]);
-      reservationsVerifiees++;
-
-      if (!eventId) {
-        incoherences.push(`- Ligne ${i + 1} (ID: ${idReservation}): Aucun 'Event ID' n'est enregistré.`);
-        continue;
-      }
-
-      try {
-        const evenement = Calendar.Events.get(ID_CALENDRIER, eventId);
-        const dateCalendrier = new Date(evenement.start.dateTime || evenement.start.date);
-        
-        if (dateSheet.getFullYear() !== dateCalendrier.getFullYear() ||
-            dateSheet.getMonth() !== dateCalendrier.getMonth() ||
-            dateSheet.getDate() !== dateCalendrier.getDate()) {
-          incoherences.push(`- Ligne ${i + 1} (ID: ${idReservation}): Incohérence de date. Sheet: ${formaterDateEnYYYYMMDD(dateSheet)}, Calendrier: ${formaterDateEnYYYYMMDD(dateCalendrier)}.`);
-        }
-      } catch (e) {
-        if (e.message.includes("Not Found")) {
-          incoherences.push(`- Ligne ${i + 1} (ID: ${idReservation}): L'événement (ID: ${eventId}) est INTROUVABLE dans le calendrier.`);
-        } else {
-          incoherences.push(`- Ligne ${i + 1} (ID: ${idReservation}): Erreur API pour l'événement ${eventId}: ${e.message}`);
-        }
-      }
-    }
-    
-    // Génération et affichage du rapport final
     let rapportHtml = `<h1>Rapport de cohérence Calendrier</h1>`;
     rapportHtml += `<p><strong>${reservationsVerifiees}</strong> réservations ont été analysées.</p>`;
 
@@ -330,5 +291,91 @@ function verifierCoherenceCalendrier() {
     Logger.log(`Erreur fatale durant la vérification de cohérence : ${e.stack}`);
     logAdminAction("Vérification Cohérence Calendrier", `Échec critique : ${e.message}`);
     ui.alert("Erreur Critique", `L'audit a échoué : ${e.message}`, ui.ButtonSet.OK);
+  }
+}
+
+/**
+ * Version sans UI de verifierCoherenceCalendrier pour les triggers.
+ * @returns {string[]} Un tableau de messages d'incohérence.
+ */
+function checkCalendarCoherenceNoUI() {
+  const config = getConfiguration();
+  const ss = SpreadsheetApp.openById(config.ID_FEUILLE_CALCUL);
+  const feuille = ss.getSheetByName("Facturation");
+  if (!feuille) return ["La feuille 'Facturation' est introuvable."];
+
+  const enTetesRequis = ["ID Réservation", "Event ID"];
+  const indices = obtenirIndicesEnTetes(feuille, enTetesRequis);
+  const donnees = feuille.getDataRange().getValues();
+
+  let incoherences = [];
+
+  for (let i = 1; i < donnees.length; i++) {
+    const ligne = donnees[i];
+    const idReservation = ligne[indices["ID Réservation"]];
+    const eventId = ligne[indices["Event ID"]];
+
+    if (!eventId) {
+      incoherences.push(`Ligne ${i + 1} (ID: ${idReservation}): Aucun 'Event ID' n'est enregistré.`);
+      continue;
+    }
+
+    try {
+      Calendar.Events.get(config.ID_CALENDRIER, eventId);
+    } catch (e) {
+      if (e.message.includes("Not Found")) {
+        incoherences.push(`Ligne ${i + 1} (ID: ${idReservation}): L'événement (ID: ${eventId}) est INTROUVABLE dans le calendrier.`);
+      }
+    }
+  }
+  return incoherences;
+}
+
+
+/**
+ * Exécute un bilan de santé quotidien du système.
+ * Appelé par un déclencheur temporel.
+ */
+function runDailyHealthcheck() {
+  logAdminAction("Bilan de Santé Quotidien", "Démarré");
+  let issuesFound = [];
+  const config = getConfiguration();
+
+  // 1. Vérifier les paramètres requis
+  try {
+    const paramsCheck = SCHEMA_checkRequiredParams();
+    if (!paramsCheck.ok) {
+      const issue = `Paramètres requis manquants: ${paramsCheck.missing.join(', ')}`;
+      issuesFound.push(issue);
+      Logger.log(issue);
+    }
+  } catch (e) {
+    const issue = `Erreur lors de la vérification des paramètres: ${e.message}`;
+    issuesFound.push(issue);
+    Logger.log(issue);
+  }
+
+  // 2. Vérifier la cohérence du calendrier
+  try {
+    const coherenceIssues = checkCalendarCoherenceNoUI();
+    if (coherenceIssues.length > 0) {
+      const issue = `Incohérences calendrier détectées: ${coherenceIssues.length}`;
+      issuesFound.push(issue);
+      Logger.log(issue + '\n' + coherenceIssues.join('\n'));
+    }
+  } catch (e) {
+    const issue = `Erreur lors de la vérification de cohérence du calendrier: ${e.message}`;
+    issuesFound.push(issue);
+    Logger.log(issue);
+  }
+
+  // 3. Envoyer un rapport si des problèmes ont été trouvés
+  if (issuesFound.length > 0) {
+    const subject = `[${config.NOM_ENTREPRISE || 'ELS'}] Rapport de Santé Quotidien - Problèmes Détectés`;
+    const body = `Le bilan de santé quotidien a trouvé ${issuesFound.length} problème(s):\n\n- ${issuesFound.join('\n- ')}`;
+    notifyAdminWithThrottle('DAILY_HEALTH_CHECK_ERROR', subject, body);
+    logAdminAction("Bilan de Santé Quotidien", `Terminé avec ${issuesFound.length} problème(s)`);
+  } else {
+    logAdminAction("Bilan de Santé Quotidien", "Succès - Aucune anomalie détectée");
   }
 }
