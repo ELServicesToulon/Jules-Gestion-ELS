@@ -119,3 +119,53 @@ const CFG = {
   }
 };
 function getConfig_() { return CFG; }
+
+/**
+ * Lit la configuration depuis l'onglet 'Paramètres' de la feuille de calcul.
+ * Fournit un objet de configuration centralisé pour l'application.
+ * @returns {Object.<string, any>} Un objet contenant les paires clé-valeur de la configuration.
+ */
+function getConfiguration() {
+  // Utilise un cache pour éviter de lire la feuille de calcul à chaque appel.
+  const cache = CacheService.getScriptCache();
+  const CACHE_KEY = 'app_config';
+  const cachedConfig = cache.get(CACHE_KEY);
+  if (cachedConfig) {
+    return JSON.parse(cachedConfig);
+  }
+
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const sh = ss.getSheetByName('Paramètres');
+    if (!sh) {
+      throw new Error("L'onglet de configuration 'Paramètres' est introuvable.");
+    }
+
+    const lastRow = sh.getLastRow();
+    // Si moins de 2 lignes, il n'y a pas de données (juste l'en-tête ou vide).
+    if (lastRow < 2) {
+      return {};
+    }
+
+    const range = sh.getRange(2, 1, lastRow - 1, 2);
+    const values = range.getValues();
+
+    const config = values.reduce((acc, row) => {
+      const key = String(row[0]).trim();
+      if (key) {
+        acc[key] = row[1];
+      }
+      return acc;
+    }, {});
+
+    // Met en cache la configuration pour 5 minutes pour améliorer les performances.
+    cache.put(CACHE_KEY, JSON.stringify(config), 300);
+
+    return config;
+  } catch (e) {
+    Logger.log(`Erreur critique lors de la lecture de la configuration: ${e.stack}`);
+    // En cas d'échec, retourne un objet vide pour permettre à l'application de continuer
+    // avec des valeurs par défaut si possible.
+    return {};
+  }
+}
