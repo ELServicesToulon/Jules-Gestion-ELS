@@ -25,49 +25,89 @@
     show('login');
   };
 
-  document.addEventListener('DOMContentLoaded', function(){
+  document.addEventListener('DOMContentLoaded', function() {
     const params = new URLSearchParams(location.search);
-    const hasAuth = params.has('auth');
-    const sid = getSession();
+    const authToken = params.get('auth');
+    const sessionToken = params.get('session');
+    const existingSessionId = getSession();
 
-    if (sid) {
-      google.script.run.withSuccessHandler(function(res){
-        if (res && res.ok){
-          setSession(sid);
-          show('app');
-          if (typeof chargerDonneesClient === 'function') chargerDonneesClient(res.email);
-        } else {
-          show('login');
+    const authOverlay = document.getElementById('auth-status-overlay');
+    const authViews = {
+        checking: document.getElementById('auth-view-checking'),
+        success: document.getElementById('auth-view-success'),
+        error: document.getElementById('auth-view-error')
+    };
+
+    function showAuthView(view) {
+        if (authOverlay) authOverlay.classList.remove('hidden');
+        for (const key in authViews) {
+            if (authViews[key]) authViews[key].style.display = (key === view) ? 'block' : 'none';
         }
-      }).validateSessionServer(sid);
-      return;
     }
 
-    if (hasAuth) {
-      const token = params.get('auth');
-      google.script.run.withSuccessHandler(function(res){
-        const url = new URL(location.href); url.searchParams.delete('auth');
-        if (res && res.ok){
-          setSession(res.sessionId);
-          url.searchParams.set('session', res.sessionId);
-          history.replaceState({},'',url);
-          show('app');
-          if (typeof chargerDonneesClient === 'function') chargerDonneesClient(res.email);
-        } else {
-          history.replaceState({},'',url);
-          show('login');
-          alert('Lien expiré ou déjà utilisé. Demandez un nouveau lien.');
-        }
-      }).validateMagicLinkAndCreateSession(token);
-      return;
+    function hideAuthOverlay() {
+        if (authOverlay) authOverlay.classList.add('hidden');
     }
 
+    // --- Main Auth Flow ---
+
+    // 1. If there's a magic link token, validate it. This is the highest priority.
+    if (authToken) {
+        showAuthView('checking');
+        google.script.run
+            .withSuccessHandler(function(res) {
+                const url = new URL(location.href);
+                url.searchParams.delete('auth');
+                if (res && res.ok) {
+                    showAuthView('success');
+                    setSession(res.sessionId);
+                    url.searchParams.set('session', res.sessionId);
+                    history.replaceState({}, '', url);
+                    setTimeout(() => {
+                        hideAuthOverlay();
+                        show('app');
+                        if (typeof chargerDonneesClient === 'function') chargerDonneesClient(res.email);
+                    }, 1500);
+                } else {
+                    history.replaceState({}, '', url);
+                    showAuthView('error');
+                    show('login'); // Show the login view behind the overlay
+                }
+            })
+            .withFailureHandler(() => {
+                showAuthView('error');
+                show('login');
+            })
+            .validateMagicLinkAndCreateSession(authToken);
+        return; // Stop further processing
+    }
+
+    // 2. If there's an existing session, validate it.
+    const sessionId = existingSessionId || sessionToken;
+    if (sessionId) {
+        google.script.run
+            .withSuccessHandler(function(res) {
+                if (res && res.ok) {
+                    setSession(sessionId);
+                    show('app');
+                    if (typeof chargerDonneesClient === 'function') chargerDonneesClient(res.email);
+                } else {
+                    show('login');
+                }
+            })
+            .validateSessionServer(sessionId);
+        return;
+    }
+
+    // 3. If the user is already logged into Google Apps Script context
     if (ELS.SESSION_EMAIL) {
-      show('app');
-      if (typeof chargerDonneesClient === 'function') chargerDonneesClient(ELS.SESSION_EMAIL);
-    } else {
-      show('login');
+        show('app');
+        if (typeof chargerDonneesClient === 'function') chargerDonneesClient(ELS.SESSION_EMAIL);
+        return;
     }
+
+    // 4. If nothing else, show the login page.
+    show('login');
   });
 
   window.ELS_requestLink = function(){

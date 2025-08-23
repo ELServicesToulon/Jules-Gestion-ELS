@@ -69,6 +69,21 @@ body {
 .btn-secondaire { background-color: var(--couleur-bordure); color: var(--gris-fonce); }
 .btn-secondaire:not(:disabled):hover { background-color: #dcdfe2; }
 
+.btn.btn-pill {
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--couleur-primaire), var(--couleur-secondaire));
+  color: white;
+  border: none;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+  transition: filter .2s, transform .1s;
+}
+.btn.btn-pill:hover:not(:disabled) {
+  filter: brightness(1.05);
+}
+.btn.btn-pill:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
 .modale-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.6); display: flex; justify-content: center; align-items: center; z-index: 999; }
 .modale-contenu { background-color: white; padding: 30px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); width: 100%; max-width: 500px; position: relative; }
 .btn-fermer { position: absolute; top: 15px; right: 15px; background: none; border: none; font-size: 1.8em; cursor: pointer; color: var(--gris-moyen); }
@@ -180,33 +195,6 @@ body {
                       STYLES DE LA MODALE DE RÉSERVATION
    ================================================================= */
 
-@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap');
-.jour-gelule {
-  font-family: 'Montserrat', sans-serif;
-  background: linear-gradient(90deg, #8e44ad 20%, #3498db 80%);
-  border: none;
-  border-radius: 999px;
-  padding: 0.48em 1.18em;
-  color: #fff;
-  font-size: 1.05em;
-  font-weight: 600;
-  margin-bottom: 0.15em;
-  box-shadow: 0 1px 7px 0 #8e44ad30;
-  cursor: pointer;
-  transition: filter .16s, background .18s;
-  outline: none;
-  margin-right: 0.1em;
-}
-.jour-gelule.selected, .jour-gelule:active {
-  filter: brightness(0.93);
-  background: linear-gradient(90deg,#5dade2 10%, #8e44ad 90%);
-}
-.jour-gelule[disabled] {
-  background: #bbb !important;
-  color: #fff;
-  cursor: not-allowed;
-  opacity: 0.6;
-}
 .option-checkbox {
   display:flex;align-items:center;gap:0.4em;font-size:1em;font-weight:500;
 }
@@ -348,6 +336,24 @@ body {
   border: none;
   cursor: pointer;
 }
+
+/* Styles for Magic Link Tool, now centralized */
+.admin-scope .mlk-card {
+  background: #fff;
+  border: 1px solid var(--couleur-bordure);
+  border-radius: 16px;
+  padding: 16px;
+  box-shadow: var(--ombre-portee);
+}
+.admin-scope .mlk-title { margin: 0 0 10px 0; font-weight: 700; font-size: 16px; color: var(--couleur-secondaire); }
+.admin-scope .mlk-row { margin: 10px 0; }
+.admin-scope .mlk-label { display: block; margin-bottom: 6px; font-weight: 600; font-size: 12px; color: var(--gris-fonce); }
+.admin-scope .mlk-input { width: 100%; padding: 10px 12px; border: 1px solid var(--couleur-bordure); border-radius: 12px; font-size: 14px; box-sizing: border-box; }
+.admin-scope .mlk-input:focus { border-color: var(--couleur-primaire); box-shadow: 0 0 0 3px rgba(41, 128, 185, 0.2); }
+.admin-scope .mlk-actions { margin-top: 8px; }
+.admin-scope .mlk-copy { margin-top: 8px; padding: 8px 12px; border: 1px solid var(--couleur-bordure); border-radius: 10px; background: var(--gris-clair); cursor: pointer; }
+.admin-scope .mlk-help { display: block; margin-top: 6px; color: var(--gris-moyen); font-size: 0.9em; }
+.admin-scope .mlk-toast { position: fixed; right: 16px; bottom: 16px; background: var(--couleur-secondaire); color: #fff; padding: 10px 14px; border-radius: 12px; box-shadow: 0 8px 20px rgba(0, 0, 0, .15); font-weight: 600; }
 
 .admin-scope .valeur-compteur {
   font-size: 1.1em;
