@@ -18,7 +18,7 @@ const TEST_CLIENT = {
   nbTourneesOffertes: 2
 };
 
-const ADMIN_TEST_EMAIL = ADMIN_EMAIL; // Utilise l'email admin de la configuration
+const ADMIN_TEST_EMAIL = "admin@example.com"; // Email admin fixe pour les tests, pour éviter les erreurs de référence.
 
 /**
  * Fonction principale pour exécuter tous les tests séquentiellement.
