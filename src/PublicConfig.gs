@@ -6,9 +6,10 @@
 
 /** === API publique (front) — ne rien mettre de sensible ici === **/
 function getConfigPublic() {
+  const config = getAppConfig();
   return {
-    tarifs: TARIFS,
-    regles: REGLES,
-    meta: META
+    tarifs: config.TARIFS,
+    regles: config.REGLES,
+    meta: config.META
   };
 }
