@@ -1005,25 +1005,10 @@ async function refreshSlotsPreview_(){
   }
 
   const dayISO = active.dataset.iso;
-  const nb = parseInt(document.getElementById('select-arrets').value,10);
-  const retour = document.getElementById('cb-retour').checked;
+  const nbPDL = parseInt(document.getElementById('select-arrets').value,10);
 
-  const autresCoursesPanier = window.etat.panier
-    .filter(item => item.date === dayISO)
-    .map(item => ({ startTime: item.startTime, duree: item.duree }));
-
-  showSlotsSkeleton();
-
-  google.script.run
-    .withSuccessHandler(slots => {
-        hideSlotsSkeleton();
-        renderSlots_(slots);
-    })
-    .withFailureHandler(()=> {
-        showError('Impossible de charger les créneaux');
-        hideSlotsSkeleton();
-    })
-    .getAvailableSlots(dayISO, nb, retour, autresCoursesPanier);
+  // The new chargerCreneaux function will handle the skeleton (loading spinner)
+  chargerCreneaux(dayISO, nbPDL);
 }
 
 function renderSlots_(slots) {
@@ -1107,6 +1092,8 @@ document.addEventListener('DOMContentLoaded', () => {
     afficherCalendrier(window.etat.dateActuelle.getMonth() + 1, window.etat.dateActuelle.getFullYear());
     configurerEcouteursEvenements();
 
+    chargerTarifsUI(); // NOUVEL APPEL
+
     // The button to open the modal is now handled inside configurerEcouteursEvenements
     // Let's add it there.
     const btnReserver = document.getElementById('btn-reserver');
@@ -1117,5 +1104,53 @@ document.addEventListener('DOMContentLoaded', () => {
         };
     }
 });
+
+async function chargerTarifsUI(){
+  try{
+    google.script.run
+      .withSuccessHandler((t)=>{
+        if (!t || typeof t.baseCourse === 'undefined') return afficherTarifsManquants();
+        const card = document.querySelector('#card-tarifs');
+        if (!card) return; // Si la carte n'existe pas, on ne fait rien.
+
+        card.querySelector('#tarif-base').textContent = t.baseCourse.toFixed(2) + " €";
+        // Affiche la grille 2e..6e+
+        const pal = [...t.PDL_PRIX, t.PDL_PRIX_FALLBACK + " (6e+)"];
+        card.querySelector('#tarif-paliers').textContent = pal.join(' / ') + " €";
+        card.querySelector('#tarif-options').textContent = `Urgence +${t.surcUrgence} €, Samedi +${t.surcSamedi} €`;
+        card.classList.add('ok');
+      })
+      .withFailureHandler(err=>{
+        console.error('getTarifsPublic failed', err);
+        afficherTarifsManquants();
+      })
+      .getTarifsPublic();
+  }catch(e){
+    console.error(e); afficherTarifsManquants();
+  }
+}
+
+function afficherTarifsManquants(){
+  const card = document.querySelector('#card-tarifs');
+  if (!card) return;
+  card.querySelector('#tarif-base').textContent = "TARIFS manquant.";
+  card.querySelector('#tarif-paliers').textContent = "—";
+  card.querySelector('#tarif-options').textContent = "—";
+  card.classList.remove('ok');
+}
+
+async function chargerCreneaux(dayISO, nbPDL){
+  google.script.run
+    .withSuccessHandler(slots=>{
+      // si slots.length === 0 => afficher “Indisponible” pour la journée
+      // sinon, remplir la grille avec prix/km/min fournis par le serveur
+      renderSlots_(slots); // adapt to existing function name
+    })
+    .withFailureHandler(err=>{
+      console.error('getAvailableSlots failed', err);
+      renderSlots_([]); // tout indispo visuellement
+    })
+    .getAvailableSlots(dayISO, nbPDL);
+}
 
 </script>

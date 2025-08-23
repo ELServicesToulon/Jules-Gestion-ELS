@@ -52,6 +52,16 @@ function onOpen(e) {
  * @returns {HtmlOutput} Le contenu HTML à afficher.
  */
 function doGet(e) {
+  if (e && e.parameter && e.parameter.probe === 'run-tests') {
+    const log = lancerTousLesTestsEtRetournerLogs();
+    return ContentService.createTextOutput(log)
+      .setMimeType(ContentService.MimeType.TEXT);
+  }
+  if (e && e.parameter && e.parameter.probe === 'tarifs') {
+    return ContentService.createTextOutput(JSON.stringify(_probeTarifs_()))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+
   // Health check rapide
   if (e && e.parameter && e.parameter.health === '1') {
     var payload = { ok: true, ts: new Date().toISOString(), page: (e.parameter.page || 'client') };

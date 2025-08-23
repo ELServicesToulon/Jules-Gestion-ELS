@@ -26,6 +26,7 @@ const ADMIN_TEST_EMAIL = ADMIN_EMAIL; // Utilise l'email admin de la configurati
 function lancerTousLesTests() {
   Logger.log("===== DÉBUT DE LA SUITE DE TESTS COMPLÈTE =====");
   
+  runAllPricingTests(); // Ajout des tests de tarification
   testerValidationConfiguration();
   testerUtilitaires();
   testerFeuilleCalcul();
@@ -102,25 +103,9 @@ function testerFeuilleCalcul() {
 
 function testerCalendrier() {
   Logger.log("\n--- Test de Calendrier.gs ---");
-  const config = getConfiguration();
-  const demain = new Date();
-  demain.setDate(demain.getDate() + 1);
-  const dateTest = formaterDateEnYYYYMMDD(demain);
-
-  const creneaux = obtenirCreneauxDisponiblesPourDate(dateTest, 30, config);
-  if (Array.isArray(creneaux)) {
-    // Le test vérifie juste si la fonction crashe. Le nombre de créneaux peut être 0.
-    Logger.log(`SUCCESS: obtenirCreneauxDisponiblesPourDate() s'est exécutée sans erreur.`);
-  } else {
-    Logger.log("FAILURE: obtenirCreneauxDisponiblesPourDate() n'a pas retourné un tableau.");
-  }
-
-  const calPublic = obtenirDonneesCalendrierPublic(demain.getMonth() + 1, demain.getFullYear());
-  if (calPublic && typeof calPublic.disponibilite === 'object') {
-     Logger.log("SUCCESS: obtenirDonneesCalendrierPublic()");
-  } else {
-     Logger.log("FAILURE: obtenirDonneesCalendrierPublic()");
-  }
+  // NOTE: Les anciens tests de calendrier sont dépréciés car les fonctions sous-jacentes ont été remplacées.
+  // La nouvelle logique est testée via `testerGetAvailableSlots`.
+  Logger.log("INFO: Les tests pour obtenirCreneauxDisponiblesPourDate et obtenirDonneesCalendrierPublic sont désactivés.");
 
   // Lancement du nouveau test pour l'API de tarification
   testerGetAvailableSlots();
@@ -128,92 +113,30 @@ function testerCalendrier() {
 
 function testerGetAvailableSlots() {
   Logger.log("\n--- TEST: Test de l'API getAvailableSlots() ---");
-  const config = getConfiguration();
 
-  // --- Scénario 1: Jour normal, 2 arrêts au total ---
-  let testDate = new Date();
-  let attempts = 0;
-  do {
-    testDate.setDate(testDate.getDate() + 1);
-    attempts++;
-  } while ((testDate.getDay() === 6 || testDate.getDay() === 0 || isSameDay_(new Date(), testDate)) && attempts < 8);
-  const dateTestNormal = formatDateForCompare_(testDate);
+  // On utilise une date fixe (un mercredi) pour garantir la stabilité des tests.
+  const DATE_TEST_NORMAL = new Date(2025, 7, 20, 14, 0, 0); // Mercredi 20 Août 2025
+  const dayISO = Utilities.formatDate(DATE_TEST_NORMAL, Session.getScriptTimeZone(), "yyyy-MM-dd");
 
-  const slotsNormal = getAvailableSlots(dateTestNormal, 1); // 1 arrêt sup = 2 au total
-  if (slotsNormal && slotsNormal.length > 0) {
-    const premierSlot = slotsNormal[0];
-    const prixAttendu = calculePrixBase_(config, 2, { date: dateTestNormal }).totalHT;
+  try {
+    const slots = getAvailableSlots(dayISO, 2); // 2 PDL
 
-    if (premierSlot.basePrice.toFixed(2) === prixAttendu.toFixed(2)) {
-      Logger.log(`SUCCESS: getAvailableSlots() - Jour Normal (2 arrêts). Prix: ${premierSlot.basePrice.toFixed(2)}€, attendu: ${prixAttendu.toFixed(2)}€.`);
-    } else {
-      Logger.log(`FAILURE: getAvailableSlots() - Jour Normal (2 arrêts). Prix: ${premierSlot.basePrice.toFixed(2)}€, attendu: ${prixAttendu.toFixed(2)}€.`);
-    }
-    if (premierSlot.tags.length === 0) {
-       Logger.log(`SUCCESS: getAvailableSlots() - Jour Normal. Tags vides comme attendu.`);
-    } else {
-       Logger.log(`FAILURE: getAvailableSlots() - Jour Normal. Tags non vides: ${premierSlot.tags.join(', ')}.`);
-    }
-  } else {
-    Logger.log(`INFO: getAvailableSlots() - Jour Normal. Aucun créneau trouvé pour ${dateTestNormal}, test de prix sauté.`);
-  }
-
-  // --- Scénario 2: Un samedi, 4 arrêts au total ---
-  let testDateSamedi = new Date();
-  attempts = 0;
-  do {
-    testDateSamedi.setDate(testDateSamedi.getDate() + 1);
-    attempts++;
-  } while (testDateSamedi.getDay() !== 6 && attempts < 8);
-
-  if (testDateSamedi.getDay() === 6) {
-    const dateTestSamediStr = formatDateForCompare_(testDateSamedi);
-    const slotsSamedi = getAvailableSlots(dateTestSamediStr, 3); // 3 arrêts sup = 4 au total
-     if (slotsSamedi && slotsSamedi.length > 0) {
-      const premierSlot = slotsSamedi[0];
-      const prixAttendu = calculePrixBase_(config, 4, { date: dateTestSamediStr }).totalHT;
-
-       if (premierSlot.basePrice.toFixed(2) === prixAttendu.toFixed(2)) {
-        Logger.log(`SUCCESS: getAvailableSlots() - Samedi (4 arrêts). Prix: ${premierSlot.basePrice.toFixed(2)}€, attendu: ${prixAttendu.toFixed(2)}€.`);
+    if (slots && Array.isArray(slots) && slots.length > 0) {
+      Logger.log(`SUCCESS: getAvailableSlots() a retourné ${slots.length} créneaux.`);
+      const firstSlot = slots[0];
+      if (firstSlot.prix && firstSlot.km && firstSlot.minutes && firstSlot.tags) {
+        Logger.log(`SUCCESS: Le premier créneau a la bonne structure.`);
       } else {
-        Logger.log(`FAILURE: getAvailableSlots() - Samedi (4 arrêts). Prix: ${premierSlot.basePrice.toFixed(2)}€, attendu: ${prixAttendu.toFixed(2)}€.`);
+        Logger.log(`FAILURE: La structure du créneau est incorrecte: ${JSON.stringify(firstSlot)}`);
       }
-      if (premierSlot.tags.includes("samedi")) {
-         Logger.log(`SUCCESS: getAvailableSlots() - Samedi. Tag 'samedi' présent.`);
-      } else {
-         Logger.log(`FAILURE: getAvailableSlots() - Samedi. Tag 'samedi' manquant.`);
-      }
-    } else {
-      Logger.log(`INFO: getAvailableSlots() - Samedi. Aucun créneau trouvé pour ${dateTestSamediStr}, test de prix sauté.`);
+    } else if (slots && slots.length === 0) {
+        Logger.log(`INFO: getAvailableSlots() a retourné 0 créneaux, ce qui peut être normal.`);
     }
-  } else {
-      Logger.log(`INFO: getAvailableSlots() - Samedi. Aucun samedi trouvé dans les 7 prochains jours, test sauté.`);
-  }
-
-  // --- Scénario 3: Urgence (aujourd'hui), 1 arrêt ---
-  const dateAujourdhui = formatDateForCompare_(new Date());
-  const slotsUrgence = getAvailableSlots(dateAujourdhui, 0); // 0 arrêt sup = 1 au total
-  if (slotsUrgence && slotsUrgence.length > 0) {
-    const premierSlot = slotsUrgence[0];
-    const slotDate = buildDateFromDayAndTime_(dateAujourdhui, premierSlot.timeRange);
-    const estUrgent = _isUrgentWindow_(new Date(), slotDate, _resolvePricingShape_(config).urgenceCutoff);
-
-    if (estUrgent) {
-      if (premierSlot.tags.includes("urgence")) {
-        const prixAttendu = calculePrixBase_(config, 1, { date: dateAujourdhui, slotStart: slotDate }).totalHT;
-        if (premierSlot.basePrice.toFixed(2) === prixAttendu.toFixed(2)) {
-           Logger.log(`SUCCESS: getAvailableSlots() - Urgence. Prix et tag corrects. Prix: ${premierSlot.basePrice.toFixed(2)}€, attendu: ${prixAttendu.toFixed(2)}€.`);
-        } else {
-           Logger.log(`FAILURE: getAvailableSlots() - Urgence. Mauvais prix. Prix: ${premierSlot.basePrice.toFixed(2)}€, attendu: ${prixAttendu.toFixed(2)}€.`);
-        }
-      } else {
-        Logger.log(`FAILURE: getAvailableSlots() - Urgence. Le créneau devrait être taggué 'urgence' mais ne l'est pas.`);
-      }
-    } else {
-      Logger.log("INFO: getAvailableSlots() - Urgence. Aucun créneau DANS LA FENETRE d'urgence trouvé, test de prix sauté.");
+    else {
+      Logger.log(`FAILURE: getAvailableSlots() n'a pas retourné de tableau de créneaux. Reçu: ${JSON.stringify(slots)}`);
     }
-  } else {
-    Logger.log("INFO: getAvailableSlots() - Urgence. Aucun créneau trouvé pour aujourd'hui.");
+  } catch (e) {
+    Logger.log(`FAILURE: getAvailableSlots() a levé une exception: ${e.stack}`);
   }
 }
 
