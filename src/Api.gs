@@ -32,37 +32,24 @@ function getAvailableSlots(day, nbArrets) {
     .filter(slot => isSlotDispo_(slot, planning, nbArrets)) // Filtrage backend
     .map(slot => {
       const slotDate = buildDateFromDayAndTime_(day, slot.timeRange);
-      const samedi = isSaturday_(slotDate);
-      const urgence = isToday && isUrgence_(slotDate, config);
 
-      // Calcul du prix dynamique en suivant la logique additive
-      let prix = calculePrixBase_(config, nbArrets); // Prix basé sur le tarif 'Normal'
-      let tags = [];
-      let details = {
-        samedi: 0,
-        urgence: 0,
-        arretSup: nbArrets,
-      };
+      // Utilise le moteur de pricing centralisé
+      const prixInfos = calculePrixBase_(config, nbArrets + 1, { date: day, slotStart: slotDate });
 
-      if (samedi) {
-        const surcharge = (config.TARIFS.Samedi.base - config.TARIFS.Normal.base);
-        prix += surcharge;
-        tags.push("samedi");
-        details.samedi = surcharge;
-      }
-      if (urgence) {
-        const surcharge = (config.TARIFS.Urgent.base - config.TARIFS.Normal.base);
-        prix += surcharge;
-        tags.push("urgence");
-        details.urgence = surcharge;
-      }
+      const tags = [];
+      if (prixInfos.regime === 'Samedi') tags.push('samedi');
+      if (prixInfos.regime === 'Urgent') tags.push('urgence');
 
       return {
         timeRange: slot.timeRange,
         dispo: true,
-        basePrice: prix,
+        basePrice: prixInfos.totalHT,
         tags: tags,
-        details: details
+        details: {
+          regime: prixInfos.regime,
+          arrets: prixInfos.nbArrets,
+          ...prixInfos.details
+        }
       };
     });
 }
@@ -204,23 +191,6 @@ function isUrgence_(date, config) {
   const threshold = parseInt(config.URGENT_THRESHOLD_MINUTES, 10) || 30;
   const now = new Date();
   return (date.getTime() - now.getTime()) / (60 * 1000) < threshold;
-}
-
-/**
- * Calcule le prix total pour le nombre d'arrêts, selon le profil 'Normal'.
- * @param {Object} config - La config (doit contenir TARIFS).
- * @param {number} nbArrets - Nombre d'arrêts supplémentaires.
- * @returns {number}
- */
-function calculePrixBase_(config, nbArrets) {
-  const tarifs = config.TARIFS['Normal'];
-  if (!tarifs) return 0; // Sécurité
-  let prix = tarifs.base;
-  const arrets = tarifs.arrets || [];
-  for (let i = 0; i < nbArrets; i++) {
-    prix += arrets[Math.min(i, arrets.length - 1)];
-  }
-  return prix;
 }
 
 /**

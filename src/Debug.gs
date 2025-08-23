@@ -130,26 +130,24 @@ function testerGetAvailableSlots() {
   Logger.log("\n--- TEST: Test de l'API getAvailableSlots() ---");
   const config = getConfiguration();
 
-  // --- Scénario 1: Jour normal, 1 arrêt supplémentaire ---
+  // --- Scénario 1: Jour normal, 2 arrêts au total ---
   let testDate = new Date();
   let attempts = 0;
-  // Trouve un jour de semaine qui n'est pas aujourd'hui
   do {
     testDate.setDate(testDate.getDate() + 1);
     attempts++;
-  } while ((testDate.getDay() === 6 || testDate.getDay() === 0) && attempts < 8);
+  } while ((testDate.getDay() === 6 || testDate.getDay() === 0 || isSameDay_(new Date(), testDate)) && attempts < 8);
   const dateTestNormal = formatDateForCompare_(testDate);
 
-  // arretsSupplementaires = 1, donc 2 arrêts au total.
-  const slotsNormal = getAvailableSlots(dateTestNormal, 1);
+  const slotsNormal = getAvailableSlots(dateTestNormal, 1); // 1 arrêt sup = 2 au total
   if (slotsNormal && slotsNormal.length > 0) {
     const premierSlot = slotsNormal[0];
-    // Prix = 2 arrêts * BASE_PAR_ARRET
-    const prixAttendu = 2 * config.TARIFS.BASE_PAR_ARRET;
+    const prixAttendu = calculePrixBase_(config, 2, { date: dateTestNormal }).totalHT;
+
     if (premierSlot.basePrice.toFixed(2) === prixAttendu.toFixed(2)) {
-      Logger.log(`SUCCESS: getAvailableSlots() - Jour Normal. Prix: ${premierSlot.basePrice}€, attendu: ${prixAttendu}€.`);
+      Logger.log(`SUCCESS: getAvailableSlots() - Jour Normal (2 arrêts). Prix: ${premierSlot.basePrice.toFixed(2)}€, attendu: ${prixAttendu.toFixed(2)}€.`);
     } else {
-      Logger.log(`FAILURE: getAvailableSlots() - Jour Normal. Prix: ${premierSlot.basePrice}€, attendu: ${prixAttendu}€.`);
+      Logger.log(`FAILURE: getAvailableSlots() - Jour Normal (2 arrêts). Prix: ${premierSlot.basePrice.toFixed(2)}€, attendu: ${prixAttendu.toFixed(2)}€.`);
     }
     if (premierSlot.tags.length === 0) {
        Logger.log(`SUCCESS: getAvailableSlots() - Jour Normal. Tags vides comme attendu.`);
@@ -160,7 +158,7 @@ function testerGetAvailableSlots() {
     Logger.log(`INFO: getAvailableSlots() - Jour Normal. Aucun créneau trouvé pour ${dateTestNormal}, test de prix sauté.`);
   }
 
-  // --- Scénario 2: Un samedi, 3 arrêts supplémentaires ---
+  // --- Scénario 2: Un samedi, 4 arrêts au total ---
   let testDateSamedi = new Date();
   attempts = 0;
   do {
@@ -170,17 +168,15 @@ function testerGetAvailableSlots() {
 
   if (testDateSamedi.getDay() === 6) {
     const dateTestSamediStr = formatDateForCompare_(testDateSamedi);
-    // arretsSupplementaires = 3, donc 4 arrêts au total
-    const slotsSamedi = getAvailableSlots(dateTestSamediStr, 3);
+    const slotsSamedi = getAvailableSlots(dateTestSamediStr, 3); // 3 arrêts sup = 4 au total
      if (slotsSamedi && slotsSamedi.length > 0) {
       const premierSlot = slotsSamedi[0];
-      // Prix = 4 arrêts * BASE_PAR_ARRET + SURCHARGE_SAMEDI
-      const prixAttendu = (4 * config.TARIFS.BASE_PAR_ARRET) + config.TARIFS.SAMEDI.SURCHARGE_FIXE;
+      const prixAttendu = calculePrixBase_(config, 4, { date: dateTestSamediStr }).totalHT;
 
        if (premierSlot.basePrice.toFixed(2) === prixAttendu.toFixed(2)) {
-        Logger.log(`SUCCESS: getAvailableSlots() - Samedi 3 arrêts. Prix: ${premierSlot.basePrice}€, attendu: ${prixAttendu}€.`);
+        Logger.log(`SUCCESS: getAvailableSlots() - Samedi (4 arrêts). Prix: ${premierSlot.basePrice.toFixed(2)}€, attendu: ${prixAttendu.toFixed(2)}€.`);
       } else {
-        Logger.log(`FAILURE: getAvailableSlots() - Samedi 3 arrêts. Prix: ${premierSlot.basePrice}€, attendu: ${prixAttendu}€.`);
+        Logger.log(`FAILURE: getAvailableSlots() - Samedi (4 arrêts). Prix: ${premierSlot.basePrice.toFixed(2)}€, attendu: ${prixAttendu.toFixed(2)}€.`);
       }
       if (premierSlot.tags.includes("samedi")) {
          Logger.log(`SUCCESS: getAvailableSlots() - Samedi. Tag 'samedi' présent.`);
@@ -194,23 +190,27 @@ function testerGetAvailableSlots() {
       Logger.log(`INFO: getAvailableSlots() - Samedi. Aucun samedi trouvé dans les 7 prochains jours, test sauté.`);
   }
 
-  // --- Scénario 3: Urgence (aujourd'hui), 0 arrêt supplémentaire ---
+  // --- Scénario 3: Urgence (aujourd'hui), 1 arrêt ---
   const dateAujourdhui = formatDateForCompare_(new Date());
-  // arretsSupplementaires = 0, donc 1 arrêt au total (prise en charge)
-  const slotsUrgence = getAvailableSlots(dateAujourdhui, 0);
+  const slotsUrgence = getAvailableSlots(dateAujourdhui, 0); // 0 arrêt sup = 1 au total
   if (slotsUrgence && slotsUrgence.length > 0) {
     const premierSlot = slotsUrgence[0];
-    if (premierSlot.tags.includes("urgence")) {
-      // Prix = 1 arrêt * BASE_PAR_ARRET + SURCHARGE_URGENCE
-      const prixAttendu = config.TARIFS.BASE_PAR_ARRET + config.TARIFS.URGENCE.SURCHARGE;
-      if (premierSlot.basePrice.toFixed(2) === prixAttendu.toFixed(2)) {
-         Logger.log(`SUCCESS: getAvailableSlots() - Urgence. Prix et tag corrects. Prix: ${premierSlot.basePrice}€, attendu: ${prixAttendu}€.`);
+    const slotDate = buildDateFromDayAndTime_(dateAujourdhui, premierSlot.timeRange);
+    const estUrgent = _isUrgentWindow_(new Date(), slotDate, _resolvePricingShape_(config).urgenceCutoff);
+
+    if (estUrgent) {
+      if (premierSlot.tags.includes("urgence")) {
+        const prixAttendu = calculePrixBase_(config, 1, { date: dateAujourdhui, slotStart: slotDate }).totalHT;
+        if (premierSlot.basePrice.toFixed(2) === prixAttendu.toFixed(2)) {
+           Logger.log(`SUCCESS: getAvailableSlots() - Urgence. Prix et tag corrects. Prix: ${premierSlot.basePrice.toFixed(2)}€, attendu: ${prixAttendu.toFixed(2)}€.`);
+        } else {
+           Logger.log(`FAILURE: getAvailableSlots() - Urgence. Mauvais prix. Prix: ${premierSlot.basePrice.toFixed(2)}€, attendu: ${prixAttendu.toFixed(2)}€.`);
+        }
       } else {
-         Logger.log(`FAILURE: getAvailableSlots() - Urgence. Mauvais prix. Prix: ${premierSlot.basePrice}€, attendu: ${prixAttendu}€.`);
+        Logger.log(`FAILURE: getAvailableSlots() - Urgence. Le créneau devrait être taggué 'urgence' mais ne l'est pas.`);
       }
     } else {
-      // Pas forcément une failure, peut-être qu'il n'y a pas de créneaux urgents disponibles.
-      Logger.log("INFO: getAvailableSlots() - Urgence. Aucun créneau urgent trouvé, test de prix sauté.");
+      Logger.log("INFO: getAvailableSlots() - Urgence. Aucun créneau DANS LA FENETRE d'urgence trouvé, test de prix sauté.");
     }
   } else {
     Logger.log("INFO: getAvailableSlots() - Urgence. Aucun créneau trouvé pour aujourd'hui.");
