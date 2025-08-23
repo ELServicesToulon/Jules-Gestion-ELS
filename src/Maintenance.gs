@@ -34,6 +34,32 @@ function logAdminAction(action, statut) {
 }
 
 /**
+ * Installe le déclencheur quotidien pour le bilan de santé.
+ * Cette fonction est destinée à être exécutée manuellement une fois pour la configuration.
+ * Elle nettoie d'abord les anciens déclencheurs pour éviter les doublons.
+ */
+function INSTALL_triggers() {
+  const FN = 'runDailyHealthcheck';       // La fonction cible
+  const TZ = 'Europe/Paris';              // Cohérent avec le manifeste
+
+  // Nettoyer les doublons éventuels pour cette fonction
+  ScriptApp.getProjectTriggers()
+    .filter(t => t.getHandlerFunction() === FN)
+    .forEach(t => ScriptApp.deleteTrigger(t));
+
+  // Créer un déclencheur temporel : tous les jours vers 04:00 Europe/Paris
+  ScriptApp.newTrigger(FN)
+    .timeBased()
+    .everyDays(1)
+    .atHour(4)           // Heure locale du script
+    .nearMinute(0)       // Se cale au plus près de xh00 pour la fenêtre d'exécution
+    .inTimezone(TZ)      // Explicite le fuseau horaire
+    .create();
+
+  SpreadsheetApp.getUi().alert('Déclencheur quotidien installé', `La fonction '${FN}' s'exécutera tous les jours vers 4h du matin.`, SpreadsheetApp.getUi().ButtonSet.OK);
+}
+
+/**
  * Journalise une activité liée à une réservation dans l'onglet "Logs".
  * @param {string} idReservation L'ID de la réservation.
  * @param {string} emailClient L'e-mail du client.
