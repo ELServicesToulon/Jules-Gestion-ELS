@@ -39,10 +39,9 @@
     {
       "function": "runDailyHealthcheck",
       "runAs": "USER_DEPLOYING",
-      "event": {
-        "type": "CLOCK",
-        "frequency": "DAILY",
-        "hour": "4"
+      "timeDriven": {
+        "everyDays": 1,
+        "atHour": 4
       }
     }
   ],
