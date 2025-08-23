@@ -1,86 +1,47 @@
-/** ===================== TARIFICATION CENTRALE ===================== **
- * Toute modif de prix/règle se fait ici, et nulle part ailleurs.
- */
+/** ===================== TARIFICATION ===================== **/
 const TARIFS = {
-  // Bases monétaires (EUR)
   baseCourse: 15,           // 1 retrait + 1 PDL
-  surcUrgence: 5,           // +5€ si créneau démarre dans la fenêtre d'urgence
-  surcSamedi: 10,           // +10€ si créneau un samedi
-
-  // Fenêtre d'urgence
-  URGENCE_FENETRE_MIN: 45,  // modifiable à chaud
-
-  // Capacités de base
+  surcUrgence: 5,           // +5 €
+  surcSamedi: 10,           // +10 €
+  URGENCE_FENETRE_MIN: 45,  // fenêtre d'urgence (min)
   BASE_KM: 9,
   BASE_MIN: 30,
-
-  // Incréments par PDL supplémentaire (au-delà du 1er inclus dans la base)
-  // Prix par PDL: [2e, 3e, 4e, 5e], puis 6e+ = lastFallback
-  PDL_PRIX: [5, 4, 3, 4],
-  PDL_PRIX_FALLBACK: 5,
-
-  // Minutes & km ajoutés par PDL (mêmes règles de fallback)
-  PDL_MIN:  [15, 15, 15, 15],
-  PDL_KM:   [ 3,  2,  3,  3],
+  PDL_PRIX: [5, 4, 3, 4],   // 2e..5e
+  PDL_PRIX_FALLBACK: 5,     // 6e+
+  PDL_MIN:  [15,15,15,15],
   PDL_MIN_FALLBACK: 15,
-  PDL_KM_FALLBACK:  3,
+  PDL_KM:   [3, 2, 3, 3],
+  PDL_KM_FALLBACK: 3,
 };
 
-/** Outils date **/
-function _isSamedi_(d) { return d.getDay() === 6; } // 0=Dim ... 6=Sam
-function _estUrgent_(dateDebut, now) {
+function _isSamedi_(d){ return d.getDay()===6; }
+function _estUrgent_(dateDebut, now){
   if (!now) now = new Date();
-  const deltaMin = (dateDebut - now) / 60000;
+  const deltaMin = (dateDebut - now)/60000;
   return deltaMin >= 0 && deltaMin <= TARIFS.URGENCE_FENETRE_MIN;
 }
 
-/** Additionne une série avec fallback pour l’index 6e+ */
-function _sumWithFallback_(arr, fallback, count) {
-  if (count <= 0) return 0;
-  let sum = 0;
-  for (let i = 0; i < count; i++) {
-    sum += (i < arr.length) ? arr[i] : fallback;
-  }
-  return sum;
+function _sumWithFallback_(arr, fb, n){
+  let s=0; for (let i=0;i<n;i++) s += (i<arr.length?arr[i]:fb); return s;
 }
 
-/** Calcule prix/km/min à partir d'un créneau et nombre total de PDL (>=1) */
-function computeDevisForSlot_(dateDebut, nbPDL, now) {
-  if (now === undefined) {
-    now = new Date();
-  }
-  if (!nbPDL || nbPDL < 1) nbPDL = 1;
-
-  // PDL supplémentaires au-delà du 1er inclus
-  const extra = Math.max(0, nbPDL - 1);
-
-  const extraPrix = _sumWithFallback_(TARIFS.PDL_PRIX, TARIFS.PDL_PRIX_FALLBACK, extra);
-  const extraMin  = _sumWithFallback_(TARIFS.PDL_MIN,  TARIFS.PDL_MIN_FALLBACK,  extra);
-  const extraKm   = _sumWithFallback_(TARIFS.PDL_KM,   TARIFS.PDL_KM_FALLBACK,   extra);
-
-  let prix = TARIFS.baseCourse + extraPrix;
+function computeDevisForSlot_(dateDebut, nbPDL, now){
+  nbPDL = Math.max(1, Number(nbPDL||1));
+  const extra = nbPDL-1;
 
   const estUrgent = _estUrgent_(dateDebut, now);
   const estSamedi = _isSamedi_(dateDebut);
 
-  // Surcouches combinables (Urgence et/ou Samedi)
-  if (estUrgent) prix += TARIFS.surcUrgence;
-  if (estSamedi)  prix += TARIFS.surcSamedi;
-
-  return {
-    prix,
-    km: TARIFS.BASE_KM + extraKm,
-    minutes: TARIFS.BASE_MIN + extraMin,
-    flags: {
-      urgent: estUrgent,
-      samedi: estSamedi,
-      nbPDL
-    }
-  };
+  const prix   = TARIFS.baseCourse + _sumWithFallback_(TARIFS.PDL_PRIX, TARIFS.PDL_PRIX_FALLBACK, extra)
+                + (estUrgent ? TARIFS.surcUrgence : 0)
+                + (estSamedi ? TARIFS.surcSamedi : 0);
+  const minutes= TARIFS.BASE_MIN + _sumWithFallback_(TARIFS.PDL_MIN, TARIFS.PDL_MIN_FALLBACK, extra);
+  const km     = TARIFS.BASE_KM  + _sumWithFallback_(TARIFS.PDL_KM,  TARIFS.PDL_KM_FALLBACK,  extra);
+  return { prix, minutes, km, flags:{ urgent: estUrgent, samedi: estSamedi, nbPDL } };
 }
 
-/** Expose une vue "publique" (lecture seule) pour le front/admin */
-function getTarifsPublic() {
+function getTarifsPublic(){
+  // lecture seule pour le front/admin
   return {
     baseCourse: TARIFS.baseCourse,
     surcUrgence: TARIFS.surcUrgence,
@@ -95,6 +56,11 @@ function getTarifsPublic() {
     PDL_KM: TARIFS.PDL_KM.slice(),
     PDL_KM_FALLBACK: TARIFS.PDL_KM_FALLBACK,
   };
+}
+
+/** --- Self-test JSON via ?probe=tarifs --- */
+function _probeTarifs_(){
+  return { ok:true, now:new Date(), tarifs:getTarifsPublic() };
 }
 
 /** =======================
