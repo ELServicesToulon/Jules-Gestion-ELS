@@ -845,6 +845,15 @@ function changerMois(delta) {
 
 let CFG = null;
 
+const DEF_RULES = {
+  ALLOW_SAME_DAY: true,
+  SAME_DAY_CUTOFF_HOUR: 12,
+  MAX_ARRETS_VISIBLE: 12
+};
+function rules(){
+  return (CFG && CFG.REGLES) ? CFG.REGLES : DEF_RULES;
+}
+
 function showModalSkeleton() { basculerIndicateurChargement(true); }
 function hideModalSkeleton() { basculerIndicateurChargement(false); }
 function showSlotsSkeleton() { basculerIndicateurChargement(true); }
@@ -887,7 +896,7 @@ function openReservationModal(weekAnchorDateISO) {
       document.getElementById('tarif-error').classList.add('hidden');
 
       buildDayChips(weekAnchorDateISO);
-      buildArretsSelect(CFG);
+      buildArretsSelect();
       wireModalEvents();
       hideModalSkeleton();
 
@@ -901,15 +910,17 @@ function openReservationModal(weekAnchorDateISO) {
     .getConfiguration();
 }
 
-function buildDayChips(weekAnchorISO) {
-  const root = document.getElementById('js-day-chips');
+function buildDayChips(weekAnchorISO){
+  const root = document.getElementById('js-day-chips'); if(!root) return;
   root.innerHTML = '';
+
+  const R = rules(); // <-- ne lit plus CFG.REGLES en direct
   const week = computeWeekFromAnchor_(weekAnchorISO);
   const now = new Date();
 
   const cutoff = (d) => {
-    if (!CFG.REGLES.ALLOW_SAME_DAY) return d > stripTime_(now);
-    if (isSameDay_(d, now)) return now.getHours() < CFG.REGLES.SAME_DAY_CUTOFF_HOUR;
+    if (!R.ALLOW_SAME_DAY) return d > stripTime_(now);
+    if (isSameDay_(d, now)) return now.getHours() < (R.SAME_DAY_CUTOFF_HOUR ?? 12);
     return d >= stripTime_(now);
   };
 
@@ -938,10 +949,11 @@ function buildDayChips(weekAnchorISO) {
   }
 }
 
-function buildArretsSelect(cfg){
-  const sel = document.getElementById('select-arrets');
+function buildArretsSelect(){
+  const sel = document.getElementById('select-arrets'); if(!sel) return;
+  const R = rules();
+  const maxUI = Math.max(6, R.MAX_ARRETS_VISIBLE ?? 12);
   sel.innerHTML = '';
-  const maxUI = Math.max(6, cfg.REGLES?.MAX_ARRETS_VISIBLE || 12);
   for (let n=1;n<=maxUI;n++){
     const opt = document.createElement('option');
     opt.value = String(n);
