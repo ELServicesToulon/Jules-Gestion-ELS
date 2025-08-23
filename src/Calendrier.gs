@@ -5,88 +5,87 @@
 //              données de Google Calendar et les blocages manuels.
 // =================================================================
 
-// --- NOUVEAUX HELPERS POUR L'API TARIFAIRE ---
+// --- HELPERS TARIFAIRES & CALENDRIER ---
 
-/**
- * Construit un objet Date à partir d'une date (YYYY-MM-DD) et d'une heure (HHhMM).
- * @private
- * @param {string} dayString La date au format 'YYYY-MM-DD'.
- * @param {string} timeString L'heure au format 'HHhMM'.
- * @returns {Date} L'objet Date construit.
- */
-function buildDateFromDayAndTime_(dayString, timeString) {
-  const [year, month, day] = dayString.split('-').map(Number);
-  const [hour, minute] = timeString.replace('h', ':').split(':').map(Number);
-  // Le mois est 0-indexé en JS, donc on fait month - 1
-  return new Date(year, month - 1, day, hour, minute);
+function formatDateForCompare_(d) {
+  return Utilities.formatDate(d, Session.getScriptTimeZone(), "yyyy-MM-dd'T'HH:mm:ss");
+}
+
+function buildDateFromDayAndTime_(day, timeRange) {
+  const [h, m] = timeRange.split(/[:-]/)[0].split(":").map(n => parseInt(n, 10));
+  const d = new Date(day);
+  d.setHours(h, m, 0, 0);
+  return d;
 }
 
 /**
- * Vérifie si une date donnée est un samedi.
- * @private
- * @param {Date} date L'objet Date à vérifier.
- * @returns {boolean} Vrai si la date est un samedi, sinon faux.
+ * Génère les créneaux pour un jour donné, avec prix/km/min intégrés.
+ * @param {Date} day - La date pour laquelle générer les créneaux.
+ * @param {number} nbPDL - Le nombre de points de livraison.
+ * @param {object} config - L'objet de configuration (pour les horaires, etc.).
+ * @param {Array} autresCoursesPanier - Autres courses dans le panier.
+ * @returns {Array<Object>} Une liste de créneaux enrichis avec les données de devis.
  */
-function isSaturday_(date) {
-  return date.getDay() === 6;
-}
+function genererCreneauxPourJour_(day, nbPDL, config, autresCoursesPanier) {
+  const dayISO = Utilities.formatDate(day, Session.getScriptTimeZone(), "yyyy-MM-dd");
 
-/**
- * Vérifie si un créneau est considéré comme "urgent".
- * @private
- * @param {Date} slotDate La date et l'heure du créneau.
- * @param {object} config L'objet de configuration de l'application.
- * @returns {boolean} Vrai si le créneau est urgent, sinon faux.
- */
-function isUrgence_(slotDate, config) {
-  const now = new Date();
-  // Ne peut pas être urgent si le créneau est déjà passé
-  if (slotDate < now) return false;
+  // On calcule la durée estimée pour obtenir les créneaux disponibles
+  // Note: on utilise une approximation ici, car la durée exacte dépend du devis.
+  // On pourrait aussi boucler et ajuster, mais c'est plus complexe.
+  const tempDevisForDuration = computeDevisForSlot_(new Date(), nbPDL);
+  const dureeCourse = tempDevisForDuration.minutes;
 
-  // Le créneau est urgent si la différence en minutes est inférieure au seuil défini
-  const diffMinutes = (slotDate.getTime() - now.getTime()) / 60000;
-  return diffMinutes < (config.URGENT_DELAI_MIN || 30);
-}
+  const slotsDisponibles = obtenirCreneauxDisponiblesPourDate(dayISO, dureeCourse, config, null, null, autresCoursesPanier);
 
-/**
- * API – Retourne les créneaux compatibles pour un jour et un nombre d'arrêts donnés,
- * avec la tarification dynamique calculée côté serveur.
- * Cette fonction est exposée au client via google.script.run.
- *
- * @param {string} day La date de la recherche au format "YYYY-MM-DD".
- * @param {number} nbArrets Le nombre total d'arrêts pour la tournée (1 = prise en charge seule).
- * @returns {Array<Object>} Une liste d'objets créneau, chacun avec son tarif et ses détails.
- */
-function getAvailableSlots(dayISO, nbArretsFront, retour, autresCoursesPanier = []){
-  const CFG = getConfiguration();
-  const day = new Date(dayISO + 'T00:00:00');
+  const out = [];
+  for (const timeRange of slotsDisponibles) {
+    const start = buildDateFromDayAndTime_(day, timeRange);
+    const devis = computeDevisForSlot_(start, nbPDL);
 
-  // We must calculate the duration based on the total number of stops
-  const P = _resolvePricingShape_(CFG); // from pricing.gs
-  let n = Number(nbArretsFront || 1);
-  if (retour && P.retourAsStop) n += 1;
-
-  const arretsSupplementaires = Math.max(0, n - 1);
-  const duree = (CFG.DUREE_BASE || 30) + (arretsSupplementaires * (CFG.DUREE_ARRET_SUP || 15));
-
-  const slots = obtenirCreneauxDisponiblesPourDate(dayISO, duree, CFG, null, null, autresCoursesPanier);
-
-  return (slots || []).map(timeRange => {
-      const start = buildDateFromDayAndTime_(dayISO, timeRange);
-      const calc = calculePrixBase_(CFG, Number(nbArretsFront||1), {
-        date: day, slotStart: start, retour: !!retour
-      });
-      const tags = [];
-      if (_isSaturday_(day)) tags.push('samedi');
-      if (calc.regime === 'Urgent') tags.push('urgent');
-
-      // Return a format compatible with the existing front-end `afficherSelectionCreneaux` function
-      return {
-          timeRange: timeRange,
-          basePrice: calc.totalHT,
-          tags: tags
-      };
+    out.push({
+      startISO: formatDateForCompare_(start),
+      label: timeRange,
+      prix: devis.prix,
+      km: devis.km,
+      minutes: devis.minutes,
+      tags: [
+        `PDL:${devis.flags.nbPDL}`,
+        devis.flags.urgent ? "Urgent" : null,
+        devis.flags.samedi ? "Samedi" : null
+      ].filter(Boolean)
     });
+  }
+  return out;
+}
+
+/**
+ * API principale appelée par le front (annoncée dans le README).
+ * @param {string} dayISO - La date au format YYYY-MM-DD.
+ * @param {number} nbPDL - Le nombre total de points de livraison.
+ * @param {boolean} retour - (Ignoré, la logique est maintenant dans nbPDL).
+ * @param {Array} autresCoursesPanier - Pour la vérification de conflits.
+ * @returns {Array<Object>} La liste des créneaux disponibles et tarifés.
+ */
+function getAvailableSlots(dayISO, nbPDL, retour, autresCoursesPanier = []) {
+  const day = new Date(dayISO);
+  nbPDL = Number(nbPDL || 1);
+
+  // La configuration legacy est récupérée pour les paramètres de calendrier
+  const config = getConfig_()?.RESERVATION || {};
+
+  // On passe la config de réservation à la fonction qui génère les créneaux.
+  // Note: La vieille config est utilisée pour les heures d'ouverture, etc.
+  // Il faudra peut-être migrer ça aussi plus tard.
+  const configLegacyForCalendar = {
+      HEURE_DEBUT_SERVICE: config.horaires?.debut || "09:00",
+      HEURE_FIN_SERVICE: config.horaires?.fin || "18:00",
+      ID_CALENDRIER: "primary", // A adapter si nécessaire
+      ADMIN_EMAIL: "admin@example.com", // A adapter si nécessaire
+      DUREE_TAMPON_MINUTES: 5, // A adapter si nécessaire
+      INTERVALLE_CRENEAUX_MINUTES: 15, // A adapter si nécessaire
+  };
+
+  return genererCreneauxPourJour_(day, nbPDL, configLegacyForCalendar, autresCoursesPanier);
 }
 
 
