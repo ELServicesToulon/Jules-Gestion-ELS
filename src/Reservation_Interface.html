@@ -37,22 +37,6 @@
 </head>
 <body>
 
-  <script type="application/json" id="tarifs-json"><?!= TARIFS_JSON ?></script>
-  <script>
-    // Objet de configuration injecté par le serveur
-    const configServeur = {
-      appUrl: "<?= appUrl ?>",
-      nomService: "<?= nomService ?>",
-      URGENT_THRESHOLD_MINUTES: <?= URGENT_THRESHOLD_MINUTES || 45 ?>,
-      dateDuJour: "<?= dateDuJour ?>",
-      TARIFS: JSON.parse(document.getElementById('tarifs-json').textContent),
-      DUREE_BASE: <?= DUREE_BASE ?>,
-      DUREE_ARRET_SUP: <?= DUREE_ARRET_SUP ?>,
-      KM_BASE: <?= KM_BASE ?>,
-      KM_ARRET_SUP: <?= KM_ARRET_SUP ?>
-    };
-  </script>
-
   <div id="indicateur-chargement" class="indicateur-chargement-overlay hidden" role="status" aria-live="polite">
     <div class="spinner"></div>
   </div>
@@ -207,7 +191,25 @@
 
   <div id="conteneur-notifications" role="alert" aria-live="assertive"></div>
 
-  <script><?!= include('Reservation_JS'); ?></script>
+  <!-- Bundle front ELS -->
+  <script>
+    /* Balise de debug pour sourcer le fichier dans DevTools */
+    //# sourceURL=ELS_BUNDLE.js
+
+    // 1) Config publique du serveur
+    window.ELS = window.ELS || {};
+    ELS.CONFIG = <?= JSON.stringify(getConfigPublic()) ?>;
+
+    // 2) API + UI : on injecte le JS RAW, sans échappement HTML
+    <?!= HtmlService.createHtmlOutputFromFile('Reservation_JS').getContent(); ?>
+
+    // 3) Boot
+    if (ELS && typeof ELS.init === 'function') {
+      document.addEventListener('DOMContentLoaded', () => {
+        ELS.init(ELS.CONFIG);
+      });
+    }
+  </script>
 
 <!-- MODALE RÉSERVATION LIVRAISON PHARMACIE -->
 <div id="reservation-modal" aria-modal="true" role="dialog" tabindex="-1"
