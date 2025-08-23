@@ -58,6 +58,19 @@ function getTarifsPublic(){
   };
 }
 
+/**
+ * Returns the unified application configuration, combining static
+ * constants (like TARIFS) and dynamic settings from the spreadsheet.
+ * @returns {Object} The complete application configuration object.
+ */
+function getAppConfig() {
+  const dynamicConfig = getConfiguration();
+  return {
+    ...dynamicConfig,
+    TARIFS: TARIFS
+  };
+}
+
 /** --- Self-test JSON via ?probe=tarifs --- */
 function _probeTarifs_(){
   return { ok:true, now:new Date(), tarifs:getTarifsPublic() };
