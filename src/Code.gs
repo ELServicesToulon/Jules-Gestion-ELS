@@ -25,6 +25,8 @@ function onOpen(e) {
       .addItem("Sauvegarder le code du projet", "sauvegarderCodeProjet")
       .addItem("Sauvegarder les données", "sauvegarderDonnees")
       .addItem("Purger les anciennes données (RGPD)", "purgerAnciennesDonnees")
+      .addSeparator()
+      .addItem("Installer le déclencheur quotidien", "INSTALL_triggers")
       .addSeparator() // Added separator for clarity
       .addItem('Vérifier les en-têtes de colonnes', 'lancerVerificationManuelle'); // Added from Verification.gs
       
