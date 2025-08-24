@@ -4,7 +4,6 @@
   "runtimeVersion": "V8",
   "dependencies": {
     "enabledAdvancedServices": [
-      { "userSymbol": "Calendar", "serviceId": "calendar", "version": "v3" },
       { "userSymbol": "Drive",    "serviceId": "drive",    "version": "v3" },
       { "userSymbol": "Gmail",    "serviceId": "gmail",    "version": "v1" },
       { "userSymbol": "Sheets",   "serviceId": "sheets",   "version": "v4" },
