@@ -1,6 +1,7 @@
 {
   "timeZone": "Europe/Paris",
   "exceptionLogging": "STACKDRIVER",
+  "runtimeVersion": "V8",
   "dependencies": {
     "enabledAdvancedServices": [
       { "userSymbol": "Calendar", "serviceId": "calendar", "version": "v3" },
