@@ -6,7 +6,8 @@ function getTarifsPublic() {
 
   return {
     ok: true,
-    tarifs: buildTarifsPublic_(cfg.TARIFS)
+    tarifs: buildTarifsPublic_(cfg.TARIFS),
+    reservation: cfg.RESERVATION,
   };
 }
 
