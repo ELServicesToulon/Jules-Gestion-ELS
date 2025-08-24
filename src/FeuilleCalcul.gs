@@ -53,6 +53,7 @@ function enregistrerOuMajClient(donneesClient) {
  */
 function obtenirInfosClientParEmail(email) {
   try {
+    if (!email) return null;
     const feuilleClients = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Clients");
     if (!feuilleClients) return null;
 
@@ -85,6 +86,10 @@ function obtenirInfosClientParEmail(email) {
  * @param {string} emailClient L'e-mail du client.
  */
 function decrementerTourneesOffertesClient(emailClient) {
+  if (!emailClient) {
+    Logger.log("decrementerTourneesOffertesClient a été appelé sans emailClient.");
+    return;
+  }
   const lock = LockService.getScriptLock();
   if (!lock.tryLock(10000)) return;
   try {
