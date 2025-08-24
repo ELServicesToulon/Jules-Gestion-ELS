@@ -163,14 +163,24 @@ function doGet(e) {
     // Page par défaut : Interface de réservation
     const template = HtmlService.createTemplateFromFile('Reservation_Interface');
     const config = getConfiguration();
+    const page = (e && e.parameter && e.parameter.page) ? e.parameter.page : 'reservation';
 
-    template.publicConfig = getPublicConfig_();
-    template.appUrl = ScriptApp.getService().getUrl();
-    template.nomService = config.NOM_ENTREPRISE || "EL Services";
+    template.public = {
+      tarifs: getTarifsPublic().tarifs,
+      reservation: getConfig_().RESERVATION, // règles de réservation
+      ui: {
+        colors: { primary:'#8e44ad', day:'#3498db', option:'#5dade2' },
+        today: Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd'),
+        nomService: config.NOM_ENTREPRISE || "EL Services",
+        appUrl: ScriptApp.getService().getUrl()
+      }
+    };
+    template.page = page;
 
     return template.evaluate()
         .setTitle((config.NOM_ENTREPRISE || "EL Services") + " | Réservation")
-        .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+        .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
+        .addMetaTag('viewport','width=device-width, initial-scale=1');
 
   } catch (error) {
     Logger.log(`Erreur critique dans doGet: ${error.stack}`);

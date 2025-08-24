@@ -136,6 +136,36 @@ function chargerPanierDepuisLocalStorage() {
 
 // Point d'entrée principal
 document.addEventListener('DOMContentLoaded', () => {
+    // --- NOUVEAU : Mise à jour des cartes de tarifs au chargement ---
+    (function () {
+      const tarifs = window.__PUBLIC__?.tarifs;
+      if (!tarifs) return;
+
+      const eBase    = document.getElementById('tarif-base');
+      const eArrets  = document.getElementById('tarif-paliers');
+      const eOptions = document.getElementById('tarif-options');
+
+      const euros = (n) => (typeof n === 'number')
+        ? new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(n)
+        : '—';
+
+      if (eBase) {
+        eBase.textContent = `À partir de ${euros(tarifs.base)} la course.`;
+      }
+      if (eArrets) {
+        const jusqua = tarifs.arrets.palier_max_inclus;
+        eArrets.textContent = `+${euros(tarifs.arrets.prix_palier)} / arrêt jusqu'à ${jusqua}, puis +${euros(tarifs.arrets.prix_apres)}.`;
+      }
+      if (eOptions) {
+          let optionsText = [];
+          if (tarifs.options.urgence?.actif) optionsText.push(`Urgence +${euros(tarifs.options.urgence.surcharge)}`);
+          if (tarifs.options.samedi?.actif) optionsText.push(`Samedi +${euros(tarifs.options.samedi.surcharge)}`);
+          eOptions.textContent = optionsText.length > 0 ? optionsText.join(', ') : "Aucune option spéciale.";
+      }
+    })();
+    // --- FIN DE LA MISE À JOUR ---
+
+
     // Initialise le panier à partir du localStorage
     chargerPanierDepuisLocalStorage();
 
@@ -155,15 +185,15 @@ document.addEventListener('DOMContentLoaded', () => {
 // MODULE: NOUVELLE LOGIQUE POUR LA MODALE DE RÉSERVATION
 // =================================================================
 
-let CFG = null;            // la conf complète (doit contenir REGLES)
-let TARIFS_PUBLIC = null;  // la vue stable pour l’UI
+let CFG = window.__PUBLIC__ || {}; // la conf complète (doit contenir REGLES)
+let TARIFS_PUBLIC = window.__PUBLIC__?.tarifs;  // la vue stable pour l’UI
 
 const DEF_RULES = {
   ALLOW_SAME_DAY: true,
   SAME_DAY_CUTOFF_HOUR: 12,
   MAX_ARRETS_VISIBLE: 12
 };
-const rules = () => (CFG && CFG.REGLES) ? CFG.REGLES : DEF_RULES;
+const rules = () => (CFG && CFG.reservation) ? CFG.reservation : DEF_RULES;
 
 function showModalSkeleton() { basculerIndicateurChargement(true); }
 function hideModalSkeleton() { basculerIndicateurChargement(false); }
@@ -195,40 +225,22 @@ function openReservationModal(anchorISO) {
   };
 
   showModalSkeleton();
-  google.script.run
-    .withSuccessHandler(cfg => {
-      CFG = cfg;
-      if (!CFG || !CFG.TARIFS) {
-        showError('Tarifs non chargés.');
-        hydrateTarifCards(null);
-        hideModalSkeleton();
-        return;
-      }
 
-      google.script.run
-        .withSuccessHandler(tp => {
-          TARIFS_PUBLIC = tp;
-          hydrateTarifCards(tp);
+  // Les données (CFG, TARIFS_PUBLIC) sont maintenant chargées via window.__PUBLIC__
+  if (!CFG || !TARIFS_PUBLIC) {
+    showError('La configuration ou les tarifs ne sont pas disponibles.');
+    hydrateTarifCards(null); // Assure que l'UI reflète l'erreur
+    hideModalSkeleton();
+    return;
+  }
 
-          buildDayChips(anchorISO);
-          buildArretsSelect();
-          wireModalEvents();
-          hideModalSkeleton();
-          refreshSlotsPreview_();
-        })
-        .withFailureHandler(err => {
-            showError('Vue tarifs publics non chargée: ' + String(err));
-            hydrateTarifCards(null);
-            hideModalSkeleton();
-        })
-        .getTarifsPublic();
-    })
-    .withFailureHandler((err) => {
-        showError('Configuration non chargée: ' + String(err));
-        hydrateTarifCards(null);
-        hideModalSkeleton();
-    })
-    .getConfiguration();
+  // Plus besoin de google.script.run, on utilise les données déjà présentes
+  hydrateTarifCards(TARIFS_PUBLIC);
+  buildDayChips(anchorISO);
+  buildArretsSelect();
+  wireModalEvents();
+  hideModalSkeleton();
+  refreshSlotsPreview_();
 }
 
 function hydrateTarifCards(tp){
@@ -394,39 +406,6 @@ function wireModalEvents() {
     }
 }
 
-async function chargerTarifsUI(){
-  try{
-    google.script.run
-      .withSuccessHandler((t)=>{
-        if (!t || typeof t.baseCourse === 'undefined') return afficherTarifsManquants();
-        const card = document.querySelector('#card-tarifs');
-        if (!card) return; // Si la carte n'existe pas, on ne fait rien.
-
-        card.querySelector('#tarif-base').textContent = t.baseCourse.toFixed(2) + " €";
-        // Affiche la grille 2e..6e+
-        const pal = [...t.PDL_PRIX, t.PDL_PRIX_FALLBACK + " (6e+)"];
-        card.querySelector('#tarif-paliers').textContent = pal.join(' / ') + " €";
-        card.querySelector('#tarif-options').textContent = `Urgence +${t.surcUrgence} €, Samedi +${t.surcSamedi} €`;
-        card.classList.add('ok');
-      })
-      .withFailureHandler(err=>{
-        console.error('getTarifsPublic failed', err);
-        afficherTarifsManquants();
-      })
-      .getTarifsPublic();
-  }catch(e){
-    console.error(e); afficherTarifsManquants();
-  }
-}
-
-function afficherTarifsManquants(){
-  const card = document.querySelector('#card-tarifs');
-  if (!card) return;
-  card.querySelector('#tarif-base').textContent = "TARIFS manquant.";
-  card.querySelector('#tarif-paliers').textContent = "—";
-  card.querySelector('#tarif-options').textContent = "—";
-  card.classList.remove('ok');
-}
 
 async function chargerCreneaux(dayISO, nbPDL){
   google.script.run
