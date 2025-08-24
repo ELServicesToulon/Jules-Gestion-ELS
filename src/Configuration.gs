@@ -1,3 +1,7 @@
+const COLONNE_TYPE_REMISE_CLIENT = 'Type de Remise';
+const COLONNE_VALEUR_REMISE_CLIENT = 'Valeur Remise';
+const COLONNE_NB_TOURNEES_OFFERTES = 'Nombre Tournées Offertes';
+
 /** ===================== TARIFICATION ===================== **/
 const TARIFS = {
   baseCourse: 15,           // 1 retrait + 1 PDL
