@@ -163,7 +163,6 @@ function doGet(e) {
     // Page par défaut : Interface de réservation
     const template = HtmlService.createTemplateFromFile('Reservation_Interface');
     const config = getConfiguration();
-    const page = (e && e.parameter && e.parameter.page) ? e.parameter.page : 'reservation';
 
     template.public = {
       tarifs: getTarifsPublic().tarifs,
@@ -175,7 +174,9 @@ function doGet(e) {
         appUrl: ScriptApp.getService().getUrl()
       }
     };
-    template.page = page;
+    // Note: 'page' is declared at the top of the 'try' block.
+    // We provide a fallback here for when the URL parameter is absent.
+    template.page = page || 'reservation';
 
     return template.evaluate()
         .setTitle((config.NOM_ENTREPRISE || "EL Services") + " | Réservation")
