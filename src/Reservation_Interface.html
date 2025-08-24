@@ -193,8 +193,8 @@
 
 <!-- 1) variables pour le front en JSON, safe -->
 <script>
-  // Injection de la configuration publique, préparée côté serveur dans Code.gs
-  window.APP_CONFIG = <?!= JSON.stringify(publicConfig) ?>;
+  window.__PUBLIC__ = <?!= JSON.stringify(public) ?>;
+  window.__PAGE__   = '<?= page ?>';
 </script>
 
 <!-- 2) tes scripts “maison” doivent être inclus DANS des balises script -->
