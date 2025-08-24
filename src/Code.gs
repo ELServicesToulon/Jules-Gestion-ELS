@@ -170,7 +170,6 @@ function doGet(e) {
       ui: {
         colors: { primary:'#8e44ad', day:'#3498db', option:'#5dade2' },
         today: Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd'),
-        nomService: config.NOM_ENTREPRISE || "EL Services",
         appUrl: ScriptApp.getService().getUrl()
       }
     };

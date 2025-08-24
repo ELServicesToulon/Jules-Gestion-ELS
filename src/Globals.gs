@@ -1,3 +1,5 @@
+const EXEC_URL = ScriptApp.getService().getUrl();
+
 /**
  * =================================================================
  *                      GLOBAL VARIABLES

@@ -10,6 +10,11 @@
  */
 function getPublicConfig_() {
   return {
+    endpoints: {
+      exec: EXEC_URL,
+      admin: EXEC_URL + '?page=admin',
+      client: EXEC_URL + '?page=gestion',
+    },
     ui: {
       brand: "EL Services",
       couleurs: {
