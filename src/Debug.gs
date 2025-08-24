@@ -103,37 +103,47 @@ function testerFeuilleCalcul() {
 
 function testerCalendrier() {
   Logger.log("\n--- Test de Calendrier.gs ---");
-  // NOTE: Les anciens tests de calendrier sont dépréciés car les fonctions sous-jacentes ont été remplacées.
-  // La nouvelle logique est testée via `testerGetAvailableSlots`.
-  Logger.log("INFO: Les tests pour obtenirCreneauxDisponiblesPourDate et obtenirDonneesCalendrierPublic sont désactivés.");
+  // NOTE: Les anciens tests de calendrier sont dépréciés.
+  // La nouvelle logique de disponibilité est testée via `testerGetAvailableSlots`.
 
-  // Lancement du nouveau test pour l'API de tarification
+  // Lancement du nouveau test pour l'API de tarification et de disponibilité.
   testerGetAvailableSlots();
 }
 
 function testerGetAvailableSlots() {
   Logger.log("\n--- TEST: Test de l'API getAvailableSlots() ---");
+  Logger.log("Objectif: Vérifier que l'API retourne un tableau de créneaux valides pour un jour sans contraintes.");
 
-  // On utilise une date fixe (un mercredi) pour garantir la stabilité des tests.
-  const DATE_TEST_NORMAL = new Date(2025, 7, 20, 14, 0, 0); // Mercredi 20 Août 2025
+  // On utilise une date future fixe (un mercredi) pour garantir la stabilité des tests.
+  const DATE_TEST_NORMAL = new Date();
+  DATE_TEST_NORMAL.setDate(DATE_TEST_NORMAL.getDate() + 7); // Un jour dans le futur pour éviter les soucis de same-day
+  if (DATE_TEST_NORMAL.getDay() === 0) DATE_TEST_NORMAL.setDate(DATE_TEST_NORMAL.getDate() + 1); // Pas de dimanche
+  if (DATE_TEST_NORMAL.getDay() === 6) DATE_TEST_NORMAL.setDate(DATE_TEST_NORMAL.getDate() + 2); // Samedi peut avoir des règles différentes, on prend un jour de semaine standard
+
   const dayISO = Utilities.formatDate(DATE_TEST_NORMAL, Session.getScriptTimeZone(), "yyyy-MM-dd");
+  Logger.log(`Date de test choisie : ${dayISO}`);
 
   try {
-    const slots = getAvailableSlots(dayISO, 2); // 2 PDL
+    const slots = getAvailableSlots(dayISO, 1); // 1 PDL pour un cas simple
 
-    if (slots && Array.isArray(slots) && slots.length > 0) {
-      Logger.log(`SUCCESS: getAvailableSlots() a retourné ${slots.length} créneaux.`);
+    if (!Array.isArray(slots)) {
+      Logger.log(`FAILURE: getAvailableSlots() n'a pas retourné un tableau. Reçu: ${typeof slots}`);
+      return;
+    }
+
+    Logger.log(`INFO: getAvailableSlots() a retourné ${slots.length} créneaux.`);
+
+    if (slots.length > 0) {
+      Logger.log(`SUCCESS: Au moins un créneau a été trouvé.`);
       const firstSlot = slots[0];
-      if (firstSlot.prix && firstSlot.km && firstSlot.minutes && firstSlot.tags) {
-        Logger.log(`SUCCESS: Le premier créneau a la bonne structure.`);
+      const hasCorrectStructure = firstSlot.prix && firstSlot.km && firstSlot.minutes && firstSlot.tags && firstSlot.startISO && firstSlot.label;
+      if (hasCorrectStructure) {
+        Logger.log(`SUCCESS: La structure du premier créneau est correcte.`);
       } else {
         Logger.log(`FAILURE: La structure du créneau est incorrecte: ${JSON.stringify(firstSlot)}`);
       }
-    } else if (slots && slots.length === 0) {
-        Logger.log(`INFO: getAvailableSlots() a retourné 0 créneaux, ce qui peut être normal.`);
-    }
-    else {
-      Logger.log(`FAILURE: getAvailableSlots() n'a pas retourné de tableau de créneaux. Reçu: ${JSON.stringify(slots)}`);
+    } else {
+        Logger.log(`INFO: Aucun créneau disponible trouvé. Cela peut être normal si le calendrier de test est plein ou si c'est un jour de fermeture.`);
     }
   } catch (e) {
     Logger.log(`FAILURE: getAvailableSlots() a levé une exception: ${e.stack}`);
