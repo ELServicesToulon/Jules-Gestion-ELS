@@ -96,5 +96,16 @@ function genererCreneauxPourJour_(day /*Date*/, nbPDL){
 }
 
 function getAvailableSlots(dayISO, nbPDL){
-  return genererCreneauxPourJour_(new Date(dayISO), Number(nbPDL||1));
+  // --- AJOUT DE VALIDATION ---
+  if (!dayISO || typeof dayISO !== 'string') {
+    Logger.log(`AVERTISSEMENT: L'appel à getAvailableSlots a été fait sans dayISO valide (reçu: ${dayISO}).`);
+    return [];
+  }
+  const date = new Date(dayISO);
+  if (isNaN(date.getTime())) {
+    Logger.log(`AVERTISSEMENT: dayISO "${dayISO}" n'a pas pu être parsé comme une date valide.`);
+    return [];
+  }
+  // --- FIN DE LA VALIDATION ---
+  return genererCreneauxPourJour_(date, Number(nbPDL||1));
 }
