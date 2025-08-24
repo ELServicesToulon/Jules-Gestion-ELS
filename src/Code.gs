@@ -59,7 +59,7 @@ function onOpen(e) {
  * @returns {ContentService.TextOutput|null} Une réponse de données ou null.
  */
 function handleApiRequest(e) {
-  const parameter = e.parameter;
+  const parameter = (e && e.parameter) || {};
 
   if (parameter.probe) {
     switch (parameter.probe) {
