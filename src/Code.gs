@@ -164,6 +164,7 @@ function doGet(e) {
     const template = HtmlService.createTemplateFromFile('Reservation_Interface');
     const config = getConfiguration();
 
+    template.publicConfig = getPublicConfig_();
     template.appUrl = ScriptApp.getService().getUrl();
     template.nomService = config.NOM_ENTREPRISE || "EL Services";
 
