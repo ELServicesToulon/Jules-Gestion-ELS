@@ -31,7 +31,6 @@ function lancerTousLesTests() {
   testerUtilitaires();
   testerFeuilleCalcul();
   testerCalendrier();
-  testerReservation();
   testerGestionClient();
   testerAdministration();
   testerMaintenance();
@@ -148,23 +147,6 @@ function testerGetAvailableSlots() {
   } catch (e) {
     Logger.log(`FAILURE: getAvailableSlots() a levé une exception: ${e.stack}`);
   }
-}
-
-function testerReservation() {
-  Logger.log("\n--- Test de Reservation.gs ---");
-  // const demain = new Date();
-  // demain.setDate(demain.getDate() + 1);
-  // const dateTest = formaterDateEnYYYYMMDD(demain);
-
-  // NOTE JULES: Le test pour calculerPrixEtDureeServeur() est déprécié car cette fonction
-  // est maintenant remplacée par l'API getAvailableSlots() qui est testée dans testerCalendrier().
-  // const calcul = calculerPrixEtDureeServeur(2, true, dateTest, "10h00", TEST_CLIENT);
-  // if (calcul && typeof calcul.prix === 'number' && typeof calcul.duree === 'number') {
-  //   Logger.log(`SUCCESS: calculerPrixEtDureeServeur(). Prix calculé: ${calcul.prix.toFixed(2)}€, Durée: ${calcul.duree}min.`);
-  // } else {
-  //   Logger.log("FAILURE: calculerPrixEtDureeServeur()");
-  // }
-  Logger.log("INFO: Le test de Reservation.gs est actuellement sans objet car la logique a été déplacée vers getAvailableSlots().");
 }
 
 function testerGestionClient() {
