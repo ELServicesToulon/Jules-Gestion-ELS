@@ -16,17 +16,78 @@ function _sameDayOK_(start){
   const deltaMin = (start - new Date())/60000;
   return deltaMin >= CONFIG_PLANNING.SAME_DAY_CUTOFF_MINUTES;
 }
-function isSlotDispo_(start /*, planning, nbPDL */){
-  // TODO: tes contrôles Agenda existants
-  return _sameDayOK_(start);
+
+/**
+ * Récupère les événements du calendrier et les plages bloquées pour un jour donné.
+ * @param {Date} date Le jour pour lequel récupérer les indisponibilités.
+ * @returns {Array<{start: Date, end: Date}>} Un tableau d'objets avec les heures de début et de fin des occupations.
+ */
+function getCalendarAndBlockedEvents_(date) {
+  let busySlots = [];
+  try {
+    // @ts-ignore
+    const calendarId = ID_CALENDRIER; // Assure-toi que cette variable globale est définie
+    if (calendarId) {
+      const events = CalendarApp.getCalendarById(calendarId).getEventsForDay(date);
+      busySlots = events.map(e => ({ start: e.getStartTime(), end: e.getEndTime() }));
+    }
+  } catch (e) {
+    Logger.log(`Avertissement : Impossible de récupérer les événements du calendrier pour le ${date}. Erreur : ${e.message}`);
+  }
+
+  try {
+    // @ts-ignore
+    if (typeof obtenirPlagesBloqueesPourDate === 'function') {
+      // @ts-ignore
+      const blocked = obtenirPlagesBloqueesPourDate(date);
+      busySlots = busySlots.concat(blocked);
+    }
+  } catch(e) {
+    Logger.log(`Avertissement : Impossible de récupérer les plages bloquées pour le ${date}. Erreur : ${e.message}`);
+  }
+
+  return busySlots;
+}
+
+
+/**
+ * Vérifie si un créneau est disponible en tenant compte des contraintes (jour même, événements existants).
+ * @param {Date} start L'heure de début du créneau proposé.
+ * @param {number} durationMinutes La durée du créneau en minutes.
+ * @param {Array<{start: Date, end: Date}>} busySlots Les créneaux déjà occupés.
+ * @returns {boolean} Vrai si le créneau est disponible.
+ */
+function isSlotDispo_(start, durationMinutes, busySlots){
+  if (!_sameDayOK_(start)) return false;
+
+  const end = new Date(start.getTime() + durationMinutes * 60000);
+
+  for (const busy of busySlots) {
+    const busyStart = new Date(busy.start);
+    const busyEnd = new Date(busy.end);
+    // Vérifie s'il y a un chevauchement
+    if (start < busyEnd && end > busyStart) {
+      return false; // Le créneau chevauche un événement existant
+    }
+  }
+
+  return true;
 }
 
 function genererCreneauxPourJour_(day /*Date*/, nbPDL){
   const out=[];
+  // On récupère une seule fois les événements pour la journée
+  const busySlots = getCalendarAndBlockedEvents_(day);
+
   for (const tr of CONFIG_PLANNING.TIME_RANGES){
     const start = buildDateFromDayAndTime_(day, tr);
-    if (!isSlotDispo_(start, null, nbPDL)) continue;
+
+    // On calcule d'abord le devis pour connaître la durée
     const devis = computeDevisForSlot_(start, nbPDL);
+
+    // On vérifie la disponibilité avec la durée exacte
+    if (!isSlotDispo_(start, devis.minutes, busySlots)) continue;
+
     out.push({ startISO: formatDateForCompare_(start), label: tr,
                prix: devis.prix, km: devis.km, minutes: devis.minutes,
                tags: [ `PDL:${devis.flags.nbPDL}`, devis.flags.urgent?'Urgent':null, devis.flags.samedi?'Samedi':null ].filter(Boolean) });
