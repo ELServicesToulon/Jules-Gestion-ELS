@@ -255,3 +255,5 @@ function renderClientPage(e) {
 
 // Exposer au client
 function validateSessionServer(sessionId){ return validateSession(sessionId); } // alias clair
+
+// test pour déclencher le workflow
