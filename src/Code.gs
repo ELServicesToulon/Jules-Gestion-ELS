@@ -166,7 +166,7 @@ function doGet(e) {
 
     template.public = {
       tarifs: getTarifsPublic().tarifs,
-      reservation: getConfig_().RESERVATION, // règles de réservation
+      reservation: REGLES, // règles de réservation
       ui: {
         colors: { primary:'#8e44ad', day:'#3498db', option:'#5dade2' },
         today: Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd'),
