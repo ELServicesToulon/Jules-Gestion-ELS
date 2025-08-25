@@ -1,0 +1,22 @@
+# Toujours relatif à src/ (rootDir)
+# Dossiers à ignorer
+node_modules/
+**/.DS_Store
+**/.git/
+**/.gitignore
+
+# Fichiers de doc/tests
+**/*.md
+**/*.test.*
+**/*.spec.*
+
+# Assets non utiles côté Apps Script
+**/*.png
+**/*.jpg
+**/*.svg
+**/*.map
+
+# Typescript si tu en as
+**/*.ts
+**/*.tsx
+tsconfig.json
