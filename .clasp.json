@@ -1,0 +1,5 @@
+$utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+$json = '{"scriptId":"1QccdTFLil488QDBf1ooMsUuQldFiJXaWg1kKeX4_L5YfNfmcBbsByp8Z","rootDir":"src"}'
+[System.IO.File]::WriteAllText(".clasp.json", $json, $utf8NoBom)
+
+
