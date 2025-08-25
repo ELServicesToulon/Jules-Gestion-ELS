@@ -136,64 +136,162 @@ function chargerPanierDepuisLocalStorage() {
 
 // Point d'entrée principal
 document.addEventListener('DOMContentLoaded', () => {
-    // --- NOUVEAU : Mise à jour des cartes de tarifs au chargement ---
-    (function () {
-      const tarifs = window.__PUBLIC__?.tarifs;
-      if (!tarifs) return;
+  basculerIndicateurChargement(true);
 
-      const eBase    = document.getElementById('tarif-base');
-      const eArrets  = document.getElementById('tarif-paliers');
-      const eOptions = document.getElementById('tarif-options');
+  google.script.run
+    .withSuccessHandler(result => {
+      if (result && result.ok) {
+        window.__TARIFS__ = result; // Contient .tarifs et .reservation
 
-      const euros = (n) => (typeof n === 'number')
-        ? new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(n)
-        : '—';
-
-      if (eBase) {
-        eBase.textContent = `À partir de ${euros(tarifs.base)} la course.`;
+        const aujourdhui = new Date().toISOString();
+        google.script.run
+          .withSuccessHandler(planningResult => {
+            initCalendrier(planningResult, result);
+            basculerIndicateurChargement(false);
+          })
+          .withFailureHandler(err => {
+            afficherErreur("Impossible de charger le planning: " + (err.message || err));
+            basculerIndicateurChargement(false);
+          })
+          .getPlanningMois(aujourdhui);
+      } else {
+        const message = result && result.errors ? result.errors.join(', ') : "Format de réponse invalide.";
+        afficherErreur("Erreur de configuration des tarifs: " + message);
+        basculerIndicateurChargement(false);
       }
-      if (eArrets) {
-        const jusqua = tarifs.arrets.palier_max_inclus;
-        eArrets.textContent = `+${euros(tarifs.arrets.prix_palier)} / arrêt jusqu'à ${jusqua}, puis +${euros(tarifs.arrets.prix_apres)}.`;
-      }
-      if (eOptions) {
-          let optionsText = [];
-          if (tarifs.options.urgence?.actif) optionsText.push(`Urgence +${euros(tarifs.options.urgence.surcharge)}`);
-          if (tarifs.options.samedi?.actif) optionsText.push(`Samedi +${euros(tarifs.options.samedi.surcharge)}`);
-          eOptions.textContent = optionsText.length > 0 ? optionsText.join(', ') : "Aucune option spéciale.";
-      }
-    })();
-    // --- FIN DE LA MISE À JOUR ---
+    })
+    .withFailureHandler(err => {
+      afficherErreur("Impossible de charger la configuration: " + (err.message || err));
+      basculerIndicateurChargement(false);
+    })
+    .getTarifsPublic();
 
+  // La gestion du panier peut être initialisée en parallèle
+  chargerPanierDepuisLocalStorage();
+  const listePanier = document.getElementById('liste-panier');
+  if (listePanier) {
+    listePanier.addEventListener('click', gererActionsPanier);
+  }
+});
 
-    // Initialise le panier à partir du localStorage
-    chargerPanierDepuisLocalStorage();
+// Global state for the calendar
+let dateAffichee = new Date();
 
-    // Attache l'écouteur d'événement pour les actions sur le panier
-    const listePanier = document.getElementById('liste-panier');
-    if (listePanier) {
-        listePanier.addEventListener('click', gererActionsPanier);
+function initCalendrier(planning, cfg) {
+  // Update the tariff cards on the page (this logic was in the old DOMContentLoaded)
+  (function () {
+    const tarifs = cfg.tarifs;
+    if (!tarifs) return;
+
+    const eBase    = document.getElementById('tarif-base');
+    const eArrets  = document.getElementById('tarif-paliers');
+    const eOptions = document.getElementById('tarif-options');
+
+    const euros = (n) => (typeof n === 'number')
+      ? new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(n)
+      : '—';
+
+    if (eBase) {
+      eBase.textContent = `À partir de ${euros(tarifs.base)} la course.`;
+    }
+    if (eArrets) {
+      const jusqua = tarifs.arrets.palier_max_inclus;
+      eArrets.textContent = `+${euros(tarifs.arrets.prix_palier)} / arrêt jusqu'à ${jusqua}, puis +${euros(tarifs.arrets.prix_apres)}.`;
+    }
+    if (eOptions) {
+        let optionsText = [];
+        if (tarifs.options.urgence?.actif) optionsText.push(`Urgence +${euros(tarifs.options.urgence.surcharge)}`);
+        if (tarifs.options.samedi?.actif) optionsText.push(`Samedi +${euros(tarifs.options.samedi.surcharge)}`);
+        eOptions.textContent = optionsText.length > 0 ? optionsText.join(', ') : "Aucune option spéciale.";
+    }
+  })();
+
+  renderCalendrier(planning);
+
+  // Attach event listeners for month navigation
+  document.getElementById('btn-mois-precedent').onclick = () => changerMois(-1);
+  document.getElementById('btn-mois-suivant').onclick = () => changerMois(1);
+}
+
+function renderCalendrier(planning) {
+  const grille = document.getElementById('grille-calendrier');
+  const titre = document.getElementById('titre-calendrier');
+  grille.innerHTML = '';
+
+  const annee = dateAffichee.getFullYear();
+  const mois = dateAffichee.getMonth();
+
+  titre.textContent = new Date(annee, mois).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+
+  const premierJourDuMois = new Date(annee, mois, 1).getDay();
+  // Adjust to make Monday the first day of the week (0=Monday, 6=Sunday)
+  const offset = (premierJourDuMois === 0) ? 6 : premierJourDuMois - 1;
+
+  const nbJoursDansMois = new Date(annee, mois + 1, 0).getDate();
+
+  // Add empty cells for the days before the first day of the month
+  for (let i = 0; i < offset; i++) {
+    grille.insertAdjacentHTML('beforeend', '<div class="jour-calendrier vide"></div>');
+  }
+
+  // Create a map of planning for quick lookup
+  const planningMap = new Map(planning.map(p => [p.date, p.disponible]));
+
+  // Add cells for each day of the month
+  for (let i = 1; i <= nbJoursDansMois; i++) {
+    const jourDate = new Date(annee, mois, i);
+    const dateISO = jourDate.toISOString().slice(0, 10);
+    const disponible = planningMap.get(dateISO) || false;
+
+    const jourDiv = document.createElement('div');
+    jourDiv.className = 'jour-calendrier';
+    jourDiv.textContent = i;
+    jourDiv.dataset.date = dateISO;
+
+    if (disponible) {
+      jourDiv.classList.add('disponible');
+      jourDiv.onclick = () => openReservationModal(dateISO);
+    } else {
+      jourDiv.classList.add('indisponible');
     }
 
-    // La logique d'ouverture de la modale `openReservationModal` est maintenant
-    // attachée directement aux jours du calendrier dans `Reservation_Interface.html`.
-    // Ce script n'a plus besoin de le faire.
-});
+    // Highlight today
+    const aujourdhui = new Date();
+    if (jourDate.toDateString() === aujourdhui.toDateString()) {
+      jourDiv.classList.add('aujourdhui');
+    }
+
+    grille.appendChild(jourDiv);
+  }
+}
+
+function changerMois(delta) {
+  dateAffichee.setMonth(dateAffichee.getMonth() + delta);
+  basculerIndicateurChargement(true);
+
+  google.script.run
+    .withSuccessHandler(planningResult => {
+      renderCalendrier(planningResult);
+      basculerIndicateurChargement(false);
+    })
+    .withFailureHandler(err => {
+      afficherErreur("Impossible de charger le planning pour le nouveau mois: " + (err.message || err));
+      basculerIndicateurChargement(false);
+    })
+    .getPlanningMois(dateAffichee.toISOString());
+}
 
 
 // =================================================================
 // MODULE: NOUVELLE LOGIQUE POUR LA MODALE DE RÉSERVATION
 // =================================================================
 
-let CFG = window.__PUBLIC__ || {}; // la conf complète (doit contenir REGLES)
-let TARIFS_PUBLIC = window.__PUBLIC__?.tarifs;  // la vue stable pour l’UI
-
 const DEF_RULES = {
   ALLOW_SAME_DAY: true,
   SAME_DAY_CUTOFF_HOUR: 12,
   MAX_ARRETS_VISIBLE: 12
 };
-const rules = () => (CFG && CFG.reservation) ? CFG.reservation : DEF_RULES;
+const rules = () => (window.__TARIFS__ && window.__TARIFS__.reservation) ? window.__TARIFS__.reservation : DEF_RULES;
 
 function showModalSkeleton() { basculerIndicateurChargement(true); }
 function hideModalSkeleton() { basculerIndicateurChargement(false); }
@@ -226,8 +324,8 @@ function openReservationModal(anchorISO) {
 
   showModalSkeleton();
 
-  // Les données (CFG, TARIFS_PUBLIC) sont maintenant chargées via window.__PUBLIC__
-  if (!CFG || !TARIFS_PUBLIC) {
+  const a_tarifs = window.__TARIFS__ && window.__TARIFS__.tarifs;
+  if (!a_tarifs) {
     showError('La configuration ou les tarifs ne sont pas disponibles.');
     hydrateTarifCards(null); // Assure que l'UI reflète l'erreur
     hideModalSkeleton();
@@ -235,7 +333,7 @@ function openReservationModal(anchorISO) {
   }
 
   // Plus besoin de google.script.run, on utilise les données déjà présentes
-  hydrateTarifCards(TARIFS_PUBLIC);
+  hydrateTarifCards(a_tarifs);
   buildDayChips(anchorISO);
   buildArretsSelect();
   wireModalEvents();
@@ -247,7 +345,7 @@ function hydrateTarifCards(tp){
   const boxBase   = document.getElementById('card-base');
   const boxStops  = document.getElementById('card-stops');
   const boxOpt    = document.getElementById('card-opts');
-  const fail = !tp || tp.ok === false || !tp.tables || !tp.tables.Normal;
+  const fail = !tp;
 
   if (fail){
     setCard(boxBase,  'Config vide ou invalide');
@@ -256,14 +354,13 @@ function hydrateTarifCards(tp){
     return;
   }
 
-  const cum = tp.tables.Normal; // tableau [prix 1 arrêt, 2 arrêts, 3, 4, 5, 6+]
-  const prix1 = cum[0];
-  const inc2  = cum[1] - cum[0]; // surcoût 2e arrêt
-  const inc5  = cum[4] - cum[3]; // surcoût 5e (vaut pour 6+ si grille en paliers)
+  const prix1 = tp.base;
+  const inc2  = tp.arrets.prix_palier;
+  const inc5  = tp.arrets.prix_apres;
 
   setCard(boxBase,  `${prix1.toFixed(2)} € HT la course de base`);
-  setCard(boxStops, `+${inc2.toFixed(2)} € / arrêt (2→4), puis +${inc5.toFixed(2)} € à partir du 5ᵉ`);
-  setCard(boxOpt,   tp.retourEquivArret ? `Retour pharmacie = +1 arrêt` : `Retour pharmacie inclus`);
+  setCard(boxStops, `+${inc2.toFixed(2)} € / arrêt (2→${tp.arrets.palier_max_inclus}), puis +${inc5.toFixed(2)} € au-delà`);
+  setCard(boxOpt,   tp.options.retour_compte_comme_arret ? `Retour pharmacie = +1 arrêt` : `Retour pharmacie inclus`);
 
   function setCard(el, txt){ if(el) el.querySelector('.card-body').textContent = txt; }
 }
