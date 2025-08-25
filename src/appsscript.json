@@ -4,6 +4,7 @@
   "runtimeVersion": "V8",
   "dependencies": {
     "enabledAdvancedServices": [
+
       {
         "userSymbol": "Calendar",
         "serviceId": "calendar",
@@ -29,6 +30,7 @@
         "serviceId": "docs",
         "version": "v1"
       }
+
     ]
   },
   "webapp": {

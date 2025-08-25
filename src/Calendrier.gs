@@ -25,14 +25,17 @@ function _sameDayOK_(start){
 function getCalendarAndBlockedEvents_(date) {
   let busySlots = [];
   try {
-    // @ts-ignore
-    const calendarId = ID_CALENDRIER; // Assure-toi que cette variable globale est définie
-    if (calendarId) {
+    const config = getConfiguration();
+    const calendarId = config.ID_CALENDRIER;
+
+    if (!calendarId) {
+      Logger.log("AVERTISSEMENT : L'ID_CALENDRIER n'est pas configuré dans la feuille 'Paramètres'. Les disponibilités du calendrier ne peuvent pas être vérifiées.");
+    } else {
       const events = CalendarApp.getCalendarById(calendarId).getEventsForDay(date);
       busySlots = events.map(e => ({ start: e.getStartTime(), end: e.getEndTime() }));
     }
   } catch (e) {
-    Logger.log(`Avertissement : Impossible de récupérer les événements du calendrier pour le ${date}. Erreur : ${e.message}`);
+    Logger.log(`Avertissement : Impossible de récupérer les événements du calendrier pour le ${date}. Vérifiez que l'ID est correct et que les autorisations sont accordées. Erreur : ${e.message}`);
   }
 
   try {
