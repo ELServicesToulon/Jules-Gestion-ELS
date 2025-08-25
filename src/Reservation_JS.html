@@ -178,7 +178,7 @@ document.addEventListener('DOMContentLoaded', () => {
 let dateAffichee = new Date();
 
 function initCalendrier(planning, cfg) {
-  // Update the tariff cards on the page (this logic was in the old DOMContentLoaded)
+  // Met à jour les cartes tarifs (ex-logic dans l'ancien DOMContentLoaded)
   (function () {
     const tarifs = cfg.tarifs;
     if (!tarifs) return;
@@ -199,29 +199,27 @@ function initCalendrier(planning, cfg) {
       eArrets.textContent = `+${euros(tarifs.arrets.prix_palier)} / arrêt jusqu'à ${jusqua}, puis +${euros(tarifs.arrets.prix_apres)}.`;
     }
     if (eOptions) {
-        let optionsText = [];
-        if (tarifs.options.urgence?.actif) optionsText.push(`Urgence +${euros(tarifs.options.urgence.surcharge)}`);
-        if (tarifs.options.samedi?.actif) optionsText.push(`Samedi +${euros(tarifs.options.samedi.surcharge)}`);
-        eOptions.textContent = optionsText.length > 0 ? optionsText.join(', ') : "Aucune option spéciale.";
+      const parts = [];
+      if (tarifs.options.urgence?.actif) parts.push(`Urgence +${euros(tarifs.options.urgence.surcharge)}`);
+      if (tarifs.options.samedi?.actif)  parts.push(`Samedi +${euros(tarifs.options.samedi.surcharge)}`);
+      eOptions.textContent = parts.length ? parts.join(', ') : "Aucune option spéciale.";
     }
   })();
 
+  // Bouton “Réserver” (optionnel : si présent sur la page)
+  const btnReserver = document.getElementById('btn-reserver');
+  if (btnReserver) {
+    btnReserver.addEventListener('click', () => openReservationModal(new Date().toISOString()));
+  }
 
-    const btnReserver = document.getElementById('btn-reserver');
-    if (btnReserver) {
-      btnReserver.addEventListener('click', () => openReservationModal(new Date().toISOString()));
-    }
-
-    // La logique d'ouverture de la modale `openReservationModal` est maintenant
-    // attachée directement aux jours du calendrier dans `Reservation_Interface.html`.
-    // Ce script n'a plus besoin de le faire.
-});
-
+  // Rendu du calendrier
   renderCalendrier(planning);
 
-  // Attach event listeners for month navigation
-  document.getElementById('btn-mois-precedent').onclick = () => changerMois(-1);
-  document.getElementById('btn-mois-suivant').onclick = () => changerMois(1);
+  // Navigation mois
+  const prev = document.getElementById('btn-mois-precedent');
+  const next = document.getElementById('btn-mois-suivant');
+  if (prev) prev.onclick = () => changerMois(-1);
+  if (next) next.onclick = () => changerMois(1);
 }
 
 function renderCalendrier(planning) {
