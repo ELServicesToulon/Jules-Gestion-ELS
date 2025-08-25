@@ -1,12 +1,14 @@
+# .github/workflows/clasp-push.yml
 name: Push to Google Apps Script (Sheet-bound)
 
 on:
   push:
     branches: [ main ]
     paths:
-      - 'src/**'
+      - 'source/**'
       - '.clasp.json'
       - '.claspignore'
+      - '.github/workflows/clasp-push.yml'
 
 jobs:
   push:
@@ -14,6 +16,10 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Ensure workflow path
+        run: |
+          test -d .github/workflows || { echo "::error::Le workflow doit être dans .github/workflows/"; exit 1; }
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -23,12 +29,28 @@ jobs:
       - name: Install clasp
         run: npm i -g @google/clasp
 
-      # On restaure ton token perso CLASP (le plus simple pour un script lié au Sheet)
-      - name: Restore .clasprc.json
+      - name: Write .clasprc.json from secret
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
         run: |
-          echo '${{ secrets.CLASPRC_JSON }}' > ~/.clasprc.json
+          test -n "$CLASPRC_JSON" || { echo "::error::Secret CLASPRC_JSON manquant"; exit 1; }
+          # Écrit le JSON brut (sans l'abîmer avec echo/quotes)
+          cat > ~/.clasprc.json <<'JSON'
+          $CLASPRC_JSON
+          JSON
+          # Valide le JSON
+          node -e "JSON.parse(require('fs').readFileSync(process.env.HOME+'/.clasprc.json','utf8'))"
 
-      - name: Debug status (optional)
+      - name: Show .clasp.json and rootDir sanity
+        run: |
+          test -f .clasp.json || { echo "::error::.clasp.json introuvable à la racine"; exit 1; }
+          node -e "const p=require('fs').readFileSync('.clasp.json','utf8'); const j=JSON.parse(p); console.log('scriptId:',j.scriptId); console.log('rootDir:',j.rootDir||'(none)'); if(!j.rootDir){process.exit(1)}"
+          ROOTDIR=$(node -e "console.log(JSON.parse(require('fs').readFileSync('.clasp.json','utf8')).rootDir)")
+          test -d "$ROOTDIR" || { echo "::error::Le dossier rootDir '$ROOTDIR' n'existe pas"; exit 1; }
+          test -f "$ROOTDIR/appsscript.json" || { echo "::error::appsscript.json manquant dans $ROOTDIR"; exit 1; }
+          echo "Contenu de $ROOTDIR :"; ls -la "$ROOTDIR"
+
+      - name: Debug clasp status (avant push)
         run: clasp status || true
 
       - name: Push to Apps Script
