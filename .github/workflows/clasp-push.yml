@@ -1,0 +1,35 @@
+name: Push to Google Apps Script (Sheet-bound)
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'src/**'
+      - '.clasp.json'
+      - '.claspignore'
+
+jobs:
+  push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install clasp
+        run: npm i -g @google/clasp
+
+      # On restaure ton token perso CLASP (le plus simple pour un script lié au Sheet)
+      - name: Restore .clasprc.json
+        run: |
+          echo '${{ secrets.CLASPRC_JSON }}' > ~/.clasprc.json
+
+      - name: Debug status (optional)
+        run: clasp status || true
+
+      - name: Push to Apps Script
+        run: clasp push -f
