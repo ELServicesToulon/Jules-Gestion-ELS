@@ -48,14 +48,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test -f .clasp.json || { echo "::error::.clasp.json introuvable"; cat <<EOF; exit 1
-          Exemple:
-          {
-            "scriptId": "AKfycbxxxxxxxxxxxxxxxxxxxx",
-            "rootDir": "src"
-          }
-          EOF
-          }
+          test -f .clasp.json || { echo "::error::.clasp.json introuvable"; exit 1; }
           node -e "const fs=require('fs');const j=JSON.parse(fs.readFileSync('.clasp.json','utf8'));if(!j.scriptId) throw new Error('scriptId manquant'); if(!j.rootDir) throw new Error('rootDir manquant'); console.log('scriptId:', j.scriptId, '| rootDir:', j.rootDir);"
 
       - name: Check clasp auth
