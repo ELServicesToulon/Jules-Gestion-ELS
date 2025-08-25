@@ -191,11 +191,6 @@
 
   <div id="conteneur-notifications" role="alert" aria-live="assertive"></div>
 
-<!-- 1) variables pour le front en JSON, safe -->
-<script>
-  window.__PUBLIC__ = <?!= JSON.stringify(public) ?>;
-  window.__PAGE__   = '<?= page ?>';
-</script>
 
 <!-- 2) tes scripts “maison” doivent être inclus DANS des balises script -->
 <script><?!= include('Reservation_JS'); ?></script>
