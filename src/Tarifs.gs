@@ -6,24 +6,22 @@ function getTarifsPublic() {
 
   return {
     ok: true,
-    tarifs: buildTarifsPublic_(cfg.TARIFS),
-    reservation: cfg.RESERVATION,
+    tarifs: buildTarifsPublic_(cfg.TARIFS)
   };
 }
 
 /** Utilitaire pour le front : autorisé "jour même" ? */
 function canBookSameDayPublic() {
-  const cfg = getConfig_();
-  const r = cfg.RESERVATION || {};
+  const r = REGLES;
   const tz = r.timezone || Session.getScriptTimeZone();
   const now = new Date();
   const today = new Date(now);
-  const [hDeb, mDeb] = String(r.horaires?.debut || "09:00").split(":").map(Number);
-  const [hFin, mFin] = String(r.horaires?.fin   || "18:00").split(":").map(Number);
+  const [hDeb, mDeb] = String(r.opening?.start || "08:00").split(":").map(Number);
+  const [hFin, mFin] = String(r.opening?.end   || "19:00").split(":").map(Number);
   const start = new Date(today.getFullYear(), today.getMonth(), today.getDate(), hDeb, mDeb);
   const end   = new Date(today.getFullYear(), today.getMonth(), today.getDate(), hFin, mFin);
 
-  const lead = Number(r.same_day_min_lead_minutes || 0);
+  const lead = Number(r.minLeadMinutes || 0);
   const earliestAllowed = new Date(now.getTime() + lead*60000);
 
   const openToday = (r.jours_ouverts || [1,2,3,4,5]).includes(((now.getDay()+6)%7)+1); // 1..7

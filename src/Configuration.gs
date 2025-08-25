@@ -9,7 +9,9 @@ const REGLES = {
   opening: { start: "08:00", end: "19:00" },
   slot: { stepMinutes: 15, serviceMinutes: 30 },
   saturday: { open: true, surcharge: true },
-  zones: ["Tamaris","Mar Vivo","Six-Fours-les-Plages","Sanary","Portissol","Bandol"]
+  zones: ["Tamaris","Mar Vivo","Six-Fours-les-Plages","Sanary","Portissol","Bandol"],
+  timezone: "Europe/Paris",
+  jours_ouverts: [1,2,3,4,5,6] // 1=Lundi, 6=Samedi
 };
 
 // ===== Tarifs (source unique) =====
@@ -88,29 +90,6 @@ function getAppConfig() {
 function _probeTarifs_(){
   return { ok:true, now:new Date(), tarifs:getTarifsPublic() };
 }
-
-/** =======================
- *  CONFIG CENTRALE (legacy)
- *  ======================= */
-const CFG = {
-  ENTREPRISE: {
-    nom: "EL Services",
-    email: "elservicestoulon@gmail.com",
-    siret: "48091306000020",
-    iban: "FR7640618804760004035757187",
-    bic:  "BOUSFRPPXXX",
-    tva_applicable: false,
-    delai_paiement_jours: 5
-  },
-  RESERVATION: {
-    timezone: "Europe/Paris",
-    jours_ouverts: [1,2,3,4,5,6],
-    same_day_min_lead_minutes: 120,
-    slot_minutes: 30,
-    horaires: { debut: "09:00", fin: "18:00" }
-  }
-};
-function getConfig_() { return CFG; }
 
 /**
  * Lit la configuration depuis l'onglet 'Paramètres' de la feuille de calcul.
