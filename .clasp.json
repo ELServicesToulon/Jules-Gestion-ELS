@@ -1,4 +1,6 @@
-﻿{
-  "scriptId": "1QccdTFLil488QDBf1ooMsUuQldFiJXaWg1kKeX4_L5YfNfmcBbsByp8Z",
-  "rootDir": "src"
-}
+$utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+$json = '{"scriptId":"1QccdTFLil488QDBf1ooMsUuQldFiJXaWg1kKeX4_L5YfNfmcBbsByp8Z","rootDir":"src"}'
+[System.IO.File]::WriteAllText(".clasp.json", $json, $utf8NoBom)
+
+# (optionnel) vérifie qu’il n’y a plus le BOM
+# Format-Hex .clasp.json | Select-Object -First 1
