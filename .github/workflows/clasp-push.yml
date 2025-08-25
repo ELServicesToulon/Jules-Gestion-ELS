@@ -7,7 +7,7 @@ on:
       - 'src/**'
       - '.clasp.json'
       - '.github/workflows/clasp-push.yml'
-
+workflow_dispatch: {}
 jobs:
   push:
     runs-on: ubuntu-latest
