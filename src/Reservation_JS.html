@@ -185,9 +185,15 @@ document.addEventListener('DOMContentLoaded', () => {
 // MODULE: NOUVELLE LOGIQUE POUR LA MODALE DE RÉSERVATION
 // =================================================================
 
-// Configuration et tarifs chargés depuis le backend.
-const RESERVATION_RULES = window.__PUBLIC__?.reservation || {};
-const TARIFS_PUBLIC = window.__PUBLIC__?.tarifs;
+let CFG = window.__PUBLIC__ || {}; // la conf complète (doit contenir REGLES)
+let TARIFS_PUBLIC = window.__PUBLIC__?.tarifs;  // la vue stable pour l’UI
+
+const DEF_RULES = {
+  ALLOW_SAME_DAY: true,
+  SAME_DAY_CUTOFF_HOUR: 12,
+  MAX_ARRETS_VISIBLE: 12
+};
+const rules = () => (CFG && CFG.reservation) ? CFG.reservation : DEF_RULES;
 
 function showModalSkeleton() { basculerIndicateurChargement(true); }
 function hideModalSkeleton() { basculerIndicateurChargement(false); }
@@ -220,8 +226,8 @@ function openReservationModal(anchorISO) {
 
   showModalSkeleton();
 
-  // Les données (RESERVATION_RULES, TARIFS_PUBLIC) sont maintenant chargées via window.__PUBLIC__
-  if (!RESERVATION_RULES || !TARIFS_PUBLIC) {
+  // Les données (CFG, TARIFS_PUBLIC) sont maintenant chargées via window.__PUBLIC__
+  if (!CFG || !TARIFS_PUBLIC) {
     showError('La configuration ou les tarifs ne sont pas disponibles.');
     hydrateTarifCards(null); // Assure que l'UI reflète l'erreur
     hideModalSkeleton();
@@ -266,12 +272,15 @@ function buildDayChips(weekAnchorISO){
   const root = document.getElementById('js-day-chips'); if(!root) return;
   root.innerHTML = '';
 
+  const R = rules();
   const week = computeWeekFromAnchor_(weekAnchorISO);
   const now = new Date();
 
-  // La logique de 'cutoff' est simplifiée. On désactive uniquement les jours passés.
-  // La logique métier (délai, heures ouvrées) est gérée par le backend (getAvailableSlots).
-  const cutoff = (d) => d >= stripTime_(now);
+  const cutoff = (d) => {
+    if (!R.ALLOW_SAME_DAY) return d > stripTime_(now);
+    if (isSameDay_(d, now)) return now.getHours() < (R.SAME_DAY_CUTOFF_HOUR != null ? R.SAME_DAY_CUTOFF_HOUR : 12);
+    return d >= stripTime_(now);
+  };
 
   week.forEach(d => {
     const btn = document.createElement('button');
@@ -300,7 +309,8 @@ function buildDayChips(weekAnchorISO){
 
 function buildArretsSelect(){
   const sel = document.getElementById('select-arrets'); if(!sel) return;
-  const maxUI = Math.max(6, RESERVATION_RULES.MAX_ARRETS_VISIBLE != null ? RESERVATION_RULES.MAX_ARRETS_VISIBLE : 12);
+  const R = rules();
+  const maxUI = Math.max(6, R.MAX_ARRETS_VISIBLE != null ? R.MAX_ARRETS_VISIBLE : 12);
   sel.innerHTML = '';
   for (let n=1;n<=maxUI;n++){
     const opt = document.createElement('option');

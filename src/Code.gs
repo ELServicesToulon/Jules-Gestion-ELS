@@ -164,9 +164,25 @@ function doGet(e) {
     const template = HtmlService.createTemplateFromFile('Reservation_Interface');
     const config = getConfiguration();
 
+    // Créer un objet de configuration pour le client qui est rétrocompatible
+    // avec la structure attendue par Reservation_JS.html.
+    const reservationRulesForClient = {
+      horaires: {
+        debut: REGLES.opening.start,
+        fin: REGLES.opening.end
+      },
+      same_day_min_lead_minutes: REGLES.minLeadMinutes,
+      jours_ouverts: REGLES.jours_ouverts,
+      timezone: REGLES.timezone,
+      // Le client s'attend à ces propriétés, même si la logique backend est la référence.
+      ALLOW_SAME_DAY: true,
+      SAME_DAY_CUTOFF_HOUR: null, // La logique de cutoff est maintenant au backend.
+      MAX_ARRETS_VISIBLE: REGLES.MAX_ARRETS_VISIBLE
+    };
+
     template.public = {
       tarifs: getTarifsPublic().tarifs,
-      reservation: REGLES, // règles de réservation
+      reservation: reservationRulesForClient, // Utiliser l'objet formaté
       ui: {
         colors: { primary:'#8e44ad', day:'#3498db', option:'#5dade2' },
         today: Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd'),

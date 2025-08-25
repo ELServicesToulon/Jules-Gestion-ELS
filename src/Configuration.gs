@@ -11,7 +11,8 @@ const REGLES = {
   saturday: { open: true, surcharge: true },
   zones: ["Tamaris","Mar Vivo","Six-Fours-les-Plages","Sanary","Portissol","Bandol"],
   timezone: "Europe/Paris",
-  jours_ouverts: [1,2,3,4,5,6] // 1=Lundi, 6=Samedi
+  jours_ouverts: [1,2,3,4,5,6], // 1=Lundi, 6=Samedi
+  MAX_ARRETS_VISIBLE: 12
 };
 
 // ===== Tarifs (source unique) =====
