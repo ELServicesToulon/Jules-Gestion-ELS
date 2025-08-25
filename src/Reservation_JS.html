@@ -206,6 +206,17 @@ function initCalendrier(planning, cfg) {
     }
   })();
 
+
+    const btnReserver = document.getElementById('btn-reserver');
+    if (btnReserver) {
+      btnReserver.addEventListener('click', () => openReservationModal(new Date().toISOString()));
+    }
+
+    // La logique d'ouverture de la modale `openReservationModal` est maintenant
+    // attachée directement aux jours du calendrier dans `Reservation_Interface.html`.
+    // Ce script n'a plus besoin de le faire.
+});
+
   renderCalendrier(planning);
 
   // Attach event listeners for month navigation
@@ -280,6 +291,7 @@ function changerMois(delta) {
     })
     .getPlanningMois(dateAffichee.toISOString());
 }
+ main
 
 
 // =================================================================
