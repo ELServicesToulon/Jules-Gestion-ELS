@@ -1,13 +1,11 @@
-# .github/workflows/clasp-push.yml
 name: Push to Google Apps Script (Sheet-bound)
 
 on:
   push:
     branches: [ main ]
     paths:
-      - 'source/**'
+      - 'src/**'
       - '.clasp.json'
-      - '.claspignore'
       - '.github/workflows/clasp-push.yml'
 
 jobs:
@@ -34,24 +32,30 @@ jobs:
           CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
         run: |
           test -n "$CLASPRC_JSON" || { echo "::error::Secret CLASPRC_JSON manquant"; exit 1; }
-          # Écrit le JSON brut (sans l'abîmer avec echo/quotes)
           cat > ~/.clasprc.json <<'JSON'
           $CLASPRC_JSON
           JSON
-          # Valide le JSON
           node -e "JSON.parse(require('fs').readFileSync(process.env.HOME+'/.clasprc.json','utf8'))"
 
       - name: Show .clasp.json and rootDir sanity
         run: |
           test -f .clasp.json || { echo "::error::.clasp.json introuvable à la racine"; exit 1; }
-          node -e "const p=require('fs').readFileSync('.clasp.json','utf8'); const j=JSON.parse(p); console.log('scriptId:',j.scriptId); console.log('rootDir:',j.rootDir||'(none)'); if(!j.rootDir){process.exit(1)}"
-          ROOTDIR=$(node -e "console.log(JSON.parse(require('fs').readFileSync('.clasp.json','utf8')).rootDir)")
+          node -e "const j=require('./.clasp.json'); console.log('scriptId:',j.scriptId,'rootDir:',j.rootDir)"
+          ROOTDIR=$(node -e "console.log(require('./.clasp.json').rootDir)")
           test -d "$ROOTDIR" || { echo "::error::Le dossier rootDir '$ROOTDIR' n'existe pas"; exit 1; }
           test -f "$ROOTDIR/appsscript.json" || { echo "::error::appsscript.json manquant dans $ROOTDIR"; exit 1; }
           echo "Contenu de $ROOTDIR :"; ls -la "$ROOTDIR"
 
+      - name: Sanity .claspignore
+        run: |
+          ROOTDIR=$(node -e "console.log(require('./.clasp.json').rootDir)")
+          test -f "$ROOTDIR/.claspignore" && { echo ".claspignore trouvé dans $ROOTDIR"; cat "$ROOTDIR/.claspignore"; } || { echo "::warning::.claspignore manquant dans $ROOTDIR (pas bloquant)"; }
+
       - name: Debug clasp status (avant push)
         run: clasp status || true
+
+      - name: Push to Apps Script
+        run: clasp push -f
 
       - name: Push to Apps Script
         run: clasp push -f
