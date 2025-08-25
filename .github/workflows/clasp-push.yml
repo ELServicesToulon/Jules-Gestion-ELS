@@ -1,0 +1,65 @@
+name: Push to Google Apps Script (Sheet-bound)
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'src/**'
+      - '.clasp.json'
+      - '.claspignore'
+      - '.github/workflows/clasp-push.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: clasp-push-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install clasp
+        run: npm i -g @google/clasp
+
+      - name: Validate and write ~/.clasprc.json
+        shell: bash
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+        run: |
+          set -euo pipefail
+          test -n "${CLASPRC_JSON:-}" || { echo "::error::Secret CLASPRC_JSON manquant"; exit 1; }
+          node -e 'JSON.parse(process.env.CLASPRC_JSON); console.log("CLASPRC_JSON OK");'
+          mkdir -p "$HOME"
+          printf '%s' "$CLASPRC_JSON" > "$HOME/.clasprc.json"
+          [ -s "$HOME/.clasprc.json" ] || { echo "::error::.clasprc.json vide"; exit 1; }
+
+      - name: Sanity check .clasp.json (scriptId & rootDir)
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f .clasp.json || { echo "::error::.clasp.json introuvable"; cat <<EOF; exit 1
+          Exemple:
+          {
+            "scriptId": "AKfycbxxxxxxxxxxxxxxxxxxxx",
+            "rootDir": "src"
+          }
+          EOF
+          }
+          node -e "const fs=require('fs');const j=JSON.parse(fs.readFileSync('.clasp.json','utf8'));if(!j.scriptId) throw new Error('scriptId manquant'); if(!j.rootDir) throw new Error('rootDir manquant'); console.log('scriptId:', j.scriptId, '| rootDir:', j.rootDir);"
+
+      - name: Check clasp auth
+        run: clasp login --status
+
+      - name: Push to Apps Script
+        run: clasp push -f
