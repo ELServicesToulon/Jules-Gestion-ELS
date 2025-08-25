@@ -1,12 +1,13 @@
 /** Renvoi public minimal pour le front */
 function getTarifsPublic() {
-  const cfg = getConfig_();
+  const cfg = getAppConfig();
   const v = validateTarifs_(cfg && cfg.TARIFS);
   if (!v.ok) return { ok:false, errors:v.errors };
 
   return {
     ok: true,
-    tarifs: buildTarifsPublic_(cfg.TARIFS)
+    tarifs: buildTarifsPublic_(cfg.TARIFS),
+    reservation: cfg.RESERVATION,
   };
 }
 
@@ -34,28 +35,33 @@ function canBookSameDayPublic() {
 function validateTarifs_(t) {
   const errors = [];
   if (!t) errors.push("TARIFS manquant.");
-  if (t && typeof t.base !== "number") errors.push("TARIFS.base doit être un nombre.");
-  if (t && (!t.arrets || typeof t.arrets.prix_par_arret_palier !== "number"))
-    errors.push("TARIFS.arrets.* manquant ou invalide.");
-  if (t && !t.options) errors.push("TARIFS.options manquant.");
+  if (t && typeof t.baseCourse !== "number") errors.push("TARIFS.baseCourse doit être un nombre.");
+  if (t && typeof t.surcUrgence !== "number") errors.push("TARIFS.surcUrgence doit être un nombre.");
+  if (t && typeof t.surcSamedi !== "number") errors.push("TARIFS.surcSamedi doit être un nombre.");
+  if (t && !t.PDL_PRIX) errors.push("TARIFS.PDL_PRIX manquant.");
 
   return { ok: errors.length === 0, errors };
 }
 
 /** Formate une payload compacte pour l’UI */
 function buildTarifsPublic_(t) {
+  // Adapte la structure de `TARIFS` (de Configuration.gs) à celle attendue par le front.
+  const palier_max_inclus = 1 + (t.PDL_PRIX?.length || 0);
+  const prix_palier = t.PDL_PRIX?.[0] || 0;
+  const prix_apres = t.PDL_PRIX_FALLBACK || prix_palier;
+
   return {
-    devise: t.devise || "EUR",
-    base: t.base,
+    devise: "EUR",
+    base: t.baseCourse,
     arrets: {
-      palier_max_inclus: t.arrets.palier_max_inclus,
-      prix_palier: t.arrets.prix_par_arret_palier,
-      prix_apres:  t.arrets.prix_par_arret_apres_palier
+      palier_max_inclus: palier_max_inclus,
+      prix_palier: prix_palier,
+      prix_apres:  prix_apres
     },
     options: {
-      retour_compte_comme_arret: !!t.options.retour_compte_comme_arret,
-      urgence: { actif: !!t.options.urgence?.actif, surcharge: t.options.urgence?.surcharge || 0, delai_minutes: t.options.urgence?.delai_minutes || 0 },
-      samedi:  { actif: !!t.options.samedi?.actif,  surcharge: t.options.samedi?.surcharge  || 0 }
+      retour_compte_comme_arret: false, // Non défini dans la config, on met une valeur par défaut.
+      urgence: { actif: t.surcUrgence > 0, surcharge: t.surcUrgence, delai_minutes: t.URGENCE_FENETRE_MIN },
+      samedi:  { actif: t.surcSamedi > 0,  surcharge: t.surcSamedi }
     }
   };
 }

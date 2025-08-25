@@ -25,14 +25,17 @@ function _sameDayOK_(start){
 function getCalendarAndBlockedEvents_(date) {
   let busySlots = [];
   try {
-    // @ts-ignore
-    const calendarId = ID_CALENDRIER; // Assure-toi que cette variable globale est définie
-    if (calendarId) {
+    const config = getConfiguration();
+    const calendarId = config.ID_CALENDRIER;
+
+    if (!calendarId) {
+      Logger.log("AVERTISSEMENT : L'ID_CALENDRIER n'est pas configuré dans la feuille 'Paramètres'. Les disponibilités du calendrier ne peuvent pas être vérifiées.");
+    } else {
       const events = CalendarApp.getCalendarById(calendarId).getEventsForDay(date);
       busySlots = events.map(e => ({ start: e.getStartTime(), end: e.getEndTime() }));
     }
   } catch (e) {
-    Logger.log(`Avertissement : Impossible de récupérer les événements du calendrier pour le ${date}. Erreur : ${e.message}`);
+    Logger.log(`Avertissement : Impossible de récupérer les événements du calendrier pour le ${date}. Vérifiez que l'ID est correct et que les autorisations sont accordées. Erreur : ${e.message}`);
   }
 
   try {
@@ -108,4 +111,25 @@ function getAvailableSlots(dayISO, nbPDL){
   }
   // --- FIN DE LA VALIDATION ---
   return genererCreneauxPourJour_(date, Number(nbPDL||1));
+}
+
+function getPlanningMois(dateISO) {
+  const ancre = dateISO ? new Date(dateISO) : new Date();
+  const annee = ancre.getFullYear();
+  const mois = ancre.getMonth();
+
+  const dernierJour = new Date(annee, mois + 1, 0);
+
+  const planning = [];
+  // On boucle sur tous les jours du mois
+  for (let i = 1; i <= dernierJour.getDate(); i++) {
+    const jourCourant = new Date(annee, mois, i);
+    // On vérifie la disponibilité pour ce jour
+    const creneaux = genererCreneauxPourJour_(jourCourant, 1);
+    planning.push({
+      date: jourCourant.toISOString().slice(0, 10),
+      disponible: creneaux.length > 0
+    });
+  }
+  return planning;
 }
